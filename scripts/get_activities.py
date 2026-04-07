@@ -22,7 +22,7 @@ def main() -> None:
         print("Error: ATHLETE_ID is not set. Copy .env.example to .env and fill in your athlete ID.")
         sys.exit(1)
 
-    end_date = date.today() + timedelta(days=1)
+    end_date = date.today() + timedelta(days=2)  # Add 2 days to ensure we get all recent activities
     start_date = end_date - timedelta(days=7)
 
     activities = get_activities(
