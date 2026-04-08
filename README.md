@@ -274,7 +274,16 @@ intervals.icu API
 ```
 
 `prepare_week_for_coach.py` runs all scripts above in order and then consolidates the results (metrics, week summary, activities, fueling analysis) into a single `coach_input_{monday}.json`.
-That means: Run python ./scripts/prepare_week_for_coach.py to get the current version of data/processed/coach_input_{monday}.json for the week. Share this file with your "coach" (ChatGPT, Claude etc ...) and discuss the outcome and the plan for the week.
+
+That means: Run
+```
+python ./scripts/prepare_week_for_coach.py
+```
+to get the current version of 
+```
+data/processed/coach_input_{monday}.json
+``` 
+for the week. Share this file with your "coach" (ChatGPT, Claude etc ...) and discuss the outcome and the plan for the week.
 
 ## Scripts
 
