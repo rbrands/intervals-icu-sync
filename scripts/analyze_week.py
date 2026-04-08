@@ -28,6 +28,17 @@ def load_metrics() -> dict:
     return json.loads(files[-1].read_text())
 
 
+def load_fueling(monday: date) -> dict:
+    path = OUTPUT_DIR / f"fueling_analysis_{monday.isoformat()}.json"
+    if not path.exists():
+        # Fall back to most recent file
+        files = sorted(OUTPUT_DIR.glob("fueling_analysis_*.json"))
+        if not files:
+            return {}
+        path = files[-1]
+    return json.loads(path.read_text())
+
+
 def _current_week_range() -> tuple[date, date]:
     today = date.today()
     monday = today - timedelta(days=today.weekday())
@@ -55,14 +66,103 @@ def filter_activities(activities: list) -> list:
     return result
 
 
+def _z5_plus_pct(activity: dict) -> float:
+    zone_times = activity.get("icu_zone_times") or []
+    secs_by_id = {z["id"]: z["secs"] for z in zone_times if "id" in z and "secs" in z}
+    total = sum(secs_by_id.values())
+    if total == 0:
+        return 0.0
+    z5_plus = sum(v for k, v in secs_by_id.items() if k in ("Z5", "Z6", "Z7"))
+    return z5_plus / total * 100
+
+
 def _classify_ride(activity: dict) -> str:
     raw = activity.get("interval_summary") or ""
     summary = " ".join(raw) if isinstance(raw, list) else raw
-    if re.search(r"\b(1m|2m|3m|4m)", summary) or "110%" in summary:
+    z5_plus = _z5_plus_pct(activity)
+    if (re.search(r"\b(1m|2m|3m|4m)", summary) or "110%" in summary) and z5_plus > 5:
         return "vo2max"
     if re.search(r"\b(10m|12m|20m)", summary):
         return "threshold"
     return "endurance"
+
+
+def analyse_fueling_form(form_pct: float, fueling_data: dict, activities: list) -> dict:
+    """Combine Form % with fueling quality into an integrated assessment."""
+    weekly = fueling_data.get("weekly_summary", {})
+    avg_carbs_per_hour = weekly.get("avg_carbs_per_hour") or 0.0
+    underfueled_sessions = weekly.get("number_of_underfueled_sessions") or 0
+    number_of_long_rides = weekly.get("number_of_long_rides") or 0
+    avg_fueling_ratio = weekly.get("avg_fueling_ratio") or 0.0
+
+    # Fueling quality
+    if avg_carbs_per_hour >= 70:
+        fueling_status = "good"
+    elif avg_carbs_per_hour >= 50:
+        fueling_status = "moderate"
+    else:
+        fueling_status = "low"
+
+    # Durability limited by fueling
+    fuel_acts = fueling_data.get("activities", [])
+    fuel_by_name = {a.get("name"): a for a in fuel_acts}
+    durability_limited = False
+    for act in activities:
+        decoupling = act.get("decoupling")
+        name = act.get("name")
+        fa = fuel_by_name.get(name, {})
+        carbs_h = fa.get("carbs_per_hour") or 0.0
+        if decoupling is not None and float(decoupling) > 10 and carbs_h < 60:
+            durability_limited = True
+            break
+
+    # Fatigue status derived from form_pct
+    if form_pct < -0.30:
+        fatigue_status = "high"
+    elif form_pct < -0.10:
+        fatigue_status = "optimal"
+    else:
+        fatigue_status = "low"
+
+    # Interpretation
+    if fatigue_status == "optimal" and fueling_status == "low":
+        interpretation = "Fatigue is amplified by insufficient fueling"
+        recommendation = "Do not increase intensity — improve fueling first"
+    elif fatigue_status == "optimal" and fueling_status in ("moderate", "good"):
+        interpretation = "Fatigue is appropriate and productive"
+        recommendation = "Continue with planned VO2 and threshold sessions"
+    elif fatigue_status == "high" and fueling_status == "low":
+        interpretation = "High risk: excessive fatigue + underfueling"
+        recommendation = "Reduce intensity AND increase fueling immediately"
+    elif fatigue_status == "high" and fueling_status in ("moderate", "good"):
+        interpretation = "High training load, but fueling is adequate"
+        recommendation = "Prioritize recovery; no additional hard sessions"
+    elif fatigue_status == "low" and fueling_status == "low":
+        interpretation = "Low load but also underfueled (suboptimal adaptation)"
+        recommendation = "Increase fueling even on lower-intensity days"
+    else:
+        interpretation = "Balanced state"
+        recommendation = "Consider increasing training load"
+
+    # Long ride rule
+    long_ride_advice: str | None = None
+    if number_of_long_rides == 0:
+        long_ride_advice = "Add a long aerobic ride this week"
+    elif durability_limited:
+        long_ride_advice = "Focus on fueling during long rides (80–90 g/h)"
+
+    return {
+        "fatigue_status": fatigue_status,
+        "fueling_status": fueling_status,
+        "avg_carbs_per_hour": round(avg_carbs_per_hour, 1),
+        "avg_fueling_ratio": round(avg_fueling_ratio, 2),
+        "underfueled_sessions": underfueled_sessions,
+        "number_of_long_rides": number_of_long_rides,
+        "durability_limited_by_fueling": durability_limited,
+        "interpretation": interpretation,
+        "recommendation": recommendation,
+        "long_ride_advice": long_ride_advice,
+    }
 
 
 def compute_form(ctl: float | None, atl: float | None) -> dict:
@@ -127,7 +227,7 @@ def compute_metrics(activities: list) -> dict:
     }
 
 
-def print_report(metrics: dict, athlete_metrics: dict | None = None) -> None:
+def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_form: dict | None = None) -> None:
     m = metrics
     print()
     print("=== Weekly Training Summary ===")
@@ -191,12 +291,30 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None) -> None:
             print("Form:       Balanced state → maintain structure")
         else:
             print("Form:       Fresh → consider increasing load or intensity")
+    if fueling_form:
+        ff = fueling_form
+        print()
+        print("=== Integrated Fatigue & Fueling Analysis ===")
+        print(f"Form %:          {m.get('form_percent_display', 'n/a'):.1f}%")
+        print(f"Fatigue Status:  {ff['fatigue_status']}")
+        print()
+        print(f"Avg Carbs/h:     {ff['avg_carbs_per_hour']} g")
+        print(f"Fueling Status:  {ff['fueling_status']}")
+        print(f"Underfueled sessions: {ff['underfueled_sessions']}")
+        print(f"Durability limited by fueling: {ff['durability_limited_by_fueling']}")
+        print()
+        print(f"Interpretation:  {ff['interpretation']}")
+        print(f"Recommendation:  {ff['recommendation']}")
+        if ff.get("long_ride_advice"):
+            print(f"Long rides:      {ff['long_ride_advice']}")
 
-
-def save_json(metrics: dict, monday: date) -> None:
+def save_json(metrics: dict, fueling_form: dict | None, monday: date) -> None:
     output_file = OUTPUT_DIR / f"week_summary_{monday.isoformat()}.json"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_file.write_text(json.dumps({"week_starting": monday.isoformat(), **metrics}, indent=2))
+    payload = {"week_starting": monday.isoformat(), **metrics}
+    if fueling_form:
+        payload["fueling_form_analysis"] = fueling_form
+    output_file.write_text(json.dumps(payload, indent=2))
     print(f"Saved to: {output_file.name}")
 
 
@@ -209,11 +327,13 @@ def main() -> None:
         print("No qualifying rides found.")
         sys.exit(0)
     athlete_metrics = load_metrics()
+    fueling_data = load_fueling(monday)
     metrics = compute_metrics(rides)
     form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
     metrics.update(form)
-    print_report(metrics, athlete_metrics)
-    save_json(metrics, monday)
+    fueling_form = analyse_fueling_form(form["form_pct"], fueling_data, rides) if fueling_data else None
+    print_report(metrics, athlete_metrics, fueling_form)
+    save_json(metrics, fueling_form, monday)
 
 
 if __name__ == "__main__":
