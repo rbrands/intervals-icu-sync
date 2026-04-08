@@ -38,7 +38,6 @@ def fetch_wellness() -> dict:
 
     sport_info = next((s for s in (today_entry.get("sportInfo") or []) if s.get("type") == "Ride"), {})
     return {
-        "vo2max": last_vo2max,
         "ctl": today_entry.get("ctl"),
         "atl": today_entry.get("atl"),
         "resting_hr": today_entry.get("restingHR"),
@@ -112,7 +111,7 @@ def main() -> None:
     p5min = fetch_5min_power()
     metrics["p5min"] = p5min
     if p5min and metrics.get("weight"):
-        metrics["vo2max_calculated"] = calc_vo2max_from_power(p5min, metrics["weight"])
+        metrics["vo2max"] = calc_vo2max_from_power(p5min, metrics["weight"])
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_file = OUTPUT_DIR / f"metrics_{today.isoformat()}.json"
@@ -124,8 +123,7 @@ def main() -> None:
     print(f"eFTP:         {metrics.get('eftp'):.1f} W" if metrics.get("eftp") else "eFTP:         n/a")
     print(f"W':           {metrics.get('w_prime')} J")
     print(f"5min power:   {metrics.get('p5min')} W (42-day best)")
-    print(f"VO2Max:       {metrics.get('vo2max')} (Garmin device)")
-    print(f"VO2Max calc:  {metrics.get('vo2max_calculated')} (intervals.icu formula)")
+    print(f"VO2Max:       {metrics.get('vo2max')} (intervals.icu formula)")
     print(f"Weight:       {metrics.get('weight')} kg")
     print(f"CTL:          {metrics.get('ctl'):.1f}" if metrics.get("ctl") else "CTL:          n/a")
     print(f"ATL:          {metrics.get('atl'):.1f}" if metrics.get("atl") else "ATL:          n/a")

@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
+OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 
 
 def load_data() -> list:
@@ -134,6 +135,13 @@ def print_report(metrics: dict) -> None:
         print("Aerobic:    Aerobic endurance or fueling needs improvement")
 
 
+def save_json(metrics: dict, monday: date) -> None:
+    output_file = OUTPUT_DIR / f"week_summary_{monday.isoformat()}.json"
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(json.dumps({"week_starting": monday.isoformat(), **metrics}, indent=2))
+    print(f"Saved to: {output_file.name}")
+
+
 def main() -> None:
     monday, sunday = _current_week_range()
     print(f"Calendar week: {monday.isoformat()} – {sunday.isoformat()}")
@@ -144,6 +152,7 @@ def main() -> None:
         sys.exit(0)
     metrics = compute_metrics(rides)
     print_report(metrics)
+    save_json(metrics, monday)
 
 
 if __name__ == "__main__":

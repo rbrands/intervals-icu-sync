@@ -2,11 +2,11 @@
 
 import json
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
-OUTPUT_FILE = OUTPUT_DIR / "coach_input.json"
 
 
 def load_data() -> list:
@@ -28,7 +28,26 @@ def filter_activities(activities: list) -> list:
     ]
 
 
+def _zone_distribution(zone_times: list) -> dict:
+    """Compute Z1+2 / Z3+4 / Z5+ percentage breakdown from icu_zone_times."""
+    if not zone_times:
+        return {"z1_z2_pct": None, "z3_z4_pct": None, "z5_plus_pct": None}
+    secs_by_id = {z["id"]: z["secs"] for z in zone_times if "id" in z and "secs" in z}
+    total = sum(secs_by_id.values())
+    if total == 0:
+        return {"z1_z2_pct": None, "z3_z4_pct": None, "z5_plus_pct": None}
+    z1_z2 = secs_by_id.get("Z1", 0) + secs_by_id.get("Z2", 0)
+    z3_z4 = secs_by_id.get("Z3", 0) + secs_by_id.get("Z4", 0)
+    z5_plus = sum(v for k, v in secs_by_id.items() if k in ("Z5", "Z6", "Z7"))
+    return {
+        "z1_z2_pct": round(z1_z2 / total * 100, 1),
+        "z3_z4_pct": round(z3_z4 / total * 100, 1),
+        "z5_plus_pct": round(z5_plus / total * 100, 1),
+    }
+
+
 def extract_fields(activity: dict) -> dict:
+    zone_dist = _zone_distribution(activity.get("icu_zone_times") or [])
     return {
         "date": (activity.get("start_date_local") or "")[:10],
         "name": activity.get("name"),
@@ -36,25 +55,34 @@ def extract_fields(activity: dict) -> dict:
         "training_load": activity.get("icu_training_load"),
         "avg_power": activity.get("icu_average_watts"),
         "norm_power": activity.get("icu_weighted_avg_watts"),
+        "polarization_index": activity.get("polarization_index"),
+        "z1_z2_pct": zone_dist["z1_z2_pct"],
+        "z3_z4_pct": zone_dist["z3_z4_pct"],
+        "z5_plus_pct": zone_dist["z5_plus_pct"],
         "interval_summary": activity.get("interval_summary"),
         "decoupling": activity.get("decoupling"),
         "rpe": activity.get("icu_rpe"),
+        "carbs_used_g": activity.get("carbs_used"),
+        "carbs_ingested_g": activity.get("carbs_ingested"),
     }
 
 
 def main() -> None:
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    output_file = OUTPUT_DIR / f"coach_input_{monday.isoformat()}.json"
     activities = load_data()
     rides = filter_activities(activities)
     rides.sort(key=lambda a: (a.get("start_date_local") or ""))
     output = [extract_fields(a) for a in rides]
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    OUTPUT_FILE.write_text(json.dumps(output, indent=2))
+    output_file.write_text(json.dumps(output, indent=2))
 
     total_load = sum(a["training_load"] or 0 for a in output)
     print(f"Rides:       {len(output)}")
     print(f"Total load:  {total_load}")
-    print(f"Saved to:    {OUTPUT_FILE}")
+    print(f"Saved to:    {output_file}")
 
 
 if __name__ == "__main__":
