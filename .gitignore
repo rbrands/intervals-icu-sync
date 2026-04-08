@@ -208,3 +208,4 @@ __marimo__/
 
 # intervals-icu-sync raw data files
 data/raw/*.json
+data/processed/*.json

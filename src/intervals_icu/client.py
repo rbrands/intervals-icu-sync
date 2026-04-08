@@ -28,8 +28,5 @@ def get_activities(api_key: str, athlete_id: str, start_date: str, end_date: str
     )
   
     response.raise_for_status()
-    print(response.url)
-    print(response.status_code)
-    print(response.text[:500])
 
     return response.json()

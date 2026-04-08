@@ -1,4 +1,4 @@
-"""Fetch activities from intervals.icu for the last 7 days and save to data/raw/."""
+"""Fetch activities from intervals.icu for the current calendar week (Mon–today) and save to data/raw."""
 
 import json
 import sys
@@ -22,8 +22,9 @@ def main() -> None:
         print("Error: ATHLETE_ID is not set. Copy .env.example to .env and fill in your athlete ID.")
         sys.exit(1)
 
-    end_date = date.today() + timedelta(days=2)  # Add 2 days to ensure we get all recent activities
-    start_date = end_date - timedelta(days=7)
+    today = date.today()
+    start_date = today - timedelta(days=today.weekday() + 7)  # Monday of previous week
+    end_date = today
 
     activities = get_activities(
         api_key=API_KEY,
@@ -31,12 +32,11 @@ def main() -> None:
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
     )
-    # Filter activities to only include those from Garmin Connect
+    # Filter activities: only cycling rides with meaningful training load, exclude Strava duplicates
     activities = [
         a for a in activities
-        if a.get("source") == "GARMIN_CONNECT"
-        and a.get("type") == "Ride"
-        and a.get("icu_weighted_avg_watts") is not None
+        if a.get("type") == "Ride"
+        and a.get("source") != "STRAVA"
         and a.get("icu_training_load", 0) > 20
     ]
 
