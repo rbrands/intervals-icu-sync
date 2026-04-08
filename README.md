@@ -57,30 +57,6 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env and replace 'your_api_key_here' with your actual intervals.icu API key
-```
-
-You can find your API key in the intervals.icu settings under **Profile → API**.
-
-## Setup
-
-### 1. Create a virtual environment
-
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-```
-
-### 2. Install requirements
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Set your API key
-
-```bash
-cp .env.example .env
 # Edit .env and set API_KEY and ATHLETE_ID
 ```
 
