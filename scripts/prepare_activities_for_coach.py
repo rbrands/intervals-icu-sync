@@ -1,6 +1,7 @@
 """Read latest activities JSON from data/raw and output a simplified JSON for coach analysis."""
 
 import json
+import subprocess
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -83,6 +84,12 @@ def main() -> None:
     print(f"Rides:       {len(output)}")
     print(f"Total load:  {total_load}")
     print(f"Saved to:    {output_file}")
+
+    analyze_script = Path(__file__).resolve().parent / "analyze_week.py"
+    result = subprocess.run([sys.executable, str(analyze_script)], check=False)
+    if result.returncode != 0:
+        print(f"Warning: analyze_week.py exited with code {result.returncode}.")
+        sys.exit(result.returncode)
 
 
 if __name__ == "__main__":

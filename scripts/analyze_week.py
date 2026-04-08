@@ -8,6 +8,7 @@ from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+METRICS_DIR = OUTPUT_DIR
 
 
 def load_data() -> list:
@@ -18,6 +19,13 @@ def load_data() -> list:
     latest = json_files[-1]
     print(f"Loading {latest.name}")
     return json.loads(latest.read_text())
+
+
+def load_metrics() -> dict:
+    files = sorted(METRICS_DIR.glob("metrics_*.json"))
+    if not files:
+        return {}
+    return json.loads(files[-1].read_text())
 
 
 def _current_week_range() -> tuple[date, date]:
@@ -50,11 +58,34 @@ def filter_activities(activities: list) -> list:
 def _classify_ride(activity: dict) -> str:
     raw = activity.get("interval_summary") or ""
     summary = " ".join(raw) if isinstance(raw, list) else raw
-    if re.search(r"\b(1m|2m|3m|4m)\b", summary) or "110%" in summary:
+    if re.search(r"\b(1m|2m|3m|4m)", summary) or "110%" in summary:
         return "vo2max"
-    if re.search(r"\b(10m|12m|20m)\b", summary):
+    if re.search(r"\b(10m|12m|20m)", summary):
         return "threshold"
     return "endurance"
+
+
+def compute_form(ctl: float | None, atl: float | None) -> dict:
+    ctl = ctl or 0.0
+    atl = atl or 0.0
+    form_absolute = ctl - atl
+    form_pct = (ctl - atl) / ctl if ctl > 0 else 0.0
+
+    if form_pct > 0:
+        form_zone = "fresh"
+    elif form_pct >= -0.10:
+        form_zone = "transition"
+    elif form_pct >= -0.30:
+        form_zone = "optimal"
+    else:
+        form_zone = "high_risk"
+
+    return {
+        "form_absolute": round(form_absolute, 1),
+        "form_pct": round(form_pct, 4),
+        "form_percent_display": round(form_pct * 100, 1),
+        "form_zone": form_zone,
+    }
 
 
 def compute_metrics(activities: list) -> dict:
@@ -96,7 +127,7 @@ def compute_metrics(activities: list) -> dict:
     }
 
 
-def print_report(metrics: dict) -> None:
+def print_report(metrics: dict, athlete_metrics: dict | None = None) -> None:
     m = metrics
     print()
     print("=== Weekly Training Summary ===")
@@ -113,6 +144,16 @@ def print_report(metrics: dict) -> None:
     print("Decoupling:")
     print(f"  Average:                    {m['avg_decoupling']:.1f}%")
     print(f"  High decoupling rides (>10%): {m['high_decoupling_rides']}")
+
+    if "form_absolute" in m:
+        print()
+        print("=== Fatigue / Form Analysis ===")
+        print(f"CTL:     {athlete_metrics.get('ctl', 'n/a')}")
+        print(f"ATL:     {athlete_metrics.get('atl', 'n/a')}")
+        print(f"Form:    {m['form_absolute']}")
+        print(f"Form %:  {m['form_percent_display']:.1f}%")
+        print(f"Zone:    {m['form_zone']}")
+
     print()
     print("=== Coaching Interpretation ===")
 
@@ -134,6 +175,23 @@ def print_report(metrics: dict) -> None:
     if m["avg_decoupling"] > 8:
         print("Aerobic:    Aerobic endurance or fueling needs improvement")
 
+    if "form_pct" in m:
+        form_pct = m["form_pct"]
+        hrv = (athlete_metrics or {}).get("hrv")
+        print()
+        if form_pct < -0.30:
+            print("Form:       High fatigue → reduce intensity and prioritize recovery")
+            if hrv is not None and hrv < 50:
+                print("HRV:        Strong fatigue signal combined with low HRV → recommend rest day")
+        elif form_pct < -0.10:
+            print("Form:       Optimal training zone → proceed with key sessions")
+            if m["vo2_sessions"] == 0 and m["threshold_sessions"] == 0:
+                print("Form:       Consider adding a VO2 or threshold session")
+        elif form_pct <= 0:
+            print("Form:       Balanced state → maintain structure")
+        else:
+            print("Form:       Fresh → consider increasing load or intensity")
+
 
 def save_json(metrics: dict, monday: date) -> None:
     output_file = OUTPUT_DIR / f"week_summary_{monday.isoformat()}.json"
@@ -150,8 +208,11 @@ def main() -> None:
     if not rides:
         print("No qualifying rides found.")
         sys.exit(0)
+    athlete_metrics = load_metrics()
     metrics = compute_metrics(rides)
-    print_report(metrics)
+    form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
+    metrics.update(form)
+    print_report(metrics, athlete_metrics)
     save_json(metrics, monday)
 
 
