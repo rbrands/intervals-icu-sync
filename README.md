@@ -1,4 +1,4 @@
-# intervals-icu-sync
+# Intervals.icu Tools
 
 A Python project for fetching, analyzing, and exporting cycling training data from the [intervals.icu](https://intervals.icu) API.
 
