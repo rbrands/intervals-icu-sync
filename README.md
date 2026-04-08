@@ -67,12 +67,16 @@ cp .env.example .env
 
 ```
 intervals.icu API
-    → get_activities.py       → data/raw/activities_{date}.json
-    → get_metrics.py          → data/processed/metrics_{date}.json
-    → prepare_for_coach.py    → data/processed/coach_input_{monday}.json
-    → fueling_analysis.py     → data/processed/fueling_analysis_{monday}.json
-    → analyze_week.py         → console output only
+    → get_activities.py              → data/raw/activities_{date}.json
+    → get_metrics.py                 → data/processed/metrics_{date}.json
+    → prepare_activities_for_coach.py → data/processed/coach_input_{monday}.json
+    → fueling_analysis.py            → data/processed/fueling_analysis_{monday}.json
+    → analyze_week.py                → data/processed/week_summary_{monday}.json + console
+    ↓ consolidate()
+    → prepare_week_for_coach.py      → data/processed/coach_input_{monday}.json (consolidated)
 ```
+
+`prepare_week_for_coach.py` runs all scripts above in order and then consolidates the results (metrics, week summary, activities, fueling analysis) into a single `coach_input_{monday}.json`.
 
 ## Scripts
 
