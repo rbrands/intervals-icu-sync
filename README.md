@@ -315,11 +315,18 @@ Output: `data/processed/metrics_{date}.json`
 
 Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies sessions (VO2max / Threshold / Endurance), computes aerobic decoupling, and prints a coaching interpretation.
 
+Also computes **Form %** based on CTL (fitness) and ATL (fatigue):
+
+- `form_absolute = CTL − ATL`
+- `form_pct = (CTL − ATL) / CTL` — relative to current fitness level
+- Form zones: `fresh` (> 0%) · `transition` (0 to −10%) · `optimal` (−10 to −30%) · `high_risk` (< −30%)
+- Coaching recommendations adapt based on form zone (combined with HRV if available)
+
 ```bash
 python scripts/analyze_week.py
 ```
 
-Output: console only
+Output: console + `data/processed/week_summary_{monday}.json`
 
 ---
 
@@ -366,8 +373,9 @@ python scripts/prepare_week_for_coach.py
 
 Interactive Jupyter notebook that loads the consolidated `coach_input_{monday}.json` and displays a structured overview of the current training week:
 
-- **Athlete Metrics**: FTP, eFTP, VO2Max, W\', CTL/ATL, HRV, weight
+- **Athlete Metrics**: FTP, eFTP, VO2Max, W\', CTL/ATL, HRV, weight — FTP values shown in W and W/kg
 - **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling
+- **Form & Fatigue Analysis**: CTL, ATL, Form (absolute and % relative to fitness), Form Zone, HRV — with coaching interpretation based on form zone
 - **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling, and carbohydrate data
 - **Zone Distribution Chart**: bar charts per activity showing Z1+2 / Z3+4 / Z5+ split
 - **Fueling Analysis**: per-ride fueling status, carbs/h, fueling ratio, and weekly recommendations
