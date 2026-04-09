@@ -1,6 +1,6 @@
 # Intervals.icu Tools
 
-A Python project for fetching, analyzing, and exporting cycling training data from the [intervals.icu](https://intervals.icu) API.
+A Python project for fetching, analyzing, exporting cycling training data from and uploading plans to [intervals.icu](https://intervals.icu) API.
 
 ## Description
 
@@ -380,16 +380,31 @@ cp .env.example .env
 
 ## Data Flow
 
-```
-intervals.icu API
-    → get_activities.py              → data/raw/activities_{date}.json
-    → get_metrics.py                 → data/processed/metrics_{date}.json
-    → prepare_activities_for_coach.py → data/processed/coach_input_{monday}.json
-    → fueling_analysis.py            → data/processed/fueling_analysis_{monday}.json
-    → analyze_week.py                → data/processed/week_summary_{monday}.json + console
-    → fueling_planner.py             → data/processed/fueling_plan_{monday}.json + console
-    ↓ consolidate()
-    → prepare_week_for_coach.py      → data/processed/coach_input_{monday}.json (consolidated)
+```mermaid
+flowchart TD
+    API([intervals.icu API])
+
+    API --> GA[get_activities.py]
+    API --> GM[get_metrics.py]
+    API --> PA[prepare_activities_for_coach.py]
+    API --> FA[fueling_analysis.py]
+    API --> AW[analyze_week.py]
+    API --> FP[fueling_planner.py]
+
+    GA --> RAW[(data/raw/\nactivities_date.json)]
+    GM --> METRICS[(data/processed/\nmetrics_date.json)]
+    PA --> COACH_A[(data/processed/\ncoach_input_monday.json)]
+    FA --> FUELING[(data/processed/\nfueling_analysis_monday.json)]
+    AW --> SUMMARY[(data/processed/\nweek_summary_monday.json)]
+    FP --> FPLAN[(data/processed/\nfueling_plan_monday.json)]
+
+    RAW & METRICS & COACH_A & FUELING & SUMMARY & FPLAN --> PW[prepare_week_for_coach.py]
+    PW --> CONSOLIDATED[(data/processed/\ncoach_input_monday.json\nconsolidated)]
+
+    CONSOLIDATED --> COACH[[Coach\nChatGPT / Claude]]
+    COACH --> PLAN[(data/plans/\nweek_plan.json)]
+    PLAN --> UP[upload_plan.py]
+    UP --> CAL([intervals.icu\ncalendar])
 ```
 
 `prepare_week_for_coach.py` runs all scripts above in order and then consolidates the results (metrics, week summary, activities, fueling analysis) into a single `coach_input_{monday}.json`.
@@ -516,16 +531,18 @@ python scripts/prepare_week_for_coach.py
 
 ### `upload_plan.py`
 
-Uploads a JSON training plan to intervals.icu as planned workouts using the `POST /api/v1/athlete/{id}/activities` endpoint.
+Uploads a JSON training plan to intervals.icu as planned WORKOUT events.
 
-Reads from `data/plans/week_plan.json` by default (or any path passed via `--plan`).
+Reads from `data/plans/week_plan.json` by default (or any path passed via `--plan`). The plan file is git-ignored; the `data/plans/` folder is tracked via a `.gitkeep` file.
 
 Each entry in the JSON file must have:
 - `date` — ISO 8601 datetime string, e.g. `"2026-04-12T09:00:00"`
 - `name` — display name shown in intervals.icu
 - `duration_minutes` — planned duration (integer or float)
 
-Optional per entry: `description` (free-text notes).
+Optional per entry: `description` (free-text notes), `steps` (structured workout intervals → uploaded as a ZWO file).
+
+Duplicate handling: before creating events, the script fetches existing WORKOUT events for the date range and indexes them by `(name, date)`. If a match is found the existing event is updated (`PUT`); otherwise a new event is created (`POST`). Re-running the script is safe and will never produce duplicates.
 
 ```bash
 # Preview without making API calls
@@ -536,9 +553,12 @@ python scripts/upload_plan.py
 
 # Upload a custom plan file
 python scripts/upload_plan.py --plan data/plans/my_plan.json
+
+# Delete all WORKOUT events for the date range, then re-upload
+python scripts/upload_plan.py --clear
 ```
 
-Output: one confirmation line per uploaded activity, summary of success / skip / failure counts.
+Output: one `Created` or `Updated` line per workout, summary of counts.
 
 ---
 
