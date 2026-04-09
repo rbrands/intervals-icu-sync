@@ -1,6 +1,56 @@
+import base64
+import json as _json
 import requests
 
 BASE_URL = "https://intervals.icu/api/v1"
+
+_ASCII_FALLBACKS = {
+    '\u2013': '-',    # en dash –
+    '\u2014': '-',    # em dash —
+    '\u2018': "'",    # left single quote '
+    '\u2019': "'",    # right single quote '
+    '\u201c': '"',    # left double quote "
+    '\u201d': '"',    # right double quote "
+    '\u2026': '...',  # ellipsis …
+    '\u00b0': 'deg',  # degree °
+    '\u00d7': 'x',    # multiplication ×
+}
+
+
+def _ascii_safe(text: str) -> str:
+    """Replace common non-ASCII typography with ASCII equivalents."""
+    for char, replacement in _ASCII_FALLBACKS.items():
+        text = text.replace(char, replacement)
+    return text.encode('ascii', errors='replace').decode().replace('?', '_')
+
+
+def _xml_escape(text: str) -> str:
+    """Escape XML special chars; encode non-ASCII as numeric character references."""
+    text = (
+        text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+    )
+    return "".join(c if ord(c) < 128 else f"&#{ord(c)};" for c in text)
+
+
+def _steps_to_zwo(name: str, description: str, steps: list[dict]) -> str:
+    """Convert a list of workout steps to ZWO XML format."""
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        "<workout_file>",
+        f"  <name>{_xml_escape(name)}</name>",
+        f"  <description>{_xml_escape(description)}</description>",
+        "  <sportType>bike</sportType>",
+        "  <workout>",
+    ]
+    for step in steps:
+        dur = int(step["duration"])
+        power = float(step["power"])
+        lines.append(f'    <SteadyState Duration="{dur}" Power="{power}"/>')
+    lines += ["  </workout>", "</workout_file>"]
+    return "\n".join(lines)
 
 
 def get_activities(api_key: str, athlete_id: str, start_date: str, end_date: str) -> list:
@@ -27,6 +77,68 @@ def get_activities(api_key: str, athlete_id: str, start_date: str, end_date: str
         params={"oldest": start_date, "newest": end_date},
     )
   
+    response.raise_for_status()
+
+    return response.json()
+
+
+def create_activity(
+    api_key: str,
+    athlete_id: str,
+    name: str,
+    start_date_local: str,
+    duration: int,
+    description: str = "",
+    planned: bool = True,
+    workout: dict | None = None,
+) -> dict:
+    """Create a planned workout on intervals.icu.
+
+    Args:
+        api_key: The intervals.icu API key.
+        athlete_id: The intervals.icu athlete ID.
+        name: Display name of the activity.
+        start_date_local: ISO 8601 datetime string, e.g. "2026-04-12T09:00:00".
+        duration: Planned duration in seconds.
+        description: Optional notes / fueling plan text.
+        planned: When True the activity is created as a planned workout,
+                 not as a completed ride.
+        workout: Optional structured workout definition.  Each step is a dict
+                 with ``duration`` (seconds) and ``power`` (fraction of FTP,
+                 e.g. 0.95 = 95 %).  Example::
+
+                     {"steps": [{"duration": 900, "power": 0.95}, ...]}
+
+    Returns:
+        The created event dict as returned by the API.
+
+    Raises:
+        requests.HTTPError: If the response status code is not 2xx.
+    """
+    url = f"{BASE_URL}/athlete/{athlete_id}/events"
+
+    payload = {
+        "name": name,
+        "start_date_local": start_date_local,
+        "type": "Ride",
+        "category": "WORKOUT",
+        "moving_time": duration,
+        "description": description,
+    }
+
+    if workout is not None and "steps" in workout:
+        zwo = _steps_to_zwo(name, _ascii_safe(description), workout["steps"])
+        payload["file_contents_base64"] = base64.b64encode(zwo.encode()).decode()
+        payload["filename"] = "workout.zwo"
+
+    response = requests.post(
+        url,
+        auth=("API_KEY", api_key),
+        data=_json.dumps(payload, ensure_ascii=True).encode("ascii"),
+        headers={"Content-Type": "application/json"},
+        params={"upsertOnUid": "false"},
+        timeout=30,
+    )
     response.raise_for_status()
 
     return response.json()

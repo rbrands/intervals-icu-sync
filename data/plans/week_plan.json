@@ -1,0 +1,57 @@
+{
+  "week": "2026-04-08",
+  "workouts": [
+    {
+      "date": "2026-04-10T10:00:00",
+      "name": "Recovery Ride",
+      "duration_minutes": 75,
+      "description": "Easy Z2 ride 150–160W, high cadence",
+      "ride_type": "endurance",
+      "fueling": {
+        "carbs_per_hour": 30,
+        "total_carbs": 35
+      },
+      "workout": {
+        "steps": [
+          { "duration": 4500, "power": 0.60 }
+        ]
+      }
+    },
+    {
+      "date": "2026-04-11T10:00:00",
+      "name": "Threshold 2x15",
+      "duration_minutes": 120,
+      "description": "2x15min @ 95–100% FTP",
+      "ride_type": "threshold",
+      "fueling": {
+        "carbs_per_hour": 60,
+        "total_carbs": 120
+      },
+      "workout": {
+        "steps": [
+          { "duration": 900, "power": 0.60 },
+          { "duration": 900, "power": 0.97 },
+          { "duration": 300, "power": 0.50 },
+          { "duration": 900, "power": 0.97 },
+          { "duration": 900, "power": 0.60 }
+        ]
+      }
+    },
+    {
+      "date": "2026-04-12T10:00:00",
+      "name": "Long Ride Z2",
+      "duration_minutes": 150,
+      "description": "Steady Z2 ride 150–165W",
+      "ride_type": "long_ride",
+      "fueling": {
+        "carbs_per_hour": 85,
+        "total_carbs": 210
+      },
+      "workout": {
+        "steps": [
+          { "duration": 9000, "power": 0.65 }
+        ]
+      }
+    }
+  ]
+}

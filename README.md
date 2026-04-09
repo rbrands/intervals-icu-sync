@@ -220,6 +220,7 @@ intervals-icu-sync/
 │   ├── prepare_activities_for_coach.py  # Export simplified JSON for coach/ChatGPT
 │   ├── fueling_analysis.py         # Analyze carbohydrate fueling quality
 │   ├── fueling_planner.py          # Generate carbohydrate targets per session
+│   ├── upload_plan.py              # Upload JSON training plan to intervals.icu
 │   └── prepare_week_for_coach.py   # Run all scripts in sequence
 ├── notebooks/
 │   └── week_summary.ipynb          # Interactive weekly training overview
@@ -230,7 +231,8 @@ intervals-icu-sync/
 │       └── config.py               # Loads API_KEY, ATHLETE_ID from .env
 ├── data/
 │   ├── raw/                        # Raw API responses (git-ignored)
-│   └── processed/                  # Derived JSON exports (git-ignored)
+│   ├── processed/                  # Derived JSON exports (git-ignored)
+│   └── plans/                      # Training plan JSON files
 ├── .env.example
 ├── requirements.txt
 └── README.md
@@ -394,6 +396,34 @@ Aborts immediately if any script fails.
 ```bash
 python scripts/prepare_week_for_coach.py
 ```
+
+---
+
+### `upload_plan.py`
+
+Uploads a JSON training plan to intervals.icu as planned workouts using the `POST /api/v1/athlete/{id}/activities` endpoint.
+
+Reads from `data/plans/week_plan.json` by default (or any path passed via `--plan`).
+
+Each entry in the JSON file must have:
+- `date` — ISO 8601 datetime string, e.g. `"2026-04-12T09:00:00"`
+- `name` — display name shown in intervals.icu
+- `duration_minutes` — planned duration (integer or float)
+
+Optional per entry: `description` (free-text notes).
+
+```bash
+# Preview without making API calls
+python scripts/upload_plan.py --dry-run
+
+# Upload the default plan
+python scripts/upload_plan.py
+
+# Upload a custom plan file
+python scripts/upload_plan.py --plan data/plans/my_plan.json
+```
+
+Output: one confirmation line per uploaded activity, summary of success / skip / failure counts.
 
 ---
 
