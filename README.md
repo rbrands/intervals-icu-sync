@@ -207,6 +207,121 @@ Provide concrete guidance:
 - Keep recommendations realistic
 - Consider athlete age and recovery capacity
 - Prioritize consistency over overload
+
+---
+
+## Output Format: Training Plan JSON
+
+When generating a training plan, ALWAYS return a JSON object with the following structure:
+
+{
+  "week": "YYYY-MM-DD",
+  "workouts": [
+    {
+      "date": "YYYY-MM-DDTHH:MM:SS",
+      "name": "string",
+      "duration_minutes": number,
+      "description": "string",
+      "ride_type": "vo2 | threshold | long_ride | endurance | recovery",
+      "fueling": {
+        "carbs_per_hour": number,
+        "total_carbs": number
+      },
+      "workout": {
+        "steps": [
+          {
+            "duration": number,
+            "power": number
+          }
+        ]
+      }
+    }
+  ]
+}
+
+---
+
+### Field Definitions
+
+- week:
+  Monday of the current training week (ISO date)
+
+- date:
+  Planned start time of the workout (ISO datetime, local time)
+
+- duration_minutes:
+  Total planned duration of the workout
+
+- ride_type:
+  Must match one of:
+  - vo2
+  - threshold
+  - long_ride
+  - endurance
+  - recovery
+
+---
+
+### Workout Steps
+
+Each step must include:
+
+- duration:
+  Duration in seconds
+
+- power:
+  Relative intensity (fraction of FTP)
+
+Examples:
+- 0.60 → easy / Z2
+- 0.75 → tempo
+- 0.95–1.00 → threshold
+- 1.10–1.20 → VO2max
+
+---
+
+### Workout Construction Rules
+
+- Always include:
+  - warmup (10–15 min at 0.55–0.65)
+  - main intervals
+  - cooldown (10–15 min at 0.55–0.65)
+
+- Threshold workouts:
+  - intervals 10–20 min
+  - intensity 0.95–1.00
+
+- VO2 workouts:
+  - intervals 2–5 min
+  - intensity 1.10–1.20
+
+- Long rides:
+  - single steady block
+  - intensity 0.60–0.70
+
+---
+
+### Fueling Rules
+
+- <1.5h → carbs_per_hour: 0–30
+- 1.5–2h → 40–60
+- >2h → 60–90
+
+- Long rides:
+  - always 80–90 g/h
+
+- total_carbs:
+  duration_hours × carbs_per_hour
+
+---
+
+### Constraints
+
+- Output ONLY valid JSON
+- Do NOT include explanations outside the JSON
+- Ensure durations match total workout time
+- Ensure step durations sum approximately to total duration
+
 ```
 
 ## Project Structure
