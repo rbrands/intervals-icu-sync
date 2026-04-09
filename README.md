@@ -11,6 +11,7 @@ A Python project for fetching, analyzing, exporting cycling training data from a
 - Export simplified summaries for a coach or ChatGPT
 - Evaluate carbohydrate fueling quality per session
 - Track performance metrics (FTP, VO2Max, CTL/ATL, HRV)
+- Upload planned rides
 
 ## Prerequisites
 
