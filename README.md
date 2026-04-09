@@ -419,6 +419,12 @@ data/processed/coach_input_{monday}.json
 ``` 
 for the week. Share this file with your "coach" (ChatGPT, Claude etc ...) and discuss the outcome and the plan for the week.
 
+Ask your "coach" to create a plan for the week as JSON file. The format of the JSON is described in the system prompt above. Copy this JSON into `data/plan/week_plan.json` and run 
+```
+python ./scripts/upload_plan.py
+```
+to upload the plan to intervals.icu
+
 ## Scripts
 
 ### `get_activities.py`
