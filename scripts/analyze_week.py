@@ -171,10 +171,13 @@ def compute_form(ctl: float | None, atl: float | None) -> dict:
     form_absolute = ctl - atl
     form_pct = (ctl - atl) / ctl if ctl > 0 else 0.0
 
-    if form_pct > 0:
+    # Zones based on form_pct (%), matching intervals.icu definition
+    if form_pct > 0.20:
+        form_zone = "transition"
+    elif form_pct >= 0.05:
         form_zone = "fresh"
     elif form_pct >= -0.10:
-        form_zone = "transition"
+        form_zone = "grey_zone"
     elif form_pct >= -0.30:
         form_zone = "optimal"
     else:
