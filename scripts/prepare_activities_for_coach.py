@@ -29,6 +29,18 @@ def filter_activities(activities: list) -> list:
     ]
 
 
+def _classify_decoupling(value: float) -> str:
+    if value < 3:
+        return "excellent durability"
+    if value < 5:
+        return "very good"
+    if value < 8:
+        return "moderate drift"
+    if value <= 10:
+        return "high drift"
+    return "significant limitation"
+
+
 def _zone_distribution(zone_times: list) -> dict:
     """Compute Z1+2 / Z3+4 / Z5+ percentage breakdown from icu_zone_times."""
     if not zone_times:
@@ -62,6 +74,7 @@ def extract_fields(activity: dict) -> dict:
         "z5_plus_pct": zone_dist["z5_plus_pct"],
         "interval_summary": activity.get("interval_summary"),
         "decoupling": activity.get("decoupling"),
+        "decoupling_label": _classify_decoupling(float(activity["decoupling"])) if activity.get("decoupling") is not None else None,
         "rpe": activity.get("icu_rpe"),
         "carbs_used_g": activity.get("carbs_used"),
         "carbs_ingested_g": activity.get("carbs_ingested"),

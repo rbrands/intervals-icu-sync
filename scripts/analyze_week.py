@@ -76,6 +76,18 @@ def _z5_plus_pct(activity: dict) -> float:
     return z5_plus / total * 100
 
 
+def _classify_decoupling(value: float) -> str:
+    if value < 3:
+        return "excellent durability"
+    if value < 5:
+        return "very good"
+    if value < 8:
+        return "moderate drift"
+    if value <= 10:
+        return "high drift"
+    return "significant limitation"
+
+
 def _classify_ride(activity: dict) -> str:
     raw = activity.get("interval_summary") or ""
     summary = " ".join(raw) if isinstance(raw, list) else raw
@@ -112,7 +124,7 @@ def analyse_fueling_form(form_pct: float, fueling_data: dict, activities: list) 
         name = act.get("name")
         fa = fuel_by_name.get(name, {})
         carbs_h = fa.get("carbs_per_hour") or 0.0
-        if decoupling is not None and float(decoupling) > 10 and carbs_h < 60:
+        if decoupling is not None and float(decoupling) >= 8 and carbs_h < 60:
             durability_limited = True
             break
 
@@ -215,7 +227,7 @@ def compute_metrics(activities: list) -> dict:
         if a.get("decoupling") is not None
     ]
     avg_decoupling = sum(decouplings) / len(decouplings) if decouplings else 0.0
-    high_decoupling = sum(1 for d in decouplings if d > 10)
+    high_decoupling = sum(1 for d in decouplings if d >= 8)
 
     return {
         "total_training_load": total_load,
@@ -226,6 +238,7 @@ def compute_metrics(activities: list) -> dict:
         "threshold_sessions": threshold_sessions,
         "endurance_sessions": endurance_sessions,
         "avg_decoupling": avg_decoupling,
+        "avg_decoupling_label": _classify_decoupling(avg_decoupling),
         "high_decoupling_rides": high_decoupling,
     }
 
@@ -245,8 +258,8 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
     print(f"  Endurance sessions:  {m['endurance_sessions']}")
     print()
     print("Decoupling:")
-    print(f"  Average:                    {m['avg_decoupling']:.1f}%")
-    print(f"  High decoupling rides (>10%): {m['high_decoupling_rides']}")
+    print(f"  Average:                    {m['avg_decoupling']:.1f}% ({m['avg_decoupling_label']})")
+    print(f"  Rides with high drift or worse (>=8%): {m['high_decoupling_rides']}")
 
     if "form_absolute" in m:
         _zone_labels = {

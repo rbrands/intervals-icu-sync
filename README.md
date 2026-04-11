@@ -129,7 +129,7 @@ Targets:
 - Long rides: 80–90 g carbs/hour
 
 Key rule:
-High decoupling (>10%) + low carbs → fueling problem
+High decoupling (≥8%) + low carbs → fueling problem
 
 ---
 
@@ -169,6 +169,24 @@ Important:
 Do NOT classify short sprint sessions as VO2.
 
 ---
+## Aerobic Decoupling (Pa:Hr)
+
+Based on Joe Friel and TrainingPeaks:
+
+- <5% → good aerobic fitness
+- >5% → indicates need for improvement
+
+Extended classification (coaching practice):
+
+- <3% → excellent durability
+- 3–5% → very good
+- 5–8% → moderate drift
+- 8–10% → high drift
+- >10% → significant limitation
+
+Note:
+These extended zones are not officially standardized,
+but widely used in endurance coaching practice.
 
 ## Output Requirements
 
