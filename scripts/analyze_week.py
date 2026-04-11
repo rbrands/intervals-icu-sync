@@ -249,13 +249,21 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
     print(f"  High decoupling rides (>10%): {m['high_decoupling_rides']}")
 
     if "form_absolute" in m:
+        _zone_labels = {
+            "high_risk":  "High Risk    (< -30%)",
+            "optimal":    "Optimal      (-30% to -10%)",
+            "grey_zone":  "Grey Zone    (-10% to +5%)",
+            "fresh":      "Fresh        (+5% to +20%)",
+            "transition": "Transition   (> +20%)",
+        }
+        zone_label = _zone_labels.get(m["form_zone"], m["form_zone"])
         print()
         print("=== Fatigue / Form Analysis ===")
         print(f"CTL:     {athlete_metrics.get('ctl', 'n/a')}")
         print(f"ATL:     {athlete_metrics.get('atl', 'n/a')}")
         print(f"Form:    {m['form_absolute']}")
         print(f"Form %:  {m['form_percent_display']:.1f}%")
-        print(f"Zone:    {m['form_zone']}")
+        print(f"Zone:    {zone_label}")
 
     print()
     print("=== Coaching Interpretation ===")
