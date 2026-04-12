@@ -69,7 +69,7 @@ def _contains_structured_intervals(interval_summary) -> bool:
 
 
 def _is_long_ride(duration: float, interval_summary) -> bool:
-    return duration >= 3.0 and not _contains_structured_intervals(interval_summary)
+    return duration >= 2.5 and not _contains_structured_intervals(interval_summary)
 
 
 _SHORT_INTERVAL_PATTERNS = ["2m", "3m", "4m", "5m"]
@@ -92,7 +92,7 @@ def classify_ride(activity: dict) -> str:
     has_sprint_intervals = any(p in summary_lower for p in _SPRINT_PATTERNS)
 
     # 1. Long ride — highest priority
-    if duration >= 3.0 and z1_z2 > 75:
+    if duration >= 2.5 and z1_z2 > 75:
         return "long_ride"
 
     # 2. Threshold — structured longer intervals with meaningful Z3+4 time

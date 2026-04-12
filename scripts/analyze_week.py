@@ -94,8 +94,11 @@ def _classify_ride(activity: dict) -> str:
     z5_plus = _z5_plus_pct(activity)
     if (re.search(r"\b(1m|2m|3m|4m)", summary) or "110%" in summary) and z5_plus > 5:
         return "vo2max"
-    if re.search(r"\b(10m|12m|20m)", summary):
+    if re.search(r"\b([89]m|[1-9][0-9]m)", summary):
         return "threshold"
+    duration_h = (activity.get("moving_time") or 0) / 3600
+    if duration_h >= 2.5:
+        return "long_ride"
     return "endurance"
 
 
@@ -211,6 +214,7 @@ def compute_metrics(activities: list) -> dict:
 
     vo2_sessions = 0
     threshold_sessions = 0
+    long_ride_sessions = 0
     endurance_sessions = 0
     for a in activities:
         category = _classify_ride(a)
@@ -218,6 +222,8 @@ def compute_metrics(activities: list) -> dict:
             vo2_sessions += 1
         elif category == "threshold":
             threshold_sessions += 1
+        elif category == "long_ride":
+            long_ride_sessions += 1
         else:
             endurance_sessions += 1
 
@@ -236,6 +242,7 @@ def compute_metrics(activities: list) -> dict:
         "longest_ride_hours": longest,
         "vo2_sessions": vo2_sessions,
         "threshold_sessions": threshold_sessions,
+        "long_ride_sessions": long_ride_sessions,
         "endurance_sessions": endurance_sessions,
         "avg_decoupling": avg_decoupling,
         "avg_decoupling_label": _classify_decoupling(avg_decoupling),
@@ -255,6 +262,7 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
     print("Distribution:")
     print(f"  VO2max sessions:     {m['vo2_sessions']}")
     print(f"  Threshold sessions:  {m['threshold_sessions']}")
+    print(f"  Long ride sessions:  {m['long_ride_sessions']}")
     print(f"  Endurance sessions:  {m['endurance_sessions']}")
     print()
     print("Decoupling:")
