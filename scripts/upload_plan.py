@@ -10,6 +10,7 @@ Each entry in the JSON file must have:
 
 Optional per entry:
     description     – free-text notes added to the activity
+    tags            – list of tag strings, e.g. ["vo2max-moderate"]
 
 Usage:
     python scripts/upload_plan.py
@@ -118,11 +119,13 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
             if parts:
                 description = f"{description}\nFueling: {', '.join(parts)}" if description else f"Fueling: {', '.join(parts)}"
         workout_doc = workout.get("workout")
+        tags = workout.get("tags") or []
 
         if dry_run:
             steps = len(workout_doc["steps"]) if workout_doc else 0
             suffix = f", {steps} steps" if steps else ""
-            print(f"  [dry-run] Would upload: {name} on {date[:10]}  ({duration_seconds // 60} min{suffix})")
+            tag_suffix = f", tags: {tags}" if tags else ""
+            print(f"  [dry-run] Would upload: {name} on {date[:10]}  ({duration_seconds // 60} min{suffix}{tag_suffix})")
             success += 1
             continue
 
@@ -143,6 +146,8 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                     zwo = _steps_to_zwo(name, _ascii_safe(description), workout_doc["steps"])
                     payload["file_contents_base64"] = base64.b64encode(zwo.encode()).decode()
                     payload["filename"] = "workout.zwo"
+                if tags:
+                    payload["tags"] = tags
                 result = update_event(API_KEY, ATHLETE_ID, existing_id, payload)
                 print(f"  Updated:  {name} on {date[:10]}")
             else:
@@ -154,6 +159,7 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                     duration=duration_seconds,
                     description=description,
                     workout=workout_doc,
+                    tags=tags if tags else None,
                 )
                 print(f"  Created:  {name} on {date[:10]}")
             success += 1

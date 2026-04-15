@@ -78,6 +78,7 @@ def extract_fields(activity: dict) -> dict:
         "rpe": activity.get("icu_rpe"),
         "carbs_used_g": activity.get("carbs_used"),
         "carbs_ingested_g": activity.get("carbs_ingested"),
+        "tags": activity.get("tags") or [],
     }
 
 

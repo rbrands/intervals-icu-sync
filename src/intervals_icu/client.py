@@ -153,6 +153,7 @@ def create_activity(
     planned: bool = True,
     workout: dict | None = None,
     uid: str | None = None,
+    tags: list[str] | None = None,
 ) -> dict:
     """Create a planned workout on intervals.icu.
 
@@ -189,6 +190,8 @@ def create_activity(
     }
     if uid is not None:
         payload["uid"] = uid
+    if tags:
+        payload["tags"] = tags
 
     if workout is not None and "steps" in workout:
         zwo = _steps_to_zwo(name, _ascii_safe(description), workout["steps"])
