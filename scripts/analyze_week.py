@@ -51,10 +51,10 @@ def filter_activities(activities: list) -> list:
     result = []
     for a in activities:
         if (
-            a.get("type") == "Ride"
+            a.get("type") in ("Ride", "VirtualRide")
             and a.get("source") != "STRAVA"
             and a.get("icu_training_load") is not None
-            and a.get("icu_training_load", 0) > 30
+            and a.get("icu_training_load", 0) > 20
         ):
             start = a.get("start_date_local", "")[:10]
             try:

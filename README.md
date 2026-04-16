@@ -29,6 +29,8 @@ For the analysis to work properly, the following conditions should be met:
 
 6. **Body weight maintained in intervals.icu**: Keep your weight up to date in intervals.icu so that calculated metrics like VO2Max are accurate.
 
+7. **Activity tags set in intervals.icu** *(recommended)*: Tag your completed activities in intervals.icu using the tag scheme described in the [Coaching Logic](#coaching-logic) section (e.g. `vo2max-high`, `lactate-treshold-moderate`). Tags take priority over automatic session classification and lead to more accurate coaching output.
+
 ## Coaching Logic
 
 This project uses a structured system prompt based on Joe Friel’s training principles.

@@ -23,9 +23,9 @@ def load_data() -> list:
 def filter_activities(activities: list) -> list:
     return [
         a for a in activities
-        if a.get("type") == "Ride"
+        if a.get("type") in ("Ride", "VirtualRide")
         and a.get("source") != "STRAVA"
-        and a.get("icu_training_load", 0) > 30
+        and a.get("icu_training_load", 0) > 20
     ]
 
 

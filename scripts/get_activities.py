@@ -32,10 +32,10 @@ def main() -> None:
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
     )
-    # Filter activities: only cycling rides with meaningful training load, exclude Strava duplicates
+    # Filter activities: only cycling rides (including Zwift/virtual) with meaningful training load, exclude Strava duplicates
     activities = [
         a for a in activities
-        if a.get("type") == "Ride"
+        if a.get("type") in ("Ride", "VirtualRide")
         and a.get("source") != "STRAVA"
         and a.get("icu_training_load", 0) > 20
     ]
