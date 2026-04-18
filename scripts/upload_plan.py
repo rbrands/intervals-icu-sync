@@ -59,7 +59,9 @@ def load_plan(path: Path) -> list[dict]:
 
 
 def _validate_workout(workout: dict, index: int) -> bool:
-    missing = [f for f in ("date", "name", "duration_minutes") if not workout.get(f)]
+    missing = [f for f in ("date", "name") if not workout.get(f)]
+    if workout.get("duration_minutes") is None:
+        missing.append("duration_minutes")
     if missing:
         print(f"  Skipping entry {index + 1}: missing required fields: {', '.join(missing)}")
         return False

@@ -14,10 +14,20 @@ BASE_URL = "https://intervals.icu/api/v1"
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 
 
-def fetch_weight() -> float | None:
+def fetch_athlete_info() -> dict:
     r = requests.get(f"{BASE_URL}/athlete/{ATHLETE_ID}", auth=("API_KEY", API_KEY), timeout=10)
     r.raise_for_status()
-    return r.json().get("icu_weight")
+    data = r.json()
+    result = {"weight": data.get("icu_weight")}
+    dob_str = data.get("icu_date_of_birth")
+    if dob_str:
+        from datetime import date as _date
+        dob = _date.fromisoformat(dob_str)
+        today = date.today()
+        result["age"] = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    else:
+        result["age"] = None
+    return result
 
 
 def fetch_wellness() -> dict:
@@ -105,7 +115,7 @@ def main() -> None:
     today = date.today()
     metrics = {"date": today.isoformat()}
     metrics.update(fetch_metrics_from_activities())
-    metrics["weight"] = fetch_weight()
+    metrics.update(fetch_athlete_info())
     metrics.update(fetch_wellness())
 
     p5min = fetch_5min_power()
@@ -124,6 +134,7 @@ def main() -> None:
     print(f"W':           {metrics.get('w_prime')} J")
     print(f"5min power:   {metrics.get('p5min')} W (42-day best)")
     print(f"VO2Max:       {metrics.get('vo2max')} (intervals.icu formula)")
+    print(f"Age:          {metrics.get('age')} years")
     print(f"Weight:       {metrics.get('weight')} kg")
     print(f"CTL:          {metrics.get('ctl'):.1f}" if metrics.get("ctl") else "CTL:          n/a")
     print(f"ATL:          {metrics.get('atl'):.1f}" if metrics.get("atl") else "ATL:          n/a")

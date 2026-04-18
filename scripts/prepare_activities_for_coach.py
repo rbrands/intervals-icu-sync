@@ -59,8 +59,58 @@ def _zone_distribution(zone_times: list) -> dict:
     }
 
 
+def classify_ride(
+    z1_z2_pct: float | None,
+    z3_z4_pct: float | None,
+    z5_plus_pct: float | None,
+) -> dict | None:
+    """Classify a ride by time-in-zone distribution (Seiler/Laursen model).
+
+    Rules are evaluated in strict priority order; the first match wins.
+    Returns a dict with 'label' and 'reason', or None if any input is None.
+
+    Priority order: HIIT → Polarized → Threshold → Pyramidal → Base → Unique
+
+    Examples:
+        classify_ride(92, 5, 1)   -> {"label": "Base",      "reason": ...}
+        classify_ride(75, 10, 12) -> {"label": "Polarized", "reason": ...}
+        classify_ride(65, 30, 3)  -> {"label": "Threshold", "reason": ...}
+        classify_ride(50, 20, 25) -> {"label": "HIIT",      "reason": ...}
+        classify_ride(72, 20, 5)  -> {"label": "Pyramidal", "reason": ...}
+        classify_ride(60, 20, 8)  -> {"label": "Unique",    "reason": ...}
+    """
+    if z1_z2_pct is None or z3_z4_pct is None or z5_plus_pct is None:
+        return None
+
+    # 1. HIIT: dominant high-intensity work regardless of low-zone share
+    if z5_plus_pct >= 20:
+        return {"label": "HIIT", "reason": f"Z5+ {z5_plus_pct}% >= 20%"}
+
+    # 2. Polarized: mostly easy + significant high-intensity, little middle
+    if z1_z2_pct >= 70 and z5_plus_pct >= 10:
+        return {"label": "Polarized", "reason": f"Z1+2 {z1_z2_pct}% >= 70% and Z5+ {z5_plus_pct}% >= 10%"}
+
+    # 3. Threshold: heavy middle-zone load
+    if z3_z4_pct >= 25:
+        return {"label": "Threshold", "reason": f"Z3+4 {z3_z4_pct}% >= 25%"}
+
+    # 4. Pyramidal: mostly easy with moderate middle zone, low Z5+
+    if z1_z2_pct >= 70 and z3_z4_pct >= 10 and z5_plus_pct < 10:
+        return {"label": "Pyramidal", "reason": f"Z1+2 {z1_z2_pct}% >= 70%, Z3+4 {z3_z4_pct}% >= 10%, Z5+ {z5_plus_pct}% < 10%"}
+
+    # 5. Base: almost entirely low-intensity recovery/aerobic
+    if z1_z2_pct >= 85 and z3_z4_pct < 10 and z5_plus_pct < 5:
+        return {"label": "Base", "reason": f"Z1+2 {z1_z2_pct}% >= 85%, Z3+4 {z3_z4_pct}% < 10%, Z5+ {z5_plus_pct}% < 5%"}
+
+    # 6. Unique: distribution doesn't fit any known pattern
+    return {"label": "Unique", "reason": f"No pattern matched (Z1+2={z1_z2_pct}%, Z3+4={z3_z4_pct}%, Z5+={z5_plus_pct}%)"}
+
+
 def extract_fields(activity: dict) -> dict:
     zone_dist = _zone_distribution(activity.get("icu_zone_times") or [])
+    ride_class = classify_ride(
+        zone_dist["z1_z2_pct"], zone_dist["z3_z4_pct"], zone_dist["z5_plus_pct"]
+    )
     return {
         "date": (activity.get("start_date_local") or "")[:10],
         "name": activity.get("name"),
@@ -69,6 +119,8 @@ def extract_fields(activity: dict) -> dict:
         "avg_power": activity.get("icu_average_watts"),
         "norm_power": activity.get("icu_weighted_avg_watts"),
         "polarization_index": activity.get("polarization_index"),
+        "training_distribution": ride_class["label"] if ride_class else None,
+        "training_distribution_reason": ride_class["reason"] if ride_class else None,
         "z1_z2_pct": zone_dist["z1_z2_pct"],
         "z3_z4_pct": zone_dist["z3_z4_pct"],
         "z5_plus_pct": zone_dist["z5_plus_pct"],
