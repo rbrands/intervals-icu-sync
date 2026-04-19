@@ -27,6 +27,8 @@ def fetch_athlete_info() -> dict:
         result["age"] = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
     else:
         result["age"] = None
+    sex_raw = data.get("sex")
+    result["sex"] = {"M": "Male", "F": "Female"}.get(sex_raw) if sex_raw else None
     return result
 
 

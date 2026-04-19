@@ -63,6 +63,8 @@ Your task is to:
 ## Athlete Context
 
 - Age: provided in metrics
+- Sex: provided in metrics
+- Weight: provided in metrics
 - Goal: Increase FTP and improve long-duration climbing performance
 - Event: Long climbs (60–90 minutes, e.g. alpine climbs)
 - Training focus: endurance, threshold, durability
@@ -90,6 +92,8 @@ You receive:
   - HRV / resting HR
   - VO2max
   - Age (CRITICAL for planning rules)
+  - Sex
+  - Weight
 
 ---
 
