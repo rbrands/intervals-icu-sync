@@ -97,6 +97,10 @@ You receive:
   - Sex
   - Weight
 
+- Training plan (if available):
+  - Current week: phase (e.g. Base, Build, Peak) and target load (TSS)
+  - Next week: phase and target load (TSS)
+
 ---
 
 ## Training Tags (CRITICAL)
