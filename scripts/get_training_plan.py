@@ -60,13 +60,13 @@ def find_active_phases(events: list, today: date) -> list:
     return result
 
 
-def find_weekly_load_targets(events: list, today: date) -> list:
-    """Return all load targets for the week containing today (one per sport type).
+def find_weekly_load_targets(events: list, monday: date) -> list:
+    """Return all load targets for the ISO week starting on monday (one per sport type).
 
     Each entry: {load_target, sport_type}
     """
-    week_start = (today - timedelta(days=today.weekday())).isoformat()
-    week_end = (today - timedelta(days=today.weekday()) + timedelta(days=6)).isoformat()
+    week_start = monday.isoformat()
+    week_end = (monday + timedelta(days=6)).isoformat()
     result = []
     for ev in events:
         if ev.get("category") != "TARGET":
@@ -90,7 +90,10 @@ def main() -> None:
 
     phase_events = fetch_all_events(phase_start.isoformat(), end_date.isoformat())
     active_phases = find_active_phases(phase_events, today)
-    load_targets = find_weekly_load_targets(phase_events, today)
+    monday = today - timedelta(days=today.weekday())
+    next_monday = monday + timedelta(weeks=1)
+    load_targets = find_weekly_load_targets(phase_events, monday)
+    next_week_load_targets = find_weekly_load_targets(phase_events, next_monday)
 
     # Build a lookup: sport_type → load_target for easy merging
     load_by_type = {lt["sport_type"]: lt["load_target"] for lt in load_targets}
@@ -133,6 +136,7 @@ def main() -> None:
         "fetched_on": today.isoformat(),
         "active_phases": active_phases,
         "weekly_load_targets": load_targets,
+        "next_week_load_targets": next_week_load_targets,
         "range_start": today.isoformat(),
         "range_end": end_date.isoformat(),
         "workouts": workouts,
@@ -141,7 +145,7 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_path = OUTPUT_DIR / f"training_plan_{today.isoformat()}.json"
     output_path.write_text(json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"\nSaved → {output_path}")
+    print(f"\nSaved -> {output_path}")
 
 
 if __name__ == "__main__":

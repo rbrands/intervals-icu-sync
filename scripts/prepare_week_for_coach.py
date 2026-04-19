@@ -29,29 +29,40 @@ def _load_json(path: Path) -> dict | list | None:
     return None
 
 
-def _extract_ride_plan_summary(plan_data: dict | None) -> dict | None:
-    """Return Ride-only phase and load target from training plan data."""
+def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dict]:
+    """Return list of Ride-only plan entries for current and next week."""
     if not plan_data:
-        return None
+        return []
     phases = [
         p for p in (plan_data.get("active_phases") or [])
         if p.get("sport_type") == "Ride"
     ]
-    targets = [
-        t for t in (plan_data.get("weekly_load_targets") or [])
-        if t.get("sport_type") == "Ride"
-    ]
-    if not phases and not targets:
-        return None
-    result: dict = {}
-    if phases:
-        p = phases[0]
-        result["plan_name"] = p.get("plan_name")
-        result["phase"] = p.get("phase")
-        result["phase_start"] = p.get("start")
-        result["phase_end"] = p.get("end")
-    if targets:
-        result["weekly_load_target"] = targets[0].get("load_target")
+
+    def _build_entry(targets_key: str, week_monday: date) -> dict | None:
+        targets = [
+            t for t in (plan_data.get(targets_key) or [])
+            if t.get("sport_type") == "Ride"
+        ]
+        if not phases and not targets:
+            return None
+        entry: dict = {"week": week_monday.isoformat()}
+        if phases:
+            p = phases[0]
+            entry["plan_name"] = p.get("plan_name")
+            entry["phase"] = p.get("phase")
+            entry["phase_start"] = p.get("start")
+            entry["phase_end"] = p.get("end")
+        if targets:
+            entry["weekly_load_target"] = targets[0].get("load_target")
+        return entry
+
+    result: list[dict] = []
+    current = _build_entry("weekly_load_targets", monday)
+    if current:
+        result.append(current)
+    next_week = _build_entry("next_week_load_targets", monday + timedelta(weeks=1))
+    if next_week:
+        result.append(next_week)
     return result
 
 
@@ -70,7 +81,7 @@ def consolidate() -> None:
     plan_data = _load_json(PROCESSED_DIR / f"training_plan_{today.isoformat()}.json")
 
     # Embed Ride training plan info into week_summary
-    ride_plan = _extract_ride_plan_summary(plan_data)
+    ride_plan = _extract_ride_plan_summary(plan_data, monday)
     if ride_plan and isinstance(week_data, dict):
         week_data["training_plan"] = ride_plan
 

@@ -28,25 +28,37 @@ def load_metrics() -> dict:
     return json.loads(files[-1].read_text())
 
 
-def load_training_plan(today: date) -> dict | None:
+def load_training_plan(today: date) -> list[dict] | None:
     path = OUTPUT_DIR / f"training_plan_{today.isoformat()}.json"
     if not path.exists():
         return None
-    data = json.loads(path.read_text())
-    phases = [p for p in (data.get("active_phases") or []) if p.get("sport_type") == "Ride"]
-    targets = [t for t in (data.get("weekly_load_targets") or []) if t.get("sport_type") == "Ride"]
-    if not phases and not targets:
-        return None
-    result: dict = {}
-    if phases:
-        p = phases[0]
-        result["plan_name"] = p.get("plan_name")
-        result["phase"] = p.get("phase")
-        result["phase_start"] = p.get("start")
-        result["phase_end"] = p.get("end")
-    if targets:
-        result["weekly_load_target"] = targets[0].get("load_target")
-    return result
+    raw = json.loads(path.read_text())
+    phases = [p for p in (raw.get("active_phases") or []) if p.get("sport_type") == "Ride"]
+    monday = today - timedelta(days=today.weekday())
+
+    def _build_entry(targets_key: str, week_monday: date) -> dict | None:
+        targets = [t for t in (raw.get(targets_key) or []) if t.get("sport_type") == "Ride"]
+        if not phases and not targets:
+            return None
+        entry: dict = {"week": week_monday.isoformat()}
+        if phases:
+            p = phases[0]
+            entry["plan_name"] = p.get("plan_name")
+            entry["phase"] = p.get("phase")
+            entry["phase_start"] = p.get("start")
+            entry["phase_end"] = p.get("end")
+        if targets:
+            entry["weekly_load_target"] = targets[0].get("load_target")
+        return entry
+
+    result: list[dict] = []
+    current = _build_entry("weekly_load_targets", monday)
+    if current:
+        result.append(current)
+    next_week = _build_entry("next_week_load_targets", monday + timedelta(weeks=1))
+    if next_week:
+        result.append(next_week)
+    return result or None
 
 
 def load_fueling(monday: date) -> dict:
@@ -271,15 +283,21 @@ def compute_metrics(activities: list) -> dict:
     }
 
 
-def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_form: dict | None = None, training_plan: dict | None = None) -> None:
+def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_form: dict | None = None, training_plan: list[dict] | None = None) -> None:
     m = metrics
     if training_plan:
-        plan_name = training_plan.get("plan_name") or "Training Plan"
-        phase = training_plan.get("phase")
-        load_target = training_plan.get("weekly_load_target")
+        current = training_plan[0]
+        plan_name = current.get("plan_name") or "Training Plan"
+        phase = current.get("phase")
+        load_target = current.get("weekly_load_target")
         phase_str = f"#{phase}" if phase else "(no phase)"
         target_str = f"{load_target} TSS" if load_target is not None else "(none)"
-        print(f"Plan:                {plan_name}  |  Phase: {phase_str}  |  Weekly target: {target_str}")
+        next_str = ""
+        if len(training_plan) > 1:
+            next_load = training_plan[1].get("weekly_load_target")
+            if next_load is not None:
+                next_str = f"  |  Next week: {next_load} TSS"
+        print(f"Plan:                {plan_name}  |  Phase: {phase_str}  |  Weekly target: {target_str}{next_str}")
     print()
     print("=== Weekly Training Summary ===")
     print(f"Total Load:          {m['total_training_load']}")
@@ -340,17 +358,17 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
         hrv = (athlete_metrics or {}).get("hrv")
         print()
         if form_pct < -0.30:
-            print("Form:       High fatigue → reduce intensity and prioritize recovery")
+            print("Form:       High fatigue -> reduce intensity and prioritize recovery")
             if hrv is not None and hrv < 50:
-                print("HRV:        Strong fatigue signal combined with low HRV → recommend rest day")
+                print("HRV:        Strong fatigue signal combined with low HRV -> recommend rest day")
         elif form_pct < -0.10:
-            print("Form:       Optimal training zone → proceed with key sessions")
+            print("Form:       Optimal training zone -> proceed with key sessions")
             if m["vo2_sessions"] == 0 and m["threshold_sessions"] == 0:
                 print("Form:       Consider adding a VO2 or threshold session")
         elif form_pct <= 0:
-            print("Form:       Balanced state → maintain structure")
+            print("Form:       Balanced state -> maintain structure")
         else:
-            print("Form:       Fresh → consider increasing load or intensity")
+            print("Form:       Fresh -> consider increasing load or intensity")
     if fueling_form:
         ff = fueling_form
         print()
@@ -368,7 +386,7 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
         if ff.get("long_ride_advice"):
             print(f"Long rides:      {ff['long_ride_advice']}")
 
-def save_json(metrics: dict, fueling_form: dict | None, monday: date, training_plan: dict | None = None) -> None:
+def save_json(metrics: dict, fueling_form: dict | None, monday: date, training_plan: list[dict] | None = None) -> None:
     output_file = OUTPUT_DIR / f"week_summary_{monday.isoformat()}.json"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     payload = {"week_starting": monday.isoformat(), **metrics}
