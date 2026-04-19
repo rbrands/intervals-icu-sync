@@ -47,7 +47,7 @@ def _steps_to_zwo(name: str, description: str, steps: list[dict]) -> str:
     ]
     for step in steps:
         dur = int(step["duration"])
-        power = float(step["power"])
+        power = float(step["power"]) / 100.0
         lines.append(f'    <SteadyState Duration="{dur}" Power="{power}"/>')
     lines += ["  </workout>", "</workout_file>"]
     return "\n".join(lines)

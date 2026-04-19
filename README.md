@@ -298,14 +298,17 @@ You MUST return ONLY a JSON object:
       "workout": {
         "steps": [
           {
-            "duration": number,
-            "power": number
+            "duration": number,   // seconds (integer), e.g. 900 = 15 minutes
+            "power": number       // % of FTP as integer, e.g. 56 = 56% FTP, 105 = 105% FTP
           }
         ]
       }
     }
   ]
 }
+
+- `duration` in workout steps: **seconds** (integer). Example: 900 = 15 min, 3600 = 1 h.
+- `power` in workout steps: **percentage of FTP as integer**. Example: 56 = 56% FTP, 105 = 105% FTP. Do NOT use decimals (not 0.56).
 
 ---
 
