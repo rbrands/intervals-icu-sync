@@ -381,6 +381,7 @@ intervals-icu-sync/
 ├── scripts/                        # Runnable entry-point scripts
 │   ├── get_activities.py           # Fetch activities → data/raw/
 │   ├── get_metrics.py              # Fetch athlete metrics → data/processed/
+│   ├── get_training_plan.py        # Fetch active training plan → data/processed/
 │   ├── analyze_week.py             # Analyze current calendar week (Joe Friel)
 │   ├── prepare_activities_for_coach.py  # Export simplified JSON for coach/ChatGPT
 │   ├── fueling_analysis.py         # Analyze carbohydrate fueling quality
@@ -582,6 +583,18 @@ Aborts immediately if any script fails.
 ```bash
 python scripts/prepare_week_for_coach.py
 ```
+
+---
+
+### `get_training_plan.py`
+
+Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Prints a short summary (plan name, start date, duration, number of workouts) and saves the raw API response.
+
+```bash
+python scripts/get_training_plan.py
+```
+
+Output: `data/processed/training_plan_{date}.json`
 
 ---
 

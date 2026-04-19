@@ -28,6 +28,27 @@ def load_metrics() -> dict:
     return json.loads(files[-1].read_text())
 
 
+def load_training_plan(today: date) -> dict | None:
+    path = OUTPUT_DIR / f"training_plan_{today.isoformat()}.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text())
+    phases = [p for p in (data.get("active_phases") or []) if p.get("sport_type") == "Ride"]
+    targets = [t for t in (data.get("weekly_load_targets") or []) if t.get("sport_type") == "Ride"]
+    if not phases and not targets:
+        return None
+    result: dict = {}
+    if phases:
+        p = phases[0]
+        result["plan_name"] = p.get("plan_name")
+        result["phase"] = p.get("phase")
+        result["phase_start"] = p.get("start")
+        result["phase_end"] = p.get("end")
+    if targets:
+        result["weekly_load_target"] = targets[0].get("load_target")
+    return result
+
+
 def load_fueling(monday: date) -> dict:
     path = OUTPUT_DIR / f"fueling_analysis_{monday.isoformat()}.json"
     if not path.exists():
@@ -250,8 +271,15 @@ def compute_metrics(activities: list) -> dict:
     }
 
 
-def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_form: dict | None = None) -> None:
+def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_form: dict | None = None, training_plan: dict | None = None) -> None:
     m = metrics
+    if training_plan:
+        plan_name = training_plan.get("plan_name") or "Training Plan"
+        phase = training_plan.get("phase")
+        load_target = training_plan.get("weekly_load_target")
+        phase_str = f"#{phase}" if phase else "(no phase)"
+        target_str = f"{load_target} TSS" if load_target is not None else "(none)"
+        print(f"Plan:                {plan_name}  |  Phase: {phase_str}  |  Weekly target: {target_str}")
     print()
     print("=== Weekly Training Summary ===")
     print(f"Total Load:          {m['total_training_load']}")
@@ -340,12 +368,14 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
         if ff.get("long_ride_advice"):
             print(f"Long rides:      {ff['long_ride_advice']}")
 
-def save_json(metrics: dict, fueling_form: dict | None, monday: date) -> None:
+def save_json(metrics: dict, fueling_form: dict | None, monday: date, training_plan: dict | None = None) -> None:
     output_file = OUTPUT_DIR / f"week_summary_{monday.isoformat()}.json"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     payload = {"week_starting": monday.isoformat(), **metrics}
     if fueling_form:
         payload["fueling_form_analysis"] = fueling_form
+    if training_plan:
+        payload["training_plan"] = training_plan
     output_file.write_text(json.dumps(payload, indent=2))
     print(f"Saved to: {output_file.name}")
 
@@ -360,12 +390,13 @@ def main() -> None:
         sys.exit(0)
     athlete_metrics = load_metrics()
     fueling_data = load_fueling(monday)
+    training_plan = load_training_plan(date.today())
     metrics = compute_metrics(rides)
     form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
     metrics.update(form)
     fueling_form = analyse_fueling_form(form["form_pct"], fueling_data, rides) if fueling_data else None
-    print_report(metrics, athlete_metrics, fueling_form)
-    save_json(metrics, fueling_form, monday)
+    print_report(metrics, athlete_metrics, fueling_form, training_plan)
+    save_json(metrics, fueling_form, monday, training_plan)
 
 
 if __name__ == "__main__":

@@ -29,6 +29,32 @@ def _load_json(path: Path) -> dict | list | None:
     return None
 
 
+def _extract_ride_plan_summary(plan_data: dict | None) -> dict | None:
+    """Return Ride-only phase and load target from training plan data."""
+    if not plan_data:
+        return None
+    phases = [
+        p for p in (plan_data.get("active_phases") or [])
+        if p.get("sport_type") == "Ride"
+    ]
+    targets = [
+        t for t in (plan_data.get("weekly_load_targets") or [])
+        if t.get("sport_type") == "Ride"
+    ]
+    if not phases and not targets:
+        return None
+    result: dict = {}
+    if phases:
+        p = phases[0]
+        result["plan_name"] = p.get("plan_name")
+        result["phase"] = p.get("phase")
+        result["phase_start"] = p.get("start")
+        result["phase_end"] = p.get("end")
+    if targets:
+        result["weekly_load_target"] = targets[0].get("load_target")
+    return result
+
+
 def consolidate() -> None:
     today = date.today()
     monday = today - timedelta(days=today.weekday())
@@ -41,6 +67,12 @@ def consolidate() -> None:
     activities_data = _load_json(PROCESSED_DIR / f"coach_input_{monday_str}.json")
     fueling_data = _load_json(PROCESSED_DIR / f"fueling_analysis_{monday_str}.json")
     week_data = _load_json(PROCESSED_DIR / f"week_summary_{monday_str}.json")
+    plan_data = _load_json(PROCESSED_DIR / f"training_plan_{today.isoformat()}.json")
+
+    # Embed Ride training plan info into week_summary
+    ride_plan = _extract_ride_plan_summary(plan_data)
+    if ride_plan and isinstance(week_data, dict):
+        week_data["training_plan"] = ride_plan
 
     # coach_input is currently a flat list of activities
     activities = activities_data if isinstance(activities_data, list) else (activities_data or {}).get("activities")
@@ -61,6 +93,7 @@ def consolidate() -> None:
 def main() -> None:
     run("get_activities.py")
     run("get_metrics.py")
+    run("get_training_plan.py")
     run("prepare_activities_for_coach.py")
     run("fueling_analysis.py")
     run("analyze_week.py")

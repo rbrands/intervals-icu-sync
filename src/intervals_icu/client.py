@@ -209,3 +209,28 @@ def create_activity(
     response.raise_for_status()
 
     return response.json()
+
+
+def get_training_plan(api_key: str, athlete_id: str) -> dict:
+    """Fetch the athlete's current training plan from intervals.icu.
+
+    Returns:
+        A dict with the ``AthleteTrainingPlan`` object. Key fields:
+        - ``training_plan_id`` – int or None if no plan is assigned
+        - ``training_plan_start_date`` – ISO-8601 date string
+        - ``training_plan_last_applied`` – ISO-8601 datetime string
+        - ``training_plan_alias`` – optional alias name
+        - ``training_plan`` – ``Folder`` object with plan details and workouts
+          (``children`` list)
+
+    Raises:
+        requests.HTTPError: If the response status code is not 2xx.
+    """
+    url = f"{BASE_URL}/athlete/{athlete_id}/training-plan"
+    response = requests.get(
+        url,
+        auth=("API_KEY", api_key),
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
