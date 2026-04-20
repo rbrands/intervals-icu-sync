@@ -41,6 +41,7 @@ def find_active_phases(events: list, today: date) -> list:
     """Return all active training phases (PLAN events covering today).
 
     Each entry: {plan_name, phase, sport_type, start, end}
+    Phases that start on 'today' take priority (sorted first).
     """
     result = []
     for ev in events:
@@ -57,6 +58,8 @@ def find_active_phases(events: list, today: date) -> list:
                 "start": start,
                 "end": end,
             })
+    # Prefer phases that start on 'today' (latest start date first)
+    result.sort(key=lambda p: p["start"], reverse=True)
     return result
 
 
@@ -92,6 +95,7 @@ def main() -> None:
     active_phases = find_active_phases(phase_events, today)
     monday = today - timedelta(days=today.weekday())
     next_monday = monday + timedelta(weeks=1)
+    next_week_active_phases = find_active_phases(phase_events, next_monday)
     load_targets = find_weekly_load_targets(phase_events, monday)
     next_week_load_targets = find_weekly_load_targets(phase_events, next_monday)
 
@@ -135,6 +139,7 @@ def main() -> None:
     output = {
         "fetched_on": today.isoformat(),
         "active_phases": active_phases,
+        "next_week_active_phases": next_week_active_phases,
         "weekly_load_targets": load_targets,
         "next_week_load_targets": next_week_load_targets,
         "range_start": today.isoformat(),

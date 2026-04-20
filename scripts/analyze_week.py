@@ -36,13 +36,15 @@ def load_training_plan(today: date) -> list[dict] | None:
     phases = [p for p in (raw.get("active_phases") or []) if p.get("sport_type") == "Ride"]
     monday = today - timedelta(days=today.weekday())
 
-    def _build_entry(targets_key: str, week_monday: date) -> dict | None:
+    next_week_phases = [p for p in (raw.get("next_week_active_phases") or []) if p.get("sport_type") == "Ride"]
+
+    def _build_entry(targets_key: str, week_monday: date, phase_list: list) -> dict | None:
         targets = [t for t in (raw.get(targets_key) or []) if t.get("sport_type") == "Ride"]
-        if not phases and not targets:
+        if not phase_list and not targets:
             return None
         entry: dict = {"week": week_monday.isoformat()}
-        if phases:
-            p = phases[0]
+        if phase_list:
+            p = phase_list[0]
             entry["plan_name"] = p.get("plan_name")
             entry["phase"] = p.get("phase")
             entry["phase_start"] = p.get("start")
@@ -52,10 +54,10 @@ def load_training_plan(today: date) -> list[dict] | None:
         return entry
 
     result: list[dict] = []
-    current = _build_entry("weekly_load_targets", monday)
+    current = _build_entry("weekly_load_targets", monday, phases)
     if current:
         result.append(current)
-    next_week = _build_entry("next_week_load_targets", monday + timedelta(weeks=1))
+    next_week = _build_entry("next_week_load_targets", monday + timedelta(weeks=1), next_week_phases or phases)
     if next_week:
         result.append(next_week)
     return result or None
@@ -403,12 +405,14 @@ def main() -> None:
     print(f"Calendar week: {monday.isoformat()} – {sunday.isoformat()}")
     activities = load_data()
     rides = filter_activities(activities)
+    training_plan = load_training_plan(date.today())
     if not rides:
         print("No qualifying rides found.")
+        if training_plan:
+            save_json({}, None, monday, training_plan)
         sys.exit(0)
     athlete_metrics = load_metrics()
     fueling_data = load_fueling(monday)
-    training_plan = load_training_plan(date.today())
     metrics = compute_metrics(rides)
     form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
     metrics.update(form)

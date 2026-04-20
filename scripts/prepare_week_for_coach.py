@@ -38,16 +38,21 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
         if p.get("sport_type") == "Ride"
     ]
 
-    def _build_entry(targets_key: str, week_monday: date) -> dict | None:
+    next_week_phases = [
+        p for p in (plan_data.get("next_week_active_phases") or [])
+        if p.get("sport_type") == "Ride"
+    ]
+
+    def _build_entry(targets_key: str, week_monday: date, phase_list: list) -> dict | None:
         targets = [
             t for t in (plan_data.get(targets_key) or [])
             if t.get("sport_type") == "Ride"
         ]
-        if not phases and not targets:
+        if not phase_list and not targets:
             return None
         entry: dict = {"week": week_monday.isoformat()}
-        if phases:
-            p = phases[0]
+        if phase_list:
+            p = phase_list[0]
             entry["plan_name"] = p.get("plan_name")
             entry["phase"] = p.get("phase")
             entry["phase_start"] = p.get("start")
@@ -57,10 +62,10 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
         return entry
 
     result: list[dict] = []
-    current = _build_entry("weekly_load_targets", monday)
+    current = _build_entry("weekly_load_targets", monday, phases)
     if current:
         result.append(current)
-    next_week = _build_entry("next_week_load_targets", monday + timedelta(weeks=1))
+    next_week = _build_entry("next_week_load_targets", monday + timedelta(weeks=1), next_week_phases or phases)
     if next_week:
         result.append(next_week)
     return result
@@ -82,7 +87,9 @@ def consolidate() -> None:
 
     # Embed Ride training plan info into week_summary
     ride_plan = _extract_ride_plan_summary(plan_data, monday)
-    if ride_plan and isinstance(week_data, dict):
+    if ride_plan:
+        if not isinstance(week_data, dict):
+            week_data = {}
         week_data["training_plan"] = ride_plan
 
     # coach_input is currently a flat list of activities
