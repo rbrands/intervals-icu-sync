@@ -393,6 +393,7 @@ intervals-icu-sync/
 │   ├── get_training_plan.py        # Fetch active training plan → data/processed/
 │   ├── analyze_week.py             # Analyze current calendar week (Joe Friel)
 │   ├── prepare_activities_for_coach.py  # Export simplified JSON for coach/ChatGPT
+│   ├── prepare_planned_workouts_for_coach.py  # Format planned workouts → data/processed/
 │   ├── fueling_analysis.py         # Analyze carbohydrate fueling quality
 │   ├── fueling_planner.py          # Generate carbohydrate targets per session
 │   ├── upload_plan.py              # Upload JSON training plan to intervals.icu
@@ -446,6 +447,7 @@ flowchart TD
 
     API --> GA[get_activities.py]
     API --> GM[get_metrics.py]
+    API --> GTP[get_training_plan.py]
     API --> PA[prepare_activities_for_coach.py]
     API --> FA[fueling_analysis.py]
     API --> AW[analyze_week.py]
@@ -453,12 +455,15 @@ flowchart TD
 
     GA --> RAW[(data/raw/\nactivities_date.json)]
     GM --> METRICS[(data/processed/\nmetrics_date.json)]
+    GTP --> TPLAN[(data/processed/\ntraining_plan_date.json)]
     PA --> COACH_A[(data/processed/\ncoach_input_monday.json)]
     FA --> FUELING[(data/processed/\nfueling_analysis_monday.json)]
     AW --> SUMMARY[(data/processed/\nweek_summary_monday.json)]
     FP --> FPLAN[(data/processed/\nfueling_plan_monday.json)]
+    TPLAN --> PPW[prepare_planned_workouts_for_coach.py]
+    PPW --> PLANNED[(data/processed/\nplanned_workouts_monday.json)]
 
-    RAW & METRICS & COACH_A & FUELING & SUMMARY & FPLAN --> PW[prepare_week_for_coach.py]
+    RAW & METRICS & COACH_A & FUELING & SUMMARY & FPLAN & PLANNED --> PW[prepare_week_for_coach.py]
     PW --> CONSOLIDATED[(data/processed/\ncoach_input_monday.json\nconsolidated)]
 
     CONSOLIDATED --> COACH[[Coach\nChatGPT / Claude]]
@@ -467,7 +472,7 @@ flowchart TD
     UP --> CAL([intervals.icu\ncalendar])
 ```
 
-`prepare_week_for_coach.py` runs all scripts above in order and then consolidates the results (metrics, week summary, activities, fueling analysis) into a single `coach_input_{monday}.json`.
+`prepare_week_for_coach.py` runs all scripts above in order and then consolidates the results (metrics, week summary, activities, fueling analysis, planned workouts) into a single `coach_input_{monday}.json`.
 
 That means: Run
 ```
@@ -582,10 +587,22 @@ Output: console plan + `data/processed/fueling_plan_{monday}.json`
 
 ---
 
+### `prepare_planned_workouts_for_coach.py`
+
+Reads the most recent `training_plan_*.json` and extracts the planned workouts for the current and next ISO week. Simplifies each workout to the fields relevant for coaching (date, name, type, duration, planned load, description, zone distribution, step structure) and saves the result.
+
+```bash
+python scripts/prepare_planned_workouts_for_coach.py
+```
+
+Output: `data/processed/planned_workouts_{monday}.json`
+
+---
+
 ### `prepare_week_for_coach.py`
 
 Runs all scripts in the correct order:
-`get_activities.py` → `get_metrics.py` → `prepare_activities_for_coach.py` → `fueling_analysis.py` → `analyze_week.py`
+`get_activities.py` → `get_metrics.py` → `get_training_plan.py` → `prepare_activities_for_coach.py` → `prepare_planned_workouts_for_coach.py` → `fueling_analysis.py` → `analyze_week.py`
 
 Aborts immediately if any script fails.
 

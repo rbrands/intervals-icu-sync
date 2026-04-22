@@ -84,6 +84,7 @@ def consolidate() -> None:
     fueling_data = _load_json(PROCESSED_DIR / f"fueling_analysis_{monday_str}.json")
     week_data = _load_json(PROCESSED_DIR / f"week_summary_{monday_str}.json")
     plan_data = _load_json(PROCESSED_DIR / f"training_plan_{today.isoformat()}.json")
+    planned_workouts_data = _load_json(PROCESSED_DIR / f"planned_workouts_{monday_str}.json")
 
     # Embed Ride training plan info into week_summary
     ride_plan = _extract_ride_plan_summary(plan_data, monday)
@@ -101,6 +102,7 @@ def consolidate() -> None:
         "week_summary": week_data,
         "activities": activities,
         "fueling_analysis": fueling_data,
+        "planned_workouts": planned_workouts_data,
     }
 
     output_file = PROCESSED_DIR / f"coach_input_{monday_str}.json"
@@ -113,6 +115,7 @@ def main() -> None:
     run("get_metrics.py")
     run("get_training_plan.py")
     run("prepare_activities_for_coach.py")
+    run("prepare_planned_workouts_for_coach.py")
     run("fueling_analysis.py")
     run("analyze_week.py")
     print(f"\n{'=' * 50}")
