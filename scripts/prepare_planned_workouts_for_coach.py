@@ -72,6 +72,7 @@ def _simplify_workout(ev: dict) -> dict:
         "time": start[11:16] if len(start) > 10 else None,
         "name": ev.get("name") or "(unnamed)",
         "type": ev.get("type"),
+        "tags": ev.get("tags") or [],
         "duration_hours": round(duration_s / 3600, 2) if duration_s else None,
         "planned_load": ev.get("icu_training_load"),
         "description": ev.get("description"),
