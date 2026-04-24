@@ -59,6 +59,10 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
             entry["phase_end"] = p.get("end")
         if targets:
             entry["weekly_load_target"] = targets[0].get("load_target")
+            entry["week_type"] = targets[0].get("week_type", "NORMAL")
+            entry["training_availability"] = targets[0].get("training_availability", "NORMAL")
+            if targets[0].get("week_note"):
+                entry["week_note"] = targets[0]["week_note"]
         return entry
 
     result: list[dict] = []
@@ -98,6 +102,7 @@ def consolidate() -> None:
 
     coach_input = {
         "week_starting": monday_str,
+        "current_date": date.today().isoformat(),
         "metrics": metrics,
         "week_summary": week_data,
         "activities": activities,

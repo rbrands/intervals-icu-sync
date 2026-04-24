@@ -238,6 +238,7 @@ def save_json(analyses: list, summary: dict, recommendations: list) -> None:
     output_file = DATA_DIR / f"fueling_analysis_{monday.isoformat()}.json"
     output = {
         "week_starting": monday.isoformat(),
+        "current_date": today.isoformat(),
         "activities": analyses,
         "weekly_summary": summary,
         "recommendations": recommendations,

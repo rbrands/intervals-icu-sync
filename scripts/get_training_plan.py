@@ -63,11 +63,35 @@ def find_active_phases(events: list, today: date) -> list:
     return result
 
 
+def find_week_note(events: list, monday: date) -> str | None:
+    """Return the name of a NOTE event for the given week, if one exists (e.g. 'Recovery Week')."""
+    week_start = monday.isoformat()
+    week_end = (monday + timedelta(days=6)).isoformat()
+    for ev in events:
+        if ev.get("category") != "NOTE":
+            continue
+        ev_date = ev.get("start_date_local", "")[:10]
+        if week_start <= ev_date <= week_end:
+            return ev.get("name")
+    return None
+
+
 def find_weekly_load_targets(events: list, monday: date) -> list:
     """Return all load targets for the ISO week starting on monday (one per sport type).
 
-    Each entry: {load_target, sport_type}
+    Each entry: {load_target, sport_type, week_type, training_availability, week_note}
+    week_type is derived from a NOTE event name (e.g. 'Recovery Week' → 'RECOVERY'),
+    falling back to 'NORMAL'. training_availability is the athlete's time availability
+    for the week as set on the TARGET event (NORMAL | LIMITED | etc.).
     """
+    week_note = find_week_note(events, monday)
+    # Map known note names to canonical week_type values
+    _NOTE_TYPE_MAP = {
+        "recovery week": "RECOVERY",
+        "race week": "RACE",
+    }
+    note_week_type = _NOTE_TYPE_MAP.get(week_note.lower(), "NOTE") if week_note else None
+
     week_start = monday.isoformat()
     week_end = (monday + timedelta(days=6)).isoformat()
     result = []
@@ -78,10 +102,15 @@ def find_weekly_load_targets(events: list, monday: date) -> list:
         if week_start <= ev_date <= week_end:
             load_target = ev.get("load_target")
             if load_target is not None:
-                result.append({
+                entry = {
                     "load_target": load_target,
                     "sport_type": ev.get("type"),
-                })
+                    "week_type": note_week_type or "NORMAL",
+                    "training_availability": ev.get("training_availability", "NORMAL"),
+                }
+                if week_note:
+                    entry["week_note"] = week_note
+                result.append(entry)
     return result
 
 
@@ -99,8 +128,9 @@ def main() -> None:
     load_targets = find_weekly_load_targets(phase_events, monday)
     next_week_load_targets = find_weekly_load_targets(phase_events, next_monday)
 
-    # Build a lookup: sport_type → load_target for easy merging
+    # Build a lookup: sport_type → (load_target, week_type) for easy merging
     load_by_type = {lt["sport_type"]: lt["load_target"] for lt in load_targets}
+    week_type_by_type = {lt["sport_type"]: lt.get("week_type", "NORMAL") for lt in load_targets}
 
     workouts = [e for e in phase_events if e.get("category") == "WORKOUT"
                 and e.get("start_date_local", "")[:10] >= today.isoformat()]
@@ -111,12 +141,13 @@ def main() -> None:
             phase_label = f"#{p['phase']}" if p["phase"] else "(no tag)"
             load = load_by_type.get(p["sport_type"]) or load_by_type.get(None)
             load_str = f"{load} TSS" if load is not None else "(none)"
-            print(f"Plan: {p['plan_name']!r:<20}  Sport: {sport:<8}  Phase: {phase_label:<12}  Weekly target: {load_str}")
+            week_type = week_type_by_type.get(p["sport_type"]) or week_type_by_type.get(None) or "NORMAL"
+            print(f"Plan: {p['plan_name']!r:<20}  Sport: {sport:<8}  Phase: {phase_label:<12}  Weekly target: {load_str}  Week type: {week_type}")
     else:
         print("Current phase:      (none found)")
         for lt in load_targets:
             sport = lt["sport_type"] or "All"
-            print(f"Weekly load target ({sport}): {lt['load_target']} TSS")
+            print(f"Weekly load target ({sport}): {lt['load_target']} TSS  Week type: {lt.get('week_type', 'NORMAL')}")
 
     if not workouts:
         print("No planned workouts found in the next 6 weeks.")

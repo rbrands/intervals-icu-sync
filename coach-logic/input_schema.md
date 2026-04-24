@@ -11,6 +11,7 @@ The goal is to ensure consistent interpretation of training data across all anal
 The input JSON consists of the following top-level sections:
 
 - week_starting
+- current_date
 - metrics
 - week_summary
 - activities
@@ -19,11 +20,13 @@ The input JSON consists of the following top-level sections:
 
 ---
 
-## 1. Week Identifier
+## 1. Week and day Identifier
 
 "week_starting": "YYYY-MM-DD"
-
 - Start date of the current training week
+
+"current_date": "YYYY-MM-DD"
+- Date of the current day when the input was generated
 
 ---
 
@@ -91,8 +94,14 @@ Notes:
   "training_plan": [
     {
       "week": "YYYY-MM-DD",
+      "plan_name": string,
       "phase": "Base | Build | Peak | Transition",
-      "weekly_load_target": number
+      "phase_start": "YYYY-MM-DD",
+      "phase_end": "YYYY-MM-DD",
+      "weekly_load_target": number,
+      "week_type": "NORMAL | RECOVERY | RACE | NOTE",
+      "training_availability": "NORMAL | LIMITED",
+      "week_note": string   // optional, e.g. "Recovery Week"
     }
   ]
 }
@@ -102,6 +111,9 @@ Notes:
 - form = CTL - ATL
 - form_pct used for fatigue assessment
 - training_plan includes current and next week targets
+- week_type is derived from a NOTE event in intervals.icu (e.g. "Recovery Week" → "RECOVERY", "Race Week" → "RACE"); defaults to "NORMAL"
+- training_availability reflects the athlete's available training time as set on the weekly TARGET event in intervals.icu (NORMAL = full availability, LIMITED = reduced time e.g. travel or work)
+- week_note contains the original note text from intervals.icu if present
 
 ---
 

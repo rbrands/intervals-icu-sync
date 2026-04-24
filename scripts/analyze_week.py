@@ -391,7 +391,7 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
 def save_json(metrics: dict, fueling_form: dict | None, monday: date, training_plan: list[dict] | None = None) -> None:
     output_file = OUTPUT_DIR / f"week_summary_{monday.isoformat()}.json"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    payload = {"week_starting": monday.isoformat(), **metrics}
+    payload = {"week_starting": monday.isoformat(), "current_date": date.today().isoformat(), **metrics}
     if fueling_form:
         payload["fueling_form_analysis"] = fueling_form
     if training_plan:
