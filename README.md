@@ -48,6 +48,7 @@ The coaching system is split across two directories:
 | `decision_enginde.md` | How the coach makes training decisions based on input data |
 | `fueling_rules.md` | Fueling evaluation rules and their coaching impact |
 | `input_schema.md` | Description of the JSON input schema passed to the coach |
+| `workouts.md` | Example workouts for key training domains (VO2max, threshold, endurance etc.) with dose levels and tags |
 
 The combination of:
 - structured data (intervals.icu)
@@ -78,7 +79,8 @@ intervals-icu-sync/
 │   ├── coach_logic.md              # Coaching logic, interpretation & decision framework
 │   ├── decision_enginde.md         # Decision engine: how the coach makes training decisions
 │   ├── fueling_rules.md            # Fueling evaluation rules and their coaching impact
-│   └── input_schema.md             # JSON input schema description for the AI coach
+│   ├── input_schema.md             # JSON input schema description for the AI coach
+│   └── workouts.md                 # Example workouts by domain and dose level (with tags)
 ├── notebooks/
 │   └── week_summary.ipynb          # Interactive weekly training overview
 ├── src/
