@@ -25,7 +25,7 @@ def filter_activities(activities: list) -> list:
         a for a in activities
         if a.get("type") in ("Ride", "VirtualRide")
         and a.get("source") != "STRAVA"
-        and a.get("icu_training_load", 0) > 20
+        and (a.get("icu_training_load", 0) > 20 or bool(a.get("tags")))
     ]
 
 

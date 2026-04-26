@@ -31,7 +31,11 @@ def load_metrics() -> dict:
 def load_training_plan(today: date) -> list[dict] | None:
     path = OUTPUT_DIR / f"training_plan_{today.isoformat()}.json"
     if not path.exists():
-        return None
+        # Fall back to most recent file
+        files = sorted(OUTPUT_DIR.glob("training_plan_*.json"))
+        if not files:
+            return None
+        path = files[-1]
     raw = json.loads(path.read_text())
     phases = [p for p in (raw.get("active_phases") or []) if p.get("sport_type") == "Ride"]
     monday = today - timedelta(days=today.weekday())
@@ -50,7 +54,12 @@ def load_training_plan(today: date) -> list[dict] | None:
             entry["phase_start"] = p.get("start")
             entry["phase_end"] = p.get("end")
         if targets:
-            entry["weekly_load_target"] = targets[0].get("load_target")
+            t = targets[0]
+            entry["weekly_load_target"] = t.get("load_target")
+            entry["week_type"] = t.get("week_type", "NORMAL")
+            entry["training_availability"] = t.get("training_availability", "NORMAL")
+            if t.get("week_note"):
+                entry["week_note"] = t["week_note"]
         return entry
 
     result: list[dict] = []
@@ -88,8 +97,7 @@ def filter_activities(activities: list) -> list:
         if (
             a.get("type") in ("Ride", "VirtualRide")
             and a.get("source") != "STRAVA"
-            and a.get("icu_training_load") is not None
-            and a.get("icu_training_load", 0) > 20
+            and (a.get("icu_training_load", 0) > 20 or bool(a.get("tags")))
         ):
             start = a.get("start_date_local", "")[:10]
             try:
@@ -137,7 +145,7 @@ def _classify_ride(activity: dict) -> str:
     return "endurance"
 
 
-def analyse_fueling_form(form_pct: float, fueling_data: dict, activities: list) -> dict:
+def analyse_fueling_form(form_pct: float, fueling_data: dict, activities: list, training_plan: list[dict] | None = None) -> dict:
     """Combine Form % with fueling quality into an integrated assessment."""
     weekly = fueling_data.get("weekly_summary", {})
     avg_carbs_per_hour = weekly.get("avg_carbs_per_hour") or 0.0
@@ -194,7 +202,18 @@ def analyse_fueling_form(form_pct: float, fueling_data: dict, activities: list) 
         interpretation = "Balanced state"
         recommendation = "Consider increasing training load"
 
-    # Long ride rule
+    # Override for Recovery Week
+    current_week = (training_plan or [{}])[0]
+    week_type = current_week.get("week_type", "NORMAL")
+    load_target = current_week.get("weekly_load_target")
+    if week_type == "RECOVERY":
+        interpretation = "Recovery week — reduced load is intentional"
+        recommendation = (
+            f"Stick to the recovery week plan (target: {load_target} TSS). "
+            "Avoid adding load; focus on regeneration."
+            if load_target
+            else "Stick to the recovery week plan. Avoid adding load; focus on regeneration."
+        )
     long_ride_advice: str | None = None
     if number_of_long_rides == 0:
         long_ride_advice = "Add a long aerobic ride this week"
@@ -416,7 +435,7 @@ def main() -> None:
     metrics = compute_metrics(rides)
     form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
     metrics.update(form)
-    fueling_form = analyse_fueling_form(form["form_pct"], fueling_data, rides) if fueling_data else None
+    fueling_form = analyse_fueling_form(form["form_pct"], fueling_data, rides, training_plan) if fueling_data else None
     print_report(metrics, athlete_metrics, fueling_form, training_plan)
     save_json(metrics, fueling_form, monday, training_plan)
 
