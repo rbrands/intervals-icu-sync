@@ -82,6 +82,17 @@ Activities from the current and preceding week.
 - carbs used (g)
 - carbs ingested (g)
 
+#### Anaerobic Capacity (W')
+
+- w_prime_j: athlete's W' in joules (anaerobic work capacity)
+- w_prime_bal_drop_j: maximum W'bal depletion during the activity in joules
+- w_prime_bal_min_j: lowest W'bal reached (= W' − max depletion); indicates how close the athlete came to full W' exhaustion
+
+Use these values to assess:
+- whether the athlete repeatedly depleted W' significantly (e.g. in interval sessions)
+- whether anaerobic fatigue may have limited performance
+- progression of W' utilization across the week
+
 ---
 
 ### 3. Metrics (Current Athlete State)
@@ -197,6 +208,29 @@ Identify the primary limiter:
 - >10% → significant limitation
 
 Use only for steady efforts.
+
+---
+
+## W' Distribution Rules
+
+### Thresholds
+
+- w_prime_bal_drop_pct = w_prime_bal_drop_j / w_prime_j × 100
+
+### Rules
+
+- IF long ride AND w_prime_bal_drop_pct > 20%
+  → pacing too aggressive
+  → risk for durability decline
+  → recommendation: reduce intensity early in ride, protect aerobic base
+
+- IF aerobic ride AND w_prime_usage_pct > 15%
+  → unintended intensity
+  → reduce variability and peaks
+
+- IF event AND key effort planned
+  → minimize W' usage before key effort (w_prime_bal_drop_pct < 30% before effort)
+  → recommendation: ride conservatively in lead-up, save anaerobic capacity for the key effort
 
 ---
 

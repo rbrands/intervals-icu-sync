@@ -130,6 +130,18 @@ def extract_fields(activity: dict) -> dict:
         "rpe": activity.get("icu_rpe"),
         "carbs_used_g": activity.get("carbs_used"),
         "carbs_ingested_g": activity.get("carbs_ingested"),
+        "w_prime_j": activity.get("icu_w_prime"),
+        "w_prime_bal_drop_j": activity.get("icu_max_wbal_depletion"),
+        "w_prime_bal_min_j": (
+            activity["icu_w_prime"] - activity["icu_max_wbal_depletion"]
+            if activity.get("icu_w_prime") is not None and activity.get("icu_max_wbal_depletion") is not None
+            else None
+        ),
+        "w_prime_usage_pct": (
+            round(activity["icu_max_wbal_depletion"] / activity["icu_w_prime"] * 100, 1)
+            if activity.get("icu_w_prime") and activity.get("icu_max_wbal_depletion") is not None
+            else None
+        ),
         "tags": activity.get("tags") or [],
     }
 

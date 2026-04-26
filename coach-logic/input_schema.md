@@ -147,6 +147,11 @@ Notes:
     "carbs_used_g": number,
     "carbs_ingested_g": number,
 
+    "w_prime_j": number,
+    "w_prime_bal_drop_j": number,
+    "w_prime_bal_min_j": number,
+    "w_prime_usage_pct": number,
+
     "tags": [string]
   }
 ]
@@ -154,6 +159,10 @@ Notes:
 Notes:
 
 - Tags have highest priority for classification
+- w_prime_j: athlete's W' (anaerobic work capacity) in joules, as configured in intervals.icu
+- w_prime_bal_drop_j: maximum W'bal depletion during the activity in joules (icu_max_wbal_depletion)
+- w_prime_bal_min_j: minimum W'bal reached during the activity in joules (= w_prime_j − w_prime_bal_drop_j); indicates how close the athlete came to full W' exhaustion
+- w_prime_usage_pct: percentage of W' depleted during the activity (= w_prime_bal_drop_j / w_prime_j × 100); used for pacing and W' distribution rules
 - polarization_index describes intensity balance
 - interval_summary provides detected efforts
 - decoupling indicates aerobic durability
