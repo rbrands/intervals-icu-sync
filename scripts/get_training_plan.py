@@ -151,21 +151,20 @@ def main() -> None:
 
     if not workouts:
         print("No planned workouts found in the next 6 weeks.")
-        return
+    else:
+        print(f"\nUpcoming planned workouts ({today} – {end_date}):")
+        print(f"{'Date':<12} {'Name':<45} {'Duration':>10}  {'Load':>6}")
+        print("-" * 80)
+        for ev in workouts:
+            ev_date = ev.get("start_date_local", "")[:10]
+            name = ev.get("name") or "(unnamed)"
+            duration_s = ev.get("moving_time") or 0
+            duration_h = f"{duration_s / 3600:.1f}h" if duration_s else "-"
+            load = ev.get("icu_training_load")
+            load_str = str(load) if load is not None else "-"
+            print(f"{ev_date:<12} {name:<45} {duration_h:>10}  {load_str:>6}")
 
-    print(f"\nUpcoming planned workouts ({today} – {end_date}):")
-    print(f"{'Date':<12} {'Name':<45} {'Duration':>10}  {'Load':>6}")
-    print("-" * 80)
-    for ev in workouts:
-        ev_date = ev.get("start_date_local", "")[:10]
-        name = ev.get("name") or "(unnamed)"
-        duration_s = ev.get("moving_time") or 0
-        duration_h = f"{duration_s / 3600:.1f}h" if duration_s else "-"
-        load = ev.get("icu_training_load")
-        load_str = str(load) if load is not None else "-"
-        print(f"{ev_date:<12} {name:<45} {duration_h:>10}  {load_str:>6}")
-
-    print(f"\nTotal: {len(workouts)} workouts")
+        print(f"\nTotal: {len(workouts)} workouts")
 
     output = {
         "fetched_on": today.isoformat(),
