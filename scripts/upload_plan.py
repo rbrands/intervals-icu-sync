@@ -107,6 +107,9 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
 
         name = workout["name"]
         date = workout["date"]
+        # intervals.icu requires a full ISO 8601 datetime; append time if only a date was given
+        if len(date) == 10:
+            date = date + "T00:00:00"
         duration_seconds = int(float(workout["duration_minutes"]) * 60)
         description = workout.get("description", "")
         fueling = workout.get("fueling")
@@ -121,7 +124,11 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
             if parts:
                 description = f"{description}\nFueling: {', '.join(parts)}" if description else f"Fueling: {', '.join(parts)}"
         workout_doc = workout.get("workout")
-        tags = workout.get("tags") or []
+        # Support both "tags" (list) and "tag" (single string)
+        raw_tags = workout.get("tags") or []
+        if not raw_tags and workout.get("tag"):
+            raw_tags = [workout["tag"]]
+        tags = raw_tags
 
         if dry_run:
             steps = len(workout_doc["steps"]) if workout_doc else 0

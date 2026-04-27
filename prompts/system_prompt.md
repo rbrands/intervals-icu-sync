@@ -109,6 +109,19 @@ Each workout must include:
   - recovery
 - exactly ONE tag
 
+CRITICAL:
+- The "tag" field is MANDATORY for EVERY workout
+- EXACTLY one tag must be present per workout
+- Workouts WITHOUT a tag are INVALID
+
+## Tag Requirement (CRITICAL)
+
+Each workout MUST include exactly ONE tag.
+
+If a workout does NOT contain exactly one tag:
+→ the output is INVALID
+→ the response must be corrected before returning
+
 ### Workout Structure
 
 - duration in steps: seconds (integer)
