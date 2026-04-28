@@ -24,7 +24,6 @@ Model reference:
 
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
 
@@ -32,149 +31,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from intervals_icu.client import get_activity_streams
 from intervals_icu.config import API_KEY, ATHLETE_ID
+from intervals_icu.wbal import compute_wbal, summarize_wbal
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 
 
 # ---------------------------------------------------------------------------
-# W'bal model
+# W'bal model and summary are provided by intervals_icu.wbal
 # ---------------------------------------------------------------------------
-
-def _tau_w(w_prime: float, cp: float, power_below_cp: list[float]) -> float:
-    """Estimate tau (reconstitution time constant) in seconds.
-
-    Uses the mean sub-CP power from the ride.  Falls back to 546 s (Skiba
-    2012 constant) when no sub-CP samples exist.
-    """
-    if not power_below_cp:
-        return 546.0
-    p_mean = sum(power_below_cp) / len(power_below_cp)
-    denominator = cp - p_mean
-    if denominator <= 0:
-        return 546.0
-    return w_prime / denominator
-
-
-def compute_wbal(watts: list[float | None], w_prime: float, cp: float) -> list[float]:
-    """Return W'bal in joules for every second of the activity.
-
-    Missing power samples (None / 0 gap) are treated as 0 W.
-    """
-    # First pass: collect sub-CP power to estimate tau
-    sub_cp = [p for p in watts if p is not None and p < cp and p > 0]
-    tau = _tau_w(w_prime, cp, sub_cp)
-
-    decay = math.exp(-1.0 / tau)  # pre-compute for the inner loop
-
-    wbal = w_prime
-    result: list[float] = []
-    for raw in watts:
-        p = raw if raw is not None else 0.0
-        if p >= cp:
-            wbal -= p - cp
-            wbal = max(0.0, wbal)        # W' cannot go negative
-        else:
-            wbal += (w_prime - wbal) * (1.0 - decay)
-        result.append(round(wbal, 1))
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Summary statistics
-# ---------------------------------------------------------------------------
-
-def _summarize(wbal: list[float], watts: list[float | None], w_prime: float, cp: float) -> dict:
-    min_wbal = min(wbal)
-    max_depletion = w_prime - min_wbal
-    usage_pct = round(max_depletion / w_prime * 100, 1) if w_prime else None
-
-    # Count seconds spent below 30 % / 10 % of W'
-    below_30 = sum(1 for v in wbal if v < 0.30 * w_prime)
-    below_10 = sum(1 for v in wbal if v < 0.10 * w_prime)
-
-    # Time index of minimum W'bal
-    min_idx = wbal.index(min_wbal)
-
-    # Depletion event tracking with recovery ratio.
-    #
-    # States:
-    #   "normal"     – pct >= 40%, no active event
-    #   "depleting"  – entered below 40%, tracking minimum
-    #   "recovering" – crossed back above 50%, tracking post-recovery maximum
-    #
-    # Each event stores (pre_drop, event_min, recovery_max | None).
-    # recovery_ratio per event = (recovery_max - event_min) / (pre_drop - event_min)
-    _NORMAL, _DEPLETING, _RECOVERING = "normal", "depleting", "recovering"
-
-    events: list[tuple[float, float, float | None]] = []
-    state = _NORMAL
-    last_above_40 = w_prime     # last W'bal value seen while pct >= 0.40
-    cur_pre_drop = 0.0
-    cur_min = 0.0
-    cur_rec_max = 0.0
-
-    for v in wbal:
-        pct = v / w_prime if w_prime else 1.0
-
-        if state == _NORMAL:
-            if pct >= 0.40:
-                last_above_40 = v
-            if pct < 0.40:
-                cur_pre_drop = last_above_40
-                cur_min = v
-                state = _DEPLETING
-
-        elif state == _DEPLETING:
-            cur_min = min(cur_min, v)
-            if pct > 0.50:
-                cur_rec_max = v
-                state = _RECOVERING
-
-        elif state == _RECOVERING:
-            cur_rec_max = max(cur_rec_max, v)
-            if pct >= 0.40:
-                last_above_40 = v
-            if pct < 0.40:
-                # Close current event and immediately start a new one
-                events.append((cur_pre_drop, cur_min, cur_rec_max))
-                cur_pre_drop = last_above_40
-                cur_min = v
-                state = _DEPLETING
-
-    # Close any open event at end of ride
-    if state == _DEPLETING:
-        events.append((cur_pre_drop, cur_min, None))
-    elif state == _RECOVERING:
-        events.append((cur_pre_drop, cur_min, cur_rec_max))
-
-    depletion_events = len(events)
-
-    # Recovery ratio: average of (recovered / depleted) per event
-    # depleted  = pre_drop − event_min
-    # recovered = recovery_max − event_min
-    ratios: list[float] = []
-    for pre_drop, ev_min, rec_max in events:
-        depleted = pre_drop - ev_min
-        if depleted <= 0 or rec_max is None:
-            continue
-        recovered = rec_max - ev_min
-        ratios.append(min(recovered / depleted, 1.0))   # cap at 1.0 (full recovery)
-
-    wbal_recovery_ratio = round(sum(ratios) / len(ratios), 3) if ratios else None
-
-    return {
-        "w_prime_j": w_prime,
-        "cp_w": cp,
-        "wbal_min_j": round(min_wbal, 1),
-        "wbal_max_depletion_j": round(max_depletion, 1),
-        "wbal_usage_pct": usage_pct,
-        "seconds_below_30pct": below_30,
-        "seconds_below_10pct": below_10,
-        "min_wbal_at_second": min_idx,
-        "wbal_depletion_events": depletion_events,
-        "wbal_recovery_ratio": wbal_recovery_ratio,
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +82,7 @@ def process_activity(activity: dict, plot: bool = False) -> dict | None:
     times: list[int] = time_stream["data"] if time_stream else list(range(len(watts)))
 
     wbal = compute_wbal(watts, w_prime, cp)
-    summary = _summarize(wbal, watts, w_prime, cp)
+    summary = {**summarize_wbal(wbal, w_prime), "cp_w": cp}
 
     print(f"    W'     = {w_prime:.0f} J   CP = {cp:.0f} W")
     print(f"    W'bal min = {summary['wbal_min_j']:.0f} J  ({summary['wbal_usage_pct']} % depleted)")

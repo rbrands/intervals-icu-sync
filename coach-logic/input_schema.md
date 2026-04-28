@@ -152,7 +152,19 @@ Notes:
     "w_prime_bal_min_j": number,
     "w_prime_usage_pct": number,
 
-    "tags": [string]
+    "tags": [string],
+
+    "wbal_summary": {
+      "w_prime_j": number,
+      "wbal_min_j": number,
+      "wbal_max_depletion_j": number,
+      "wbal_usage_pct": number,
+      "seconds_below_30pct": number,
+      "seconds_below_10pct": number,
+      "min_wbal_at_second": number,
+      "wbal_depletion_events": number,
+      "wbal_recovery_ratio": number | null
+    } | null
   }
 ]
 
@@ -167,6 +179,19 @@ Notes:
 - interval_summary provides detected efforts
 - decoupling indicates aerobic durability
 - fueling fields are critical for performance analysis
+- wbal_summary is only present (non-null) for high-intensity activities that meet at least one of these criteria:
+  - z5_plus_pct ≥ 8
+  - any interval at ≥ 105 % FTP with duration ≥ 2 min
+  - tagged as vo2* (e.g. vo2max-high)
+  - tagged as event or type == Race
+- wbal_summary fields:
+  - wbal_min_j: lowest W'bal value reached in the activity (Skiba differential model, second-by-second)
+  - wbal_max_depletion_j: total W' depleted at the worst moment (= w_prime_j − wbal_min_j)
+  - wbal_usage_pct: depletion as percentage of W'
+  - seconds_below_30pct / seconds_below_10pct: time spent in critically low W'bal territory
+  - min_wbal_at_second: time index (seconds from start) of the W'bal minimum
+  - wbal_depletion_events: number of discrete efforts where W'bal drops below 40 % and recovers above 50 %
+  - wbal_recovery_ratio: average ratio of W' recovered vs. W' depleted per event (0–1); null if no complete events with recovery; 1.0 = full recovery between efforts
 
 ---
 

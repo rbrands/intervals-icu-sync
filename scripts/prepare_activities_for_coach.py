@@ -1,13 +1,100 @@
 """Read latest activities JSON from data/raw and output a simplified JSON for coach analysis."""
 
 import json
+import re
 import subprocess
 import sys
 from datetime import date, timedelta
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from intervals_icu.client import get_activity_streams
+from intervals_icu.config import API_KEY
+from intervals_icu.wbal import compute_wbal, summarize_wbal
+
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+
+
+# ---------------------------------------------------------------------------
+# W'bal condition check and computation
+# ---------------------------------------------------------------------------
+
+def _parse_interval(s: str) -> tuple[float | None, float | None]:
+    """Parse an interval summary string such as '3x 5m25s 207w'.
+
+    Returns (power_watts, duration_seconds) or (None, None) on parse failure.
+    """
+    power_m = re.search(r'(\d+(?:\.\d+)?)w\b', s, re.IGNORECASE)
+    power = float(power_m.group(1)) if power_m else None
+
+    min_m = re.search(r'(\d+)m\b', s)
+    sec_m = re.search(r'(\d+)s\b', s)
+    dur_s: float = 0.0
+    if min_m:
+        dur_s += int(min_m.group(1)) * 60
+    if sec_m:
+        dur_s += int(sec_m.group(1))
+    duration = dur_s if (min_m or sec_m) else None
+
+    return power, duration
+
+
+def _needs_wbal(activity: dict, z5_plus_pct: float | None) -> bool:
+    """Return True if W'bal analysis should be computed for this activity.
+
+    Conditions (any one sufficient):
+    - z5_plus_pct >= 8
+    - any interval at >= 105 % FTP with duration >= 2 min
+    - ride tagged as vo2* (e.g. vo2max-high)
+    - ride tagged/typed as event / Race
+    """
+    if z5_plus_pct is not None and z5_plus_pct >= 8:
+        return True
+
+    ftp = activity.get("icu_ftp")
+    if ftp:
+        threshold = float(ftp) * 1.05
+        for interval_str in (activity.get("interval_summary") or []):
+            power, duration = _parse_interval(interval_str)
+            if power is not None and duration is not None and power >= threshold and duration >= 120:
+                return True
+
+    tags = [t.lower() for t in (activity.get("tags") or [])]
+    if any(t.startswith("vo2") for t in tags):
+        return True
+
+    if activity.get("type") == "Race" or any("event" in t for t in tags):
+        return True
+
+    return False
+
+
+def _fetch_wbal_summary(activity: dict) -> dict | None:
+    """Fetch the power stream from the API and compute W'bal summary.
+
+    Returns None if W' / FTP is missing, the API call fails, or no power data
+    is available.
+    """
+    act_id = activity.get("id")
+    w_prime = activity.get("icu_w_prime")
+    ftp = activity.get("icu_ftp")
+    if not w_prime or not ftp:
+        return None
+    try:
+        streams = get_activity_streams(API_KEY, act_id)
+    except Exception as exc:
+        print(f"  W'bal fetch failed for {act_id}: {exc}")
+        return None
+    watts_stream = next((s for s in streams if s.get("type") == "watts"), None)
+    if not watts_stream:
+        return None
+    watts = watts_stream.get("data") or []
+    if not watts:
+        return None
+    wbal = compute_wbal(watts, float(w_prime), float(ftp))
+    return summarize_wbal(wbal, float(w_prime))
 
 
 def load_data() -> list:
@@ -106,7 +193,7 @@ def classify_ride(
     return {"label": "Unique", "reason": f"No pattern matched (Z1+2={z1_z2_pct}%, Z3+4={z3_z4_pct}%, Z5+={z5_plus_pct}%)"}
 
 
-def extract_fields(activity: dict) -> dict:
+def extract_fields(activity: dict, wbal_summary: dict | None = None) -> dict:
     zone_dist = _zone_distribution(activity.get("icu_zone_times") or [])
     ride_class = classify_ride(
         zone_dist["z1_z2_pct"], zone_dist["z3_z4_pct"], zone_dist["z5_plus_pct"]
@@ -143,6 +230,7 @@ def extract_fields(activity: dict) -> dict:
             else None
         ),
         "tags": activity.get("tags") or [],
+        "wbal_summary": wbal_summary,
     }
 
 
@@ -153,7 +241,14 @@ def main() -> None:
     activities = load_data()
     rides = filter_activities(activities)
     rides.sort(key=lambda a: (a.get("start_date_local") or ""))
-    output = [extract_fields(a) for a in rides]
+    output = []
+    for a in rides:
+        zone_dist = _zone_distribution(a.get("icu_zone_times") or [])
+        wbal_summary = None
+        if _needs_wbal(a, zone_dist["z5_plus_pct"]):
+            print(f"  Computing W'bal for {a.get('name', a.get('id'))} …")
+            wbal_summary = _fetch_wbal_summary(a)
+        output.append(extract_fields(a, wbal_summary=wbal_summary))
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_file.write_text(json.dumps(output, indent=2))
