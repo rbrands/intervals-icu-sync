@@ -123,7 +123,10 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                 parts.append(f"{total_carbs}g total")
             if parts:
                 description = f"{description}\nFueling: {', '.join(parts)}" if description else f"Fueling: {', '.join(parts)}"
+        # Steps can be at the top level ("steps") or nested under a "workout" key
         workout_doc = workout.get("workout")
+        if workout_doc is None and workout.get("steps"):
+            workout_doc = {"steps": workout["steps"]}
         # Support both "tags" (list) and "tag" (single string)
         raw_tags = workout.get("tags") or []
         if not raw_tags and workout.get("tag"):
