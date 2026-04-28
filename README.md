@@ -71,6 +71,7 @@ intervals-icu-sync/
 │   ├── fueling_analysis.py         # Analyze carbohydrate fueling quality
 │   ├── fueling_planner.py          # Generate carbohydrate targets per session
 │   ├── upload_plan.py              # Upload JSON training plan to intervals.icu
+│   ├── wbal_analysis.py            # Compute W'bal time series from power stream
 │   └── prepare_week_for_coach.py   # Run all scripts in sequence
 ├── prompts/
 │   └── system_prompt.md            # System prompt for the AI coach (LLM instructions)
@@ -304,6 +305,42 @@ python scripts/get_training_plan.py
 ```
 
 Output: `data/processed/training_plan_{date}.json`
+
+---
+
+### `wbal_analysis.py`
+
+Fetches the power stream for one or more activities from intervals.icu and computes the W'bal (anaerobic energy reserve) time series using the **Skiba differential model**:
+
+- **Depletion** (P ≥ CP): W'bal decreases by `P − CP` joules per second
+- **Reconstitution** (P < CP): `W'bal += (W' − W'bal) × (1 − e^(−1/τ))` where `τ = W' / (CP − P̄_sub_cp)`
+- W' and CP are read from `icu_w_prime` and `icu_ftp` in the raw activity data
+
+Per-activity output includes:
+
+| Field | Description |
+|---|---|
+| `wbal_min_j` | Minimum W'bal reached (joules) |
+| `wbal_usage_pct` | Maximum depletion as % of W' |
+| `seconds_below_30pct` | Seconds with W'bal < 30 % of W' |
+| `seconds_below_10pct` | Seconds with W'bal < 10 % of W' |
+| `wbal_depletion_events` | Number of times W'bal drops below 40 % and recovers above 50 % |
+| `wbal_recovery_ratio` | Average ratio of W' recovered vs. W' depleted per event (0–1, `null` if no events) |
+
+Plus the full second-by-second W'bal series.
+
+```bash
+# All qualifying rides from the latest raw activities file
+python scripts/wbal_analysis.py
+
+# Single activity by id
+python scripts/wbal_analysis.py --id i143131711
+
+# Show a matplotlib plot (requires matplotlib)
+python scripts/wbal_analysis.py --id i143131711 --plot
+```
+
+Output: `data/processed/wbal_{activity_id}.json`
 
 ---
 

@@ -211,6 +211,26 @@ def create_activity(
     return response.json()
 
 
+def get_activity_streams(api_key: str, activity_id: str) -> list[dict]:
+    """Fetch time-series streams for a single activity.
+
+    Returns a list of stream dicts, each with a ``type`` key (e.g. ``"watts"``,
+    ``"heartrate"``, ``"time"``) and a ``data`` list of values sampled once per
+    second.
+
+    Raises:
+        requests.HTTPError: If the response status code is not 2xx.
+    """
+    url = f"{BASE_URL}/activity/{activity_id}/streams"
+    response = requests.get(
+        url,
+        auth=("API_KEY", api_key),
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def get_training_plan(api_key: str, athlete_id: str) -> dict:
     """Fetch the athlete's current training plan from intervals.icu.
 
