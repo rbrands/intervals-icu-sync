@@ -306,7 +306,7 @@ tags > interval detection > automatic classification
 ## Tag Mapping
 
 - vo2max-* → vo2
-- lactate-treshold-* → threshold
+- lactate-treshold-* → treshold
 - aerobic-treshold-*:
   - duration ≥ 2h → long_ride
   - else → endurance
