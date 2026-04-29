@@ -128,6 +128,8 @@ Notes:
 
     "avg_power": number,
     "norm_power": number,
+    "avg_hr": number,
+    "max_hr": number,
 
     "polarization_index": number,
     "training_distribution": string,
@@ -171,6 +173,8 @@ Notes:
 Notes:
 
 - Tags have highest priority for classification
+- avg_hr: average heart rate during the activity in bpm
+- max_hr: maximum heart rate recorded during the activity in bpm
 - w_prime_j: athlete's W' (anaerobic work capacity) in joules, as configured in intervals.icu
 - w_prime_bal_drop_j: maximum W'bal depletion during the activity in joules (icu_max_wbal_depletion)
 - w_prime_bal_min_j: minimum W'bal reached during the activity in joules (= w_prime_j − w_prime_bal_drop_j); indicates how close the athlete came to full W' exhaustion

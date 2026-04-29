@@ -205,6 +205,8 @@ def extract_fields(activity: dict, wbal_summary: dict | None = None) -> dict:
         "training_load": activity.get("icu_training_load"),
         "avg_power": activity.get("icu_average_watts"),
         "norm_power": activity.get("icu_weighted_avg_watts"),
+        "avg_hr": activity.get("average_heartrate"),
+        "max_hr": activity.get("max_heartrate"),
         "polarization_index": activity.get("polarization_index"),
         "training_distribution": ride_class["label"] if ride_class else None,
         "training_distribution_reason": ride_class["reason"] if ride_class else None,
