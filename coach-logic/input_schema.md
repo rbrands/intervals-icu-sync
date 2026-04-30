@@ -169,6 +169,17 @@ Notes:
 
     "tags": [string],
 
+    "power_curve": {
+      "p5s": number,
+      "p20s": number,
+      "p60s": number,
+      "p3m": number,
+      "p5m": number,
+      "p10m": number,
+      "p12m": number,
+      "p20m": number
+    } | null,
+
     "wbal_summary": {
       "w_prime_j": number,
       "wbal_min_j": number,
@@ -196,6 +207,13 @@ Notes:
 - interval_summary provides detected efforts
 - decoupling indicates aerobic durability
 - fueling fields are critical for performance analysis
+- power_curve: best-effort mean-maximal power (MMP) for key durations from the activity power curve; null if no power data available
+  - p5s / p20s: neuromuscular / sprint capacity
+  - p60s: anaerobic capacity (~ 1-minute power)
+  - p3m: VO2max power proxy
+  - p5m: gold-standard VO2max effort duration
+  - p10m / p12m: threshold / sub-threshold range
+  - p20m: approximate FTP proxy (use with ftp from metrics for context)
 - wbal_summary is only present (non-null) for high-intensity activities that meet at least one of these criteria:
   - z5_plus_pct ≥ 8
   - any interval at ≥ 105 % FTP with duration ≥ 2 min

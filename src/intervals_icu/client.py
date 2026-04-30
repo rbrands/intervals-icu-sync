@@ -214,6 +214,35 @@ def create_activity(
     return response.json()
 
 
+_POWER_CURVE_TARGETS = {5: "p5s", 20: "p20s", 60: "p60s", 180: "p3m", 300: "p5m", 600: "p10m", 720: "p12m", 1200: "p20m"}
+
+
+def get_activity_power_curve(api_key: str, activity_id: str) -> dict | None:
+    """Fetch best-effort power values for key durations from the activity power curve.
+
+    Returns a dict with keys ``p5s``, ``p20s``, ``p60s``, ``p3m``, ``p5m``,
+    ``p10m``, ``p12m``, ``p20m`` (watts), or ``None`` if no power curve is
+    available for this activity.
+
+    Raises:
+        requests.HTTPError: If the response status code is not 2xx.
+    """
+    url = f"{BASE_URL}/activity/{activity_id}/power-curves"
+    response = requests.get(url, auth=("API_KEY", api_key), timeout=30)
+    response.raise_for_status()
+    body = response.json()
+    if not body:
+        return None
+    curve = body[0]
+    secs = curve.get("secs") or []
+    watts = curve.get("watts") or []
+    result = {}
+    for s, w in zip(secs, watts):
+        if s in _POWER_CURVE_TARGETS:
+            result[_POWER_CURVE_TARGETS[s]] = w
+    return result if result else None
+
+
 def get_activity_streams(api_key: str, activity_id: str) -> list[dict]:
     """Fetch time-series streams for a single activity.
 

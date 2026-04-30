@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from intervals_icu.client import get_activity_streams
+from intervals_icu.client import get_activity_streams, get_activity_power_curve
 from intervals_icu.config import API_KEY
 from intervals_icu.wbal import compute_wbal, summarize_wbal
 
@@ -69,6 +69,22 @@ def _needs_wbal(activity: dict, z5_plus_pct: float | None) -> bool:
         return True
 
     return False
+
+
+def _fetch_power_curve(activity: dict) -> dict | None:
+    """Fetch the activity power curve from the API.
+
+    Only fetches for activities that have power data. Returns None on failure
+    or when no power data is available.
+    """
+    if not activity.get("icu_average_watts"):
+        return None
+    act_id = activity.get("id")
+    try:
+        return get_activity_power_curve(API_KEY, act_id)
+    except Exception as exc:
+        print(f"  Power curve fetch failed for {act_id}: {exc}")
+        return None
 
 
 def _fetch_wbal_summary(activity: dict) -> dict | None:
@@ -193,7 +209,7 @@ def classify_ride(
     return {"label": "Unique", "reason": f"No pattern matched (Z1+2={z1_z2_pct}%, Z3+4={z3_z4_pct}%, Z5+={z5_plus_pct}%)"}
 
 
-def extract_fields(activity: dict, wbal_summary: dict | None = None) -> dict:
+def extract_fields(activity: dict, wbal_summary: dict | None = None, power_curve: dict | None = None) -> dict:
     zone_dist = _zone_distribution(activity.get("icu_zone_times") or [])
     ride_class = classify_ride(
         zone_dist["z1_z2_pct"], zone_dist["z3_z4_pct"], zone_dist["z5_plus_pct"]
@@ -232,6 +248,7 @@ def extract_fields(activity: dict, wbal_summary: dict | None = None) -> dict:
             else None
         ),
         "tags": activity.get("tags") or [],
+        "power_curve": power_curve,
         "wbal_summary": wbal_summary,
     }
 
@@ -250,7 +267,8 @@ def main() -> None:
         if _needs_wbal(a, zone_dist["z5_plus_pct"]):
             print(f"  Computing W'bal for {a.get('name', a.get('id'))} …")
             wbal_summary = _fetch_wbal_summary(a)
-        output.append(extract_fields(a, wbal_summary=wbal_summary))
+        power_curve = _fetch_power_curve(a)
+        output.append(extract_fields(a, wbal_summary=wbal_summary, power_curve=power_curve))
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_file.write_text(json.dumps(output, indent=2))
