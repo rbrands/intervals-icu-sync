@@ -340,6 +340,7 @@ Use simplified structure:
 
 - prefer physiological accuracy over detail
 - avoid excessive fragmentation
+- Always interpret intensity using Training-Zones definitions
 
 ### Event Rule
 

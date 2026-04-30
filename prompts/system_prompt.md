@@ -157,6 +157,69 @@ Levels:
 - moderate
 - high
 
+## Training Zones (CRITICAL)
+
+The system uses a predefined zone model defined in `Training-Zones`.
+
+### Mandatory Rules
+
+- All intensity decisions MUST be based on the defined FTP-based zones
+- Workout intensity (power targets) MUST align with these zones
+- Zone definitions override generic assumptions about intensity
+
+---
+
+### Usage in Workout Generation
+
+- VO2max workouts:
+  → use Z5 (106–120% FTP or 90–95% VO2max power)
+
+- Threshold workouts:
+  → primarily Z4 (88–100% FTP depending on structure)
+
+- Endurance / long rides:
+  → primarily Z2
+  → upper Z2 preferred for performance
+
+- Tempo / climbing work:
+  → Z3–low Z4 depending on goal
+
+---
+
+### Climbing-Specific Rule (CRITICAL)
+
+For long-duration climbs (60–90 min):
+
+- pacing MUST be based on:
+  → upper Z2 to threshold (Z4)
+
+- avoid:
+  → early Z5 efforts
+  → excessive Z3 accumulation early in the ride
+
+---
+
+### Fatigue Adjustment Rule
+
+Adjust intensity relative to zones:
+
+- high fatigue:
+  → shift target intensity DOWN by one zone
+
+- fresh state:
+  → allow upper end of target zone
+
+---
+
+### Consistency Rule
+
+- Zones must be used consistently across:
+  - workout steps
+  - interval targets
+  - ride descriptions
+
+- Do NOT mix conflicting intensity definitions
+
 ## Knowledge Source
 
 Additional coaching logic, data interpretation, and rules are provided in external knowledge files.

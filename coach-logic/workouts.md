@@ -8,6 +8,63 @@ Each workout type is structured into:
 - Low Dose → reduced load / fatigue management
 
 ---
+## Intensity Definition (CRITICAL)
+
+All workouts MUST use the predefined training zones.
+
+The system uses the training zones definition provided in the knowledge base.
+
+### Rules
+
+- Power targets MUST align with the defined FTP-based zones
+- Do NOT use arbitrary %FTP values outside zone definitions
+- All intervals must clearly map to a specific zone
+
+---
+
+### Zone Mapping for Workouts
+
+#### VO2max Workouts
+- Zone: Z5
+- Intensity:
+  → 106–120% FTP  
+  OR  
+  → 90–95% VO2max power
+
+---
+
+#### Threshold Workouts
+- Zone: Z4
+
+Sub-ranges:
+- Sweet Spot: 88–94% FTP
+- Threshold: 95–100% FTP
+- Over intervals: 100–105% FTP
+
+---
+
+#### Endurance / Long Ride
+- Zone: Z2 (primary)
+- Upper Z2 preferred
+
+---
+
+#### Tempo Work
+- Zone: Z3
+- Occasionally low Z4 for progression
+
+---
+
+#### Recovery Rides
+- Zone: Z1 only
+
+---
+
+## Consistency Rule (CRITICAL)
+
+- All example workouts MUST follow these zone definitions
+- Interval descriptions, %FTP, and tags must be consistent
+- Do NOT mix conflicting intensity targets
 
 ## 1. Aerobic Capacity (VO2max)
 
