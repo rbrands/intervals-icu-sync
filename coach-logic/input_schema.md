@@ -37,24 +37,37 @@ The input JSON consists of the following top-level sections:
   "ftp": number,
   "rolling_ftp": number,
   "eftp": number,
-  "vo2max": number,
-  "p5min": number,
   "w_prime": number,
+  "rolling_w_prime": number,
+  "w_prime_wellness": number,
+  "rolling_p_max": number,
+  "p5min": number,
+  "vo2max": number,
   "weight": number,
   "age": number,
   "sex": "Male | Female",
   "ctl": number,
   "atl": number,
   "resting_hr": number,
+  "lthr": number,
+  "max_hr": number,
   "hrv": number
 }
 
 Notes:
 
-- FTP / eFTP define training intensity zones
-- CTL = fitness, ATL = fatigue
-- VO2max and p5min describe aerobic capacity
+- FTP / eFTP define training intensity zones; rolling_ftp is the 42-day rolling estimate
+- eftp: effective FTP derived from recent ride data (intervals.icu sport model)
+- w_prime: W' (anaerobic work capacity) in joules as set in athlete profile
+- rolling_w_prime: rolling W' estimate derived from recent power data (42-day); reflects actual anaerobic capacity trend
+- w_prime_wellness: W' estimate from the intervals.icu wellness model (taps daily recovery signals like HRV and sleep); typically equals rolling_w_prime unless a separate wellness-based model is active
+- rolling_p_max: rolling maximum 1-second power (42-day)
+- p5min: best 5-minute power from the 42-day power curve in watts
+- CTL = chronic training load (fitness), ATL = acute training load (fatigue)
+- VO2max estimated from p5min and weight using the intervals.icu formula
 - HRV and resting HR indicate recovery state
+- lthr: lactate threshold heart rate (functional threshold HR) in bpm
+- max_hr: athlete's maximum heart rate in bpm; used to define HR zones
 
 ---
 

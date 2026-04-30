@@ -248,7 +248,7 @@ Beiträge willkommen über GitHub Issues oder direkt per Nachricht.
 
 ---
 
-## 🔗 Links
+## Links
 
 - Repository:  
   https://github.com/rbrands/intervals-icu-sync  
