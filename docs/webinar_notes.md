@@ -1,5 +1,5 @@
 # Next Level intervals.icu  
-## Webinar Notes & Companion Guide
+## Webinar Notes & Companion Guide 2026-05
 
 > **Language note:** This document is written in **German** (Deutsch).
 
@@ -202,11 +202,55 @@ Wichtige Komponenten:
 - `fueling_rules.md`  
 - `input_schema.md`  
 - `workouts.md`  
+- `training_zones.md`  
 
 Diese definieren:
 - wie Daten interpretiert werden  
 - wie Entscheidungen entstehen  
 - wie Trainingspläne erzeugt werden  
+
+---
+
+## Der System-Prompt: Modularer Aufbau
+
+**Eine Basis – drei Athleten-Profile**
+
+Der System-Prompt ist bewusst in zwei Teile getrennt:
+
+### Basis-Prompt (`system_prompt.md`)
+
+- bleibt **stabil**  
+- enthält die Coaching-Identität und alle Entscheidungsregeln  
+- enthält einen **Platzhalter**:
+
+```
+## Athlete Profile
+
+<<INSERT DISCIPLINE BLOCK>>
+```
+
+### Discipline-Module
+
+Vor jeder Coaching-Sitzung wird der passende Athleten-Block in den Platzhalter kopiert:
+
+| Datei | Athleten-Typ |
+|---|---|
+| `discipline_climber.md` | Kletterer / FTP-Fokus, lange Anstiege |
+| `discipline_criterium.md` | Criterium / W', Wiederholbarkeit |
+| `discipline_roadrace.md` | Straßenrennen / aerobe Ausdauer + FTP |
+
+### Vorgehen
+
+1. `system_prompt.md` öffnen  
+2. Inhalt der passenden `discipline_*.md` in den Platzhalter kopieren  
+3. Vollständigen Prompt im GenAI-Tool als System-Prompt setzen  
+
+**Warum so?**
+
+Die Coaching-Logik (Regeln, Prinzipien, Entscheidungsrahmen) ist für alle Athleten identisch.  
+Nur Ziel, Priorisierung und disziplinspezifische Regeln variieren.
+
+> Basis bleibt stabil. Discipline-Block wird vor jeder Sitzung in den Platzhalter kopiert.
 
 ---
 

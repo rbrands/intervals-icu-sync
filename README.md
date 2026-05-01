@@ -104,6 +104,7 @@ intervals-icu-sync/
 │   ├── input_schema.md             # JSON input schema description for the AI coach
 │   └── workouts.md                 # Example workouts by domain and dose level (with tags)
 ├── docs/
+│   ├── 2026-05 Next Level intervals-icu.pdf  # Webinar slides (German)
 │   └── webinar_notes.md            # Webinar companion guide (German)
 ├── notebooks/
 │   └── week_summary.ipynb          # Interactive weekly training overview
@@ -425,6 +426,14 @@ jupyter lab notebooks/week_summary.ipynb
 ---
 
 ## Docs
+
+### `docs/2026-05 Next Level intervals-icu.pdf`
+
+> **Language:** German (Deutsch)
+
+Slides des Webinars *„Next Level intervals.icu – Vom Datenchaos zur Coaching-Entscheidung“* (Mai 2026).
+
+---
 
 ### `docs/webinar_notes.md`
 
