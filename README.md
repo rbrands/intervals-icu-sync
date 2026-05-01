@@ -37,7 +37,23 @@ For the analysis to work properly, the following conditions should be met:
 
 The coaching system is split across two directories:
 
-**`prompts/system_prompt.md`** — The complete system prompt to be provided to the LLM (ChatGPT, Claude, etc.). It references and combines the modular logic files below and defines the expected JSON output format for the training plan.
+**`prompts/system_prompt.md`** — The base system prompt for the LLM (ChatGPT, Claude, etc.). It contains a placeholder block:
+
+```
+## Athlete Profile
+
+<<INSERT ATHLETE / DISCIPLINE BLOCK HERE>>
+```
+
+Before passing the prompt to the coach, copy the contents of the matching `discipline_*.md` file into that block:
+
+| File | Athlete type |
+|---|---|
+| `discipline_climber.md` | Climber / FTP-focused athlete |
+| `discipline_criterium.md` | Criterium racer / W\' and repeatability focus |
+| `discipline_roadrace.md` | Road racer / aerobic durability and FTP focus |
+
+This keeps the base prompt stable while allowing the athlete profile to be swapped out per use.
 
 **`coach-logic/`** — Modular documentation of the coaching domain knowledge:
 
@@ -75,7 +91,10 @@ intervals-icu-sync/
 │   ├── wbal_analysis.py            # Compute W'bal time series from power stream
 │   └── prepare_week_for_coach.py   # Run all scripts in sequence
 ├── prompts/
-│   └── system_prompt.md            # System prompt for the AI coach (LLM instructions)
+│   ├── system_prompt.md            # System prompt for the AI coach (LLM instructions)
+│   ├── discipline_climber.md       # Athlete profile block: climber / FTP focus
+│   ├── discipline_criterium.md     # Athlete profile block: criterium / W' focus
+│   └── discipline_roadrace.md      # Athlete profile block: road race / durability focus
 ├── coach-logic/
 │   ├── training_philosophy.md      # Underlying training principles (Joe Friel)
 │   ├── coach_logic.md              # Coaching logic, interpretation & decision framework
