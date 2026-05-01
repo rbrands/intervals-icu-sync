@@ -47,6 +47,7 @@ The coaching system is split across two directories:
 | `coach_logic.md` | Coaching logic, data interpretation and decision framework |
 | `decision_enginde.md` | How the coach makes training decisions based on input data |
 | `fueling_rules.md` | Fueling evaluation rules and their coaching impact |
+| `training_zones.md` | Power, HR and RPE zone definitions used by the coach |
 | `input_schema.md` | Description of the JSON input schema passed to the coach |
 | `workouts.md` | Example workouts for key training domains (VO2max, threshold, endurance etc.) with dose levels and tags |
 
@@ -80,15 +81,19 @@ intervals-icu-sync/
 │   ├── coach_logic.md              # Coaching logic, interpretation & decision framework
 │   ├── decision_enginde.md         # Decision engine: how the coach makes training decisions
 │   ├── fueling_rules.md            # Fueling evaluation rules and their coaching impact
+│   ├── training_zones.md           # Power, HR and RPE zone definitions
 │   ├── input_schema.md             # JSON input schema description for the AI coach
 │   └── workouts.md                 # Example workouts by domain and dose level (with tags)
+├── docs/
+│   └── webinar_notes.md            # Webinar companion guide (German)
 ├── notebooks/
 │   └── week_summary.ipynb          # Interactive weekly training overview
 ├── src/
 │   └── intervals_icu/
 │       ├── __init__.py
 │       ├── client.py               # HTTP client (intervals.icu API)
-│       └── config.py               # Loads API_KEY, ATHLETE_ID from .env
+│       ├── config.py               # Loads API_KEY, ATHLETE_ID from .env
+│       └── wbal.py                 # Shared W'bal computation (Skiba differential model)
 ├── data/
 │   ├── raw/                        # Raw API responses (git-ignored)
 │   ├── processed/                  # Derived JSON exports (git-ignored)
@@ -397,3 +402,15 @@ Run `prepare_week_for_coach.py` first to generate the input file, then open the 
 python scripts/prepare_week_for_coach.py
 jupyter lab notebooks/week_summary.ipynb
 ```
+
+---
+
+## Docs
+
+### `docs/webinar_notes.md`
+
+> **Language:** German (Deutsch)
+
+Webinar companion guide for *„Next Level intervals.icu – Vom Datenchaos zur Coaching-Entscheidung“*.
+
+Covers the core workflow: fetching data from intervals.icu, enriching it with the AI coach logic, generating a weekly training plan, and uploading it back to the calendar. Intended as a readable walkthrough for participants who want to understand or reproduce the setup without a live demo.

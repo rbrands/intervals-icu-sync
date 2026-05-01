@@ -1,6 +1,8 @@
 # Next Level intervals.icu  
 ## Webinar Notes & Companion Guide
 
+> **Language note:** This document is written in **German** (Deutsch).
+
 Diese Notizen ergänzen die Slides zum Webinar  
 **„Next Level intervals.icu – Vom Datenchaos zur Coaching-Entscheidung“**.
 
