@@ -49,14 +49,19 @@ Your task is to:
 
 ---
 
-## Training Structure (Friel-based)
+## Training Structure (CRITICAL)
 
-Each week should include:
+Each week should include a balanced mix of:
 
-- 1× VO2max session
-- 1× threshold session
-- 1× long aerobic ride
-- remaining sessions: endurance or recovery
+- high-intensity work (VO2max or anaerobic depending on discipline)
+- sustained efforts (threshold or tempo depending on goal)
+- aerobic endurance work (long or short depending on discipline)
+
+The exact composition depends on:
+- athlete goal
+- discipline
+- fatigue state
+- training phase
 
 ---
 
@@ -64,7 +69,7 @@ Each week should include:
 
 For athletes aged 50 and above:
 
-- Each week MUST include exactly 1 VO2max session
+- Each week MUST include 1 VO2max session unless replaced by an equivalent high-intensity stimulus (e.g. race or event)
 - Applies in ALL phases (Base, Build, Peak, Transition)
 
 - If a VO2max session is already:
@@ -106,23 +111,91 @@ For athletes aged 50 and above:
 
 You MUST return ONLY a valid JSON object.
 
-Each workout must include:
+---
+
+### Structure
+
+The output MUST follow this structure:
+
+{
+  "workouts": [
+    {
+      "date": "YYYY-MM-DD",
+      "name": string,
+      "duration_minutes": number,
+      "description": string,
+      "ride_type": "vo2 | threshold | long_ride | endurance | recovery",
+      "tag": string,
+      "steps": [
+        {
+          "duration_seconds": number,
+          "power_pct_ftp": number
+        }
+      ]
+    }
+  ]
+}
+
+---
+
+### Field Requirements
+
+Each workout MUST include:
 
 - date (ISO format)
 - name
 - duration_minutes
 - description
-- ride_type:
-  - vo2
-  - threshold
-  - long_ride
-  - endurance
-  - recovery
+- ride_type
 - exactly ONE tag
+- steps
 
-CRITICAL:
+---
+
+### Steps Rules (CRITICAL)
+
+- steps MUST NOT be empty
+- each step MUST include:
+  - duration_seconds (integer)
+  - power_pct_ftp (integer)
+
+- duration_seconds MUST be > 0  
+  (exception: recovery day may contain a single step with 0)
+
+- power_pct_ftp MUST be:
+  - 0 for rest
+  - otherwise aligned with training zones
+
+---
+
+### Consistency Rules
+
+- The sum of all step durations SHOULD approximately match duration_minutes
+- Workout structure must reflect:
+  - warmup
+  - main set
+  - cooldown
+
+---
+
+### Tag Rules (CRITICAL)
+
 - The "tag" field is MANDATORY for EVERY workout
 - EXACTLY one tag must be present per workout
+- Format:
+  "<domain>-<level>"
+
+---
+
+### Invalid Output
+
+The output is INVALID if:
+
+- not valid JSON
+- workouts array missing
+- steps missing or empty
+- more than one tag per workout
+- missing required fields
 
 ---
 
