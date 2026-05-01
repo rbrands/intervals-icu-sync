@@ -134,7 +134,15 @@ def _classify_decoupling(value: float) -> str:
 def _classify_ride(activity: dict) -> str:
     raw = activity.get("interval_summary") or ""
     summary = " ".join(raw) if isinstance(raw, list) else raw
+    tags = [t.lower() for t in (activity.get("tags") or [])]
     z5_plus = _z5_plus_pct(activity)
+    # Tag-based override (takes priority over heuristics)
+    if any(t.startswith("vo2") for t in tags):
+        return "vo2max"
+    if any(t.startswith("lactate-threshold") or t.startswith("lactate_threshold")
+           or t.startswith("lactate-treshold") or t.startswith("lactate_treshold") for t in tags):
+        return "threshold"
+    # Interval-summary heuristics
     if (re.search(r"\b(1m|2m|3m|4m)", summary) or "110%" in summary) and z5_plus > 5:
         return "vo2max"
     if re.search(r"\b([89]m|[1-9][0-9]m)", summary):

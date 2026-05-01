@@ -86,10 +86,18 @@ def classify_ride(activity: dict) -> str:
     if isinstance(summary, list):
         summary = " ".join(summary)
     summary_lower = summary.lower()
+    tags = [t.lower() for t in (activity.get("tags") or [])]
 
     has_long_intervals = any(p in summary_lower for p in _LONG_INTERVAL_PATTERNS)
     has_vo2_intervals = any(p in summary_lower for p in _SHORT_INTERVAL_PATTERNS)
     has_sprint_intervals = any(p in summary_lower for p in _SPRINT_PATTERNS)
+
+    # 0. Tag-based override — most explicit signal
+    if any(t.startswith("vo2") for t in tags):
+        return "vo2"
+    if any(t.startswith("lactate-threshold") or t.startswith("lactate_threshold")
+           or t.startswith("lactate-treshold") or t.startswith("lactate_treshold") for t in tags):
+        return "threshold"
 
     # 1. Long ride — highest priority
     if duration >= 2.5 and z1_z2 > 75:
@@ -162,8 +170,9 @@ def analyze_activity(activity: dict) -> dict:
 
 def summarize_week(analyses: list) -> dict:
     long_rides = [a for a in analyses if a["is_long_ride"]]
-    valid_cph = [a["carbs_per_hour"] for a in long_rides if a["carbs_per_hour"] > 0]
-    valid_ratio = [a["fueling_ratio"] for a in long_rides if a["fueling_ratio"] is not None]
+    all_cph = [a["carbs_per_hour"] for a in analyses if a["carbs_per_hour"] is not None and a["carbs_per_hour"] > 0]
+    valid_cph = all_cph  # average across all sessions, not only long rides
+    valid_ratio = [a["fueling_ratio"] for a in analyses if a["fueling_ratio"] is not None]
     underfueled = sum(1 for a in long_rides if "underfueled long ride" in a["flags"])
 
     return {
