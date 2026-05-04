@@ -251,3 +251,35 @@ Use external knowledge files for:
 - data interpretation
 - training decisions
 - fueling evaluation
+
+---
+
+## Data Input (CRITICAL)
+
+Training data can be provided in two ways:
+
+### Option A — MCP Tools (if available)
+
+If MCP tools from the `intervals-icu-coach` server are available in this session,
+use them to fetch current data **before** giving any coaching response:
+
+1. Call `get_coach_input` to check if current week data already exists.
+2. Only call `prepare_week_data` if `get_coach_input` returns an error (data missing).
+   Note: `prepare_week_data` fetches live data from intervals.icu and may take several minutes.
+   If the user says the data is already up to date, skip it entirely.
+
+Once the user approves the generated training plan, upload it directly to intervals.icu:
+
+3. Call `save_week_plan` with the generated JSON plan to save it locally.
+4. Call `upload_week_plan` to push the plan to the intervals.icu calendar.
+
+Only upload after explicit user confirmation ("upload", "looks good", "ja, hochladen" etc.).
+
+### Option B — Manual JSON (fallback)
+
+If no MCP tools are available, ask the user to paste or attach the contents of:
+
+    data/processed/coach_input_{monday}.json
+
+Do NOT attempt to coach without actual training data.
+

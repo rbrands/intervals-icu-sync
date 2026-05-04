@@ -89,7 +89,8 @@ intervals-icu-sync/
 │   ├── fueling_planner.py          # Generate carbohydrate targets per session
 │   ├── upload_plan.py              # Upload JSON training plan to intervals.icu
 │   ├── wbal_analysis.py            # Compute W'bal time series from power stream
-│   └── prepare_week_for_coach.py   # Run all scripts in sequence
+│   ├── prepare_week_for_coach.py   # Run all scripts in sequence
+│   └── mcp_server.py               # FastMCP server exposing data as tools/resources
 ├── prompts/
 │   ├── system_prompt.md            # System prompt for the AI coach (LLM instructions)
 │   ├── discipline_climber.md       # Athlete profile block: climber / FTP focus
@@ -366,6 +367,137 @@ python scripts/wbal_analysis.py --id i143131711 --plot
 ```
 
 Output: `data/processed/wbal_{activity_id}.json`
+
+---
+
+### `mcp_server.py`
+
+Exposes the weekly training data pipeline as an **MCP (Model Context Protocol) server** using [FastMCP](https://github.com/jlowin/fastmcp). This allows AI assistants (Claude Desktop, VS Code Copilot, etc.) to directly fetch, analyse, and discuss your training data without any manual file sharing.
+
+#### Tools
+
+| Tool | Description |
+|---|---|
+| `prepare_week_data` | Runs the full pipeline (all scripts in order) and consolidates the result. Equivalent to `prepare_week_for_coach.py`. |
+| `get_coach_input` | Returns the consolidated `coach_input_{monday}.json` as JSON. Accepts an optional `monday` parameter (ISO date, defaults to current week). |
+| `get_fueling_analysis` | Returns the fueling analysis JSON for a specific week (defaults to current). |
+| `get_latest_metrics` | Returns the most recent metrics file (CTL, ATL, TSB, FTP, HRV, etc.). |
+| `save_week_plan` | Validates and saves a coach-generated training plan JSON to `data/plans/week_plan.json`. |
+| `upload_week_plan` | Uploads the saved `week_plan.json` to intervals.icu. Supports `dry_run` and `clear` flags. |
+
+#### End-to-end workflow via MCP
+
+```
+1. prepare_week_data      → fetch & consolidate data from intervals.icu
+2. get_coach_input        → load data into Claude's context
+3. [Claude generates plan, user reviews and confirms]
+4. save_week_plan         → validate and save the plan to data/plans/week_plan.json
+5. upload_week_plan       → push the plan to the intervals.icu calendar
+```
+
+Claude will only call `save_week_plan` and `upload_week_plan` after explicit user confirmation.
+To preview the upload without making API calls, pass `dry_run=true` to `upload_week_plan`.
+
+#### Resources
+
+| URI | Description |
+|---|---|
+| `coach://input/current` | Current week's consolidated coach input. |
+| `coach://fueling/current` | Current week's fueling analysis. |
+| `coach://metrics/latest` | Most recent athlete performance metrics. |
+
+#### Running the server
+
+```bash
+# Directly
+python scripts/mcp_server.py
+
+# Via the MCP CLI
+mcp run scripts/mcp_server.py
+
+# Inspect available tools interactively
+mcp dev scripts/mcp_server.py
+```
+
+#### Use with Claude Desktop (step-by-step)
+
+[Claude Desktop](https://claude.ai/download) is currently the only ready-to-use desktop AI client that supports connecting to local MCP servers. ChatGPT (web and desktop) does **not** support local MCP servers — OpenAI's MCP support exists only in their developer API, not in the chat interface.
+
+**1 — One-time setup: configure the server**
+
+Open (or create) the Claude Desktop config file:
+
+| OS | Path |
+|---|---|
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+
+Add the following block, replacing the path with the absolute path to your project folder:
+
+```json
+{
+  "mcpServers": {
+    "intervals-icu-coach": {
+      "command": "C:\\Users\\<you>\\source\\repos\\rbrands\\intervals-icu-sync\\.venv\\Scripts\\python.exe",
+      "args": ["C:\\Users\\<you>\\source\\repos\\rbrands\\intervals-icu-sync\\scripts\\mcp_server.py"]
+    }
+  }
+}
+```
+
+> **Tip:** Use the full path to the `.venv` Python executable (not the system Python) so the correct virtual environment is used automatically. The server is started by Claude Desktop on launch — you don't need to start it manually.
+
+**2 — Weekly workflow**
+
+```bash
+# Step 1: fetch current training data (run once in terminal before opening Claude)
+python scripts/prepare_week_for_coach.py
+
+# Step 2: open Claude Desktop — the MCP server starts automatically
+```
+
+In Claude, attach `prompts/system_prompt.md` (and optionally a discipline prompt from `prompts/`) and send your request, e.g.:
+
+> *"Analysiere meine Trainingswoche und erstelle einen Plan für die kommende Woche."*
+
+Claude will then:
+1. Call `get_coach_input` to load the pre-prepared data (instant file read).
+2. Analyse activities, metrics, fueling and the active training plan.
+3. Generate a weekly plan and ask for your confirmation.
+4. After confirmation: call `save_week_plan` → `upload_week_plan` to push the plan to intervals.icu.
+
+> **Note:** `prepare_week_data` is also available as an MCP tool if the data files are missing, but it takes several minutes and may hit Claude Desktop's request timeout. Running `prepare_week_for_coach.py` manually beforehand is the recommended approach.
+
+#### Use with ChatGPT (SSE mode, optional)
+
+ChatGPT's MCP connector (currently in limited beta — not available to all users) requires an HTTP/SSE endpoint, not stdio. The server supports this via the `MCP_TRANSPORT` environment variable.
+
+**Start in SSE mode (PowerShell):**
+
+```powershell
+$env:MCP_TRANSPORT = "sse"
+$env:FASTMCP_HOST  = "127.0.0.1"
+$env:FASTMCP_PORT  = "8765"
+python scripts/mcp_server.py
+```
+
+The server will print the SSE URL (e.g. `http://127.0.0.1:8765/sse`).
+
+**Make it publicly reachable** (ChatGPT needs a public URL — `localhost` is not enough):
+
+```bash
+ngrok http 8765
+# → https://<random-id>.ngrok-free.app
+```
+
+**Add the connector in ChatGPT:**
+
+1. *Settings → Features → Custom MCP Connectors → Add*
+2. Name: `Intervals.icu Coach`
+3. MCP Server URL: `https://<your-ngrok-url>/sse`
+4. Authentication: *None*
+
+> **Note:** The free ngrok plan generates a new URL on every restart. A paid ngrok plan or a self-hosted reverse proxy gives you a stable URL. Running the server publicly exposes your local machine, so only do this on a trusted network.
 
 ---
 
