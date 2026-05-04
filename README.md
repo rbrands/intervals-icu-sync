@@ -372,9 +372,48 @@ Output: `data/processed/wbal_{activity_id}.json`
 
 ### `mcp_server.py`
 
-Exposes the weekly training data pipeline as an **MCP (Model Context Protocol) server** using [FastMCP](https://github.com/jlowin/fastmcp). This allows AI assistants (Claude Desktop, VS Code Copilot, etc.) to directly fetch, analyse, and discuss your training data without any manual file sharing.
+FastMCP server that exposes the training data pipeline and plan upload as MCP tools. Allows AI assistants to fetch, analyse, and discuss training data without any manual file copying. See [MCP Server Integration](#mcp-server-integration) for setup and usage.
 
-#### Tools
+---
+
+### `upload_plan.py`
+
+Uploads a JSON training plan to intervals.icu as planned WORKOUT events.
+
+Reads from `data/plans/week_plan.json` by default (or any path passed via `--plan`). The plan file is git-ignored; the `data/plans/` folder is tracked via a `.gitkeep` file.
+
+Each entry in the JSON file must have:
+- `date` — ISO 8601 datetime string, e.g. `"2026-04-12T09:00:00"`
+- `name` — display name shown in intervals.icu
+- `duration_minutes` — planned duration (integer or float)
+
+Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate"]`), `steps` (structured workout intervals → uploaded as a ZWO file).
+
+Duplicate handling: before creating events, the script fetches existing WORKOUT events for the date range and indexes them by `(name, date)`. If a match is found the existing event is updated (`PUT`); otherwise a new event is created (`POST`). Re-running the script is safe and will never produce duplicates.
+
+```bash
+# Preview without making API calls
+python scripts/upload_plan.py --dry-run
+
+# Upload the default plan
+python scripts/upload_plan.py
+
+# Upload a custom plan file
+python scripts/upload_plan.py --plan data/plans/my_plan.json
+
+# Delete all WORKOUT events for the date range, then re-upload
+python scripts/upload_plan.py --clear
+```
+
+Output: one `Created` or `Updated` line per workout, summary of counts.
+
+---
+
+## MCP Server Integration
+
+To avoid manually copying JSON files between scripts and the AI coach, the project provides an **MCP (Model Context Protocol) server** (`scripts/mcp_server.py`) built with [FastMCP](https://github.com/jlowin/fastmcp). Instead of running scripts, exporting files, and pasting their contents into a chat window, the AI assistant calls the server's tools directly — it fetches training data, receives the results in-context, generates a plan, and uploads it to intervals.icu, all within a single conversation.
+
+### Tools
 
 | Tool | Description |
 |---|---|
@@ -385,20 +424,7 @@ Exposes the weekly training data pipeline as an **MCP (Model Context Protocol) s
 | `save_week_plan` | Validates and saves a coach-generated training plan JSON to `data/plans/week_plan.json`. |
 | `upload_week_plan` | Uploads the saved `week_plan.json` to intervals.icu. Supports `dry_run` and `clear` flags. |
 
-#### End-to-end workflow via MCP
-
-```
-1. prepare_week_data      → fetch & consolidate data from intervals.icu
-2. get_coach_input        → load data into Claude's context
-3. [Claude generates plan, user reviews and confirms]
-4. save_week_plan         → validate and save the plan to data/plans/week_plan.json
-5. upload_week_plan       → push the plan to the intervals.icu calendar
-```
-
-Claude will only call `save_week_plan` and `upload_week_plan` after explicit user confirmation.
-To preview the upload without making API calls, pass `dry_run=true` to `upload_week_plan`.
-
-#### Resources
+### Resources
 
 | URI | Description |
 |---|---|
@@ -406,20 +432,20 @@ To preview the upload without making API calls, pass `dry_run=true` to `upload_w
 | `coach://fueling/current` | Current week's fueling analysis. |
 | `coach://metrics/latest` | Most recent athlete performance metrics. |
 
-#### Running the server
+### End-to-end workflow
 
-```bash
-# Directly
-python scripts/mcp_server.py
-
-# Via the MCP CLI
-mcp run scripts/mcp_server.py
-
-# Inspect available tools interactively
-mcp dev scripts/mcp_server.py
+```
+1. prepare_week_data      → fetch & consolidate data from intervals.icu
+2. get_coach_input        → load data into the AI's context
+3. [AI generates plan, user reviews and confirms]
+4. save_week_plan         → validate and save the plan to data/plans/week_plan.json
+5. upload_week_plan       → push the plan to the intervals.icu calendar
 ```
 
-#### Use with Claude Desktop (step-by-step)
+The AI will only call `save_week_plan` and `upload_week_plan` after explicit user confirmation.  
+To preview the upload without making API calls, pass `dry_run=true` to `upload_week_plan`.
+
+### Use with Claude Desktop
 
 [Claude Desktop](https://claude.ai/download) is currently the only ready-to-use desktop AI client that supports connecting to local MCP servers. ChatGPT (web and desktop) does **not** support local MCP servers — OpenAI's MCP support exists only in their developer API, not in the chat interface.
 
@@ -468,7 +494,7 @@ Claude will then:
 
 > **Note:** `prepare_week_data` is also available as an MCP tool if the data files are missing, but it takes several minutes and may hit Claude Desktop's request timeout. Running `prepare_week_for_coach.py` manually beforehand is the recommended approach.
 
-#### Use with ChatGPT (SSE mode, optional)
+### Use with ChatGPT (SSE mode, optional)
 
 ChatGPT's MCP connector (currently in limited beta — not available to all users) requires an HTTP/SSE endpoint, not stdio. The server supports this via the `MCP_TRANSPORT` environment variable.
 
@@ -499,38 +525,16 @@ ngrok http 8765
 
 > **Note:** The free ngrok plan generates a new URL on every restart. A paid ngrok plan or a self-hosted reverse proxy gives you a stable URL. Running the server publicly exposes your local machine, so only do this on a trusted network.
 
----
-
-### `upload_plan.py`
-
-Uploads a JSON training plan to intervals.icu as planned WORKOUT events.
-
-Reads from `data/plans/week_plan.json` by default (or any path passed via `--plan`). The plan file is git-ignored; the `data/plans/` folder is tracked via a `.gitkeep` file.
-
-Each entry in the JSON file must have:
-- `date` — ISO 8601 datetime string, e.g. `"2026-04-12T09:00:00"`
-- `name` — display name shown in intervals.icu
-- `duration_minutes` — planned duration (integer or float)
-
-Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate"]`), `steps` (structured workout intervals → uploaded as a ZWO file).
-
-Duplicate handling: before creating events, the script fetches existing WORKOUT events for the date range and indexes them by `(name, date)`. If a match is found the existing event is updated (`PUT`); otherwise a new event is created (`POST`). Re-running the script is safe and will never produce duplicates.
+### Running the server manually
 
 ```bash
-# Preview without making API calls
-python scripts/upload_plan.py --dry-run
+# stdio mode (default, used by Claude Desktop)
+python scripts/mcp_server.py
 
-# Upload the default plan
-python scripts/upload_plan.py
-
-# Upload a custom plan file
-python scripts/upload_plan.py --plan data/plans/my_plan.json
-
-# Delete all WORKOUT events for the date range, then re-upload
-python scripts/upload_plan.py --clear
+# SSE mode (for ChatGPT or other HTTP clients)
+# Windows PowerShell:
+$env:MCP_TRANSPORT = "sse"; python scripts/mcp_server.py
 ```
-
-Output: one `Created` or `Updated` line per workout, summary of counts.
 
 ---
 
