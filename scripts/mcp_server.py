@@ -54,13 +54,18 @@ def _load_json_file(path: Path) -> dict | list | None:
     return None
 
 
-def _run_script(script: str) -> tuple[bool, str]:
+def _run_script(script: str, timeout: int = 60) -> tuple[bool, str]:
     """Run a script from SCRIPTS_DIR. Returns (success, output)."""
-    result = subprocess.run(
-        [sys.executable, str(SCRIPTS_DIR / script)],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / script)],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            stdin=subprocess.DEVNULL,  # prevent scripts from blocking on stdin
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"Timeout after {timeout}s"
     output = result.stdout + (f"\nSTDERR: {result.stderr}" if result.stderr.strip() else "")
     return result.returncode == 0, output.strip()
 
