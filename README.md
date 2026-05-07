@@ -151,6 +151,16 @@ cp .env.example .env
 - **API_KEY**: found in intervals.icu under **Settings → Developer Settings**
 - **ATHLETE_ID**: your athlete ID, also under **Settings → Developer Settings**
 
+> **Only needed if you use the MCP server with a Cloudflare tunnel (or other reverse proxy):**
+>
+> ```
+> FASTMCP_ALLOWED_HOST=your-tunnel-hostname.example.com
+> ```
+>
+> Set this to the public hostname of your tunnel (e.g. `intervals-icu-mcp-local.my-brands.com`).
+> The MCP server uses it to accept incoming requests that carry that `Host` header.
+> Leave it unset if you only run the MCP server locally (no tunnel).
+
 ## Data Flow
 
 ```mermaid

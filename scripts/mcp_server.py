@@ -25,14 +25,23 @@ sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(SCRIPTS_DIR))  # allow direct import of scripts
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.server import TransportSecuritySettings
 import upload_plan as _upload_plan  # direct import – no subprocess overhead
 PROCESSED_DIR = _ROOT / "data" / "processed"
 PLANS_DIR = _ROOT / "data" / "plans"
+
+# Build allowed_hosts: always include localhost variants, plus any extra host
+# configured via FASTMCP_ALLOWED_HOST (e.g. the Cloudflare tunnel hostname).
+_extra_host = os.environ.get("FASTMCP_ALLOWED_HOST", "")
+_allowed_hosts: list[str] = ["127.0.0.1", "localhost"]
+if _extra_host:
+    _allowed_hosts.append(_extra_host)
 
 mcp = FastMCP(
     "intervals-icu-coach",
     host=os.environ.get("FASTMCP_HOST", "127.0.0.1"),
     port=int(os.environ.get("FASTMCP_PORT", "8000")),
+    transport_security=TransportSecuritySettings(allowed_hosts=_allowed_hosts),
 )
 
 

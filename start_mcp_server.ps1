@@ -28,7 +28,19 @@ if (-not (Test-Path $python)) {
     $python = "python"
 }
 
-$cmd = "`$env:MCP_TRANSPORT='sse'; `$env:FASTMCP_HOST='127.0.0.1'; `$env:FASTMCP_PORT='8765'; & '$python' '$PSScriptRoot\scripts\mcp_server.py'"
+# Read FASTMCP_ALLOWED_HOST from .env (if present)
+$allowedHost = ""
+$envFile = "$PSScriptRoot\.env"
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^FASTMCP_ALLOWED_HOST=(.+)$') {
+            $allowedHost = $Matches[1].Trim()
+        }
+    }
+}
+
+$allowedHostFragment = if ($allowedHost) { "`$env:FASTMCP_ALLOWED_HOST='$allowedHost'; " } else { "" }
+$cmd = "`$env:MCP_TRANSPORT='sse'; `$env:FASTMCP_HOST='127.0.0.1'; `$env:FASTMCP_PORT='8765'; ${allowedHostFragment}& '$python' '$PSScriptRoot\scripts\mcp_server.py'"
 
 $proc = Start-Process pwsh `
     -ArgumentList "-NoExit", "-Command", $cmd `

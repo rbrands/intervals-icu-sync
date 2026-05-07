@@ -178,6 +178,7 @@ def classify_ride(
         classify_ride(92, 5, 1)   -> {"label": "Base",      "reason": ...}
         classify_ride(75, 10, 12) -> {"label": "Polarized", "reason": ...}
         classify_ride(65, 30, 3)  -> {"label": "Threshold", "reason": ...}
+        classify_ride(66, 21, 0)  -> {"label": "Threshold", "reason": ...}
         classify_ride(50, 20, 25) -> {"label": "HIIT",      "reason": ...}
         classify_ride(72, 20, 5)  -> {"label": "Pyramidal", "reason": ...}
         classify_ride(60, 20, 8)  -> {"label": "Unique",    "reason": ...}
@@ -194,8 +195,8 @@ def classify_ride(
         return {"label": "Polarized", "reason": f"Z1+2 {z1_z2_pct}% >= 70% and Z5+ {z5_plus_pct}% >= 10%"}
 
     # 3. Threshold: heavy middle-zone load
-    if z3_z4_pct >= 25:
-        return {"label": "Threshold", "reason": f"Z3+4 {z3_z4_pct}% >= 25%"}
+    if z3_z4_pct >= 20:
+        return {"label": "Threshold", "reason": f"Z3+4 {z3_z4_pct}% >= 20%"}
 
     # 4. Pyramidal: mostly easy with moderate middle zone, low Z5+
     if z1_z2_pct >= 70 and z3_z4_pct >= 10 and z5_plus_pct < 10:
