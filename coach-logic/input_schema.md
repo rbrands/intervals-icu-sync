@@ -10,6 +10,7 @@ The goal is to ensure consistent interpretation of training data across all anal
 
 The input JSON consists of the following top-level sections:
 
+- schema_version
 - week_starting
 - current_date
 - metrics
@@ -21,6 +22,10 @@ The input JSON consists of the following top-level sections:
 ---
 
 ## 1. Week and day Identifier
+
+"schema_version": string
+- Version of the coach input schema (from the VERSION file in the repository root)
+- Use this to detect breaking changes in the data format
 
 "week_starting": "YYYY-MM-DD"
 - Start date of the current training week

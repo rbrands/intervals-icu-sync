@@ -30,6 +30,9 @@ import upload_plan as _upload_plan  # direct import – no subprocess overhead
 PROCESSED_DIR = _ROOT / "data" / "processed"
 PLANS_DIR = _ROOT / "data" / "plans"
 
+_VERSION_FILE = _ROOT / "VERSION"
+_SCHEMA_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip() if _VERSION_FILE.exists() else "unknown"
+
 # Build allowed_hosts: always include localhost variants, plus any extra host
 # configured via FASTMCP_ALLOWED_HOST (e.g. the Cloudflare tunnel hostname).
 _extra_host = os.environ.get("FASTMCP_ALLOWED_HOST", "")
@@ -171,6 +174,7 @@ def prepare_week_data() -> str:
     activities = activities_data if isinstance(activities_data, list) else (activities_data or {}).get("activities")
 
     coach_input = {
+        "schema_version": _SCHEMA_VERSION,
         "week_starting": monday_str,
         "current_date": today.isoformat(),
         "metrics": metrics,

@@ -7,7 +7,11 @@ from datetime import date, timedelta
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
-PROCESSED_DIR = SCRIPTS_DIR.parent / "data" / "processed"
+_ROOT = SCRIPTS_DIR.parent
+PROCESSED_DIR = _ROOT / "data" / "processed"
+
+_VERSION_FILE = _ROOT / "VERSION"
+_SCHEMA_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip() if _VERSION_FILE.exists() else "unknown"
 
 
 def run(script: str) -> None:
@@ -101,6 +105,7 @@ def consolidate() -> None:
     activities = activities_data if isinstance(activities_data, list) else (activities_data or {}).get("activities")
 
     coach_input = {
+        "schema_version": _SCHEMA_VERSION,
         "week_starting": monday_str,
         "current_date": date.today().isoformat(),
         "metrics": metrics,
