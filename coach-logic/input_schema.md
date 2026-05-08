@@ -56,7 +56,9 @@ The input JSON consists of the following top-level sections:
   "resting_hr": number,
   "lthr": number,
   "max_hr": number,
-  "hrv": number
+  "hrv": number,
+  "sleep_secs": number,
+  "sleep_quality": number
 }
 
 Notes:
@@ -73,6 +75,8 @@ Notes:
 - HRV and resting HR indicate recovery state
 - lthr: lactate threshold heart rate (functional threshold HR) in bpm
 - max_hr: athlete's maximum heart rate in bpm; used to define HR zones
+- sleep_secs: sleep duration in seconds as synced from Garmin (divide by 3600 for hours)
+- sleep_quality: subjective sleep quality from Garmin, scale 1–4 (1 = GREAT, 2 = GOOD, 3 = AVG, 4 = POOR); lower is better
 
 ---
 

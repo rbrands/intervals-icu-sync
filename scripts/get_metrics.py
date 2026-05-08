@@ -56,6 +56,8 @@ def fetch_wellness() -> dict:
         "hrv": today_entry.get("hrv"),
         "eftp": sport_info.get("eftp"),
         "w_prime_wellness": sport_info.get("wPrime"),
+        "sleep_secs": today_entry.get("sleepSecs"),
+        "sleep_quality": today_entry.get("sleepQuality"),
     }
 
 
