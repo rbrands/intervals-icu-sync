@@ -121,7 +121,9 @@ intervals-icu-sync/
 │   ├── processed/                  # Derived JSON exports (git-ignored)
 │   └── plans/                      # Training plan JSON files
 ├── .env.example
+├── CHANGELOG.md                  # Project change history (Keep a Changelog format)
 ├── requirements.txt
+├── VERSION                       # Current project version (SemVer)
 ├── start_mcp_server.ps1            # Start/stop the MCP server in SSE mode (Windows PowerShell)
 └── README.md
 ```
@@ -160,6 +162,23 @@ cp .env.example .env
 > Set this to the public hostname of your tunnel (e.g. `intervals-icu-mcp-local.my-brands.com`).
 > The MCP server uses it to accept incoming requests that carry that `Host` header.
 > Leave it unset if you only run the MCP server locally (no tunnel).
+
+## Versioning and Releases
+
+This project follows [Semantic Versioning](https://semver.org/).
+
+- Current version source: `VERSION`
+- Change history: `CHANGELOG.md`
+- Release artifacts: Git tags and GitHub Releases
+
+### Release process
+
+1. Add upcoming changes under `## [Unreleased]` in `CHANGELOG.md`.
+2. Bump `VERSION` to the new release version.
+3. Move release-ready entries from `Unreleased` to a dated `## [x.y.z] - YYYY-MM-DD` section.
+4. Commit the release changes.
+5. Create and push the Git tag (for example `v0.1.0`).
+6. Publish a GitHub Release for that tag.
 
 ## Data Flow
 
