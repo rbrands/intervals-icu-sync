@@ -87,8 +87,24 @@ def fetch_metrics_from_activities() -> dict:
     return {}
 
 
-def fetch_5min_power() -> float | None:
-    """Fetch best 5-minute power from the 42-day power curve (matches intervals.icu UI)."""
+_POWER_PROFILE_TARGETS: dict[int, str] = {
+    15: "p15s",
+    30: "p30s",
+    60: "p1min",
+    180: "p3min",
+    300: "p5min",
+    1200: "p20min",
+}
+
+
+def fetch_power_profile() -> dict:
+    """Fetch best-effort power for key durations from the 42-day power curve.
+
+    Returns a dict with keys p15s, p30s, p1min, p3min, p5min, p20min.
+    Each value is a dict with 'watts' (int) and 'w_per_kg' (float).
+    Also includes 'period_days' (int) and 'curve_slope' (float) for the modelled
+    power-over-time slope on a log-log scale (less negative = more anaerobic).
+    """
     r = requests.get(
         f"{BASE_URL}/athlete/{ATHLETE_ID}/power-curves",
         auth=("API_KEY", API_KEY),
@@ -98,11 +114,33 @@ def fetch_5min_power() -> float | None:
     r.raise_for_status()
     curves = r.json().get("list", [])
     if not curves:
-        return None
-    secs = curves[0].get("secs", [])
-    watts = curves[0].get("watts", [])
-    idx = next((i for i, s in enumerate(secs) if s == 300), None)
-    return watts[idx] if idx is not None else None
+        return {}
+
+    curve = curves[0]
+    secs: list[int] = curve.get("secs", [])
+    watts: list[int] = curve.get("watts", [])
+    wkg: list[float] = curve.get("watts_per_kg", [])
+
+    profile: dict = {}
+    for target_sec, key in _POWER_PROFILE_TARGETS.items():
+        if target_sec in secs:
+            i = secs.index(target_sec)
+        else:
+            # Fall back to closest available duration
+            i = min(range(len(secs)), key=lambda x: abs(secs[x] - target_sec))
+        w = watts[i] if i < len(watts) else None
+        wk = wkg[i] if i < len(wkg) else None
+        profile[key] = {
+            "watts": w,
+            "w_per_kg": round(wk, 2) if wk is not None else None,
+        }
+
+    map_plot = curve.get("mapPlot", {})
+    slope = map_plot.get("poSlope")
+    profile["curve_slope"] = round(slope, 4) if slope is not None else None
+    profile["period_days"] = curve.get("days")
+
+    return profile
 
 
 def calc_vo2max_from_power(p5min_watts: float, weight_kg: float) -> float:
@@ -124,8 +162,9 @@ def main() -> None:
     metrics.update(fetch_athlete_info())
     metrics.update(fetch_wellness())
 
-    p5min = fetch_5min_power()
-    metrics["p5min"] = p5min
+    power_profile = fetch_power_profile()
+    metrics["power_profile"] = power_profile
+    p5min = (power_profile.get("p5min") or {}).get("watts")
     if p5min and metrics.get("weight"):
         metrics["vo2max"] = calc_vo2max_from_power(p5min, metrics["weight"])
 
@@ -138,12 +177,20 @@ def main() -> None:
     print(f"Rolling FTP:  {metrics.get('rolling_ftp')} W")
     print(f"eFTP:         {metrics.get('eftp'):.1f} W" if metrics.get("eftp") else "eFTP:         n/a")
     print(f"W':           {metrics.get('w_prime')} J")
-    print(f"5min power:   {metrics.get('p5min')} W (42-day best)")
     print(f"VO2Max:       {metrics.get('vo2max')} (intervals.icu formula)")
     print(f"Age:          {metrics.get('age')} years")
     print(f"Weight:       {metrics.get('weight')} kg")
     print(f"CTL:          {metrics.get('ctl'):.1f}" if metrics.get("ctl") else "CTL:          n/a")
     print(f"ATL:          {metrics.get('atl'):.1f}" if metrics.get("atl") else "ATL:          n/a")
+    print()
+    print("Power Profile (42-day best):")
+    for key, label in [("p15s", "15s"), ("p30s", "30s"), ("p1min", "1min"), ("p3min", "3min"), ("p5min", "5min"), ("p20min", "20min")]:
+        entry = power_profile.get(key, {})
+        w = entry.get("watts")
+        wkg = entry.get("w_per_kg")
+        if w:
+            print(f"  {label:>5}: {w} W  ({wkg} w/kg)")
+    print(f"  Slope:  {power_profile.get('curve_slope')} (log-log, less negative = more anaerobic)")
     print(f"Saved to:     {output_file}")
 
 

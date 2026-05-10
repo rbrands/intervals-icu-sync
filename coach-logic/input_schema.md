@@ -46,8 +46,17 @@ The input JSON consists of the following top-level sections:
   "rolling_w_prime": number,
   "w_prime_wellness": number,
   "rolling_p_max": number,
-  "p5min": number,
   "vo2max": number,
+  "power_profile": {
+    "p15s":  { "watts": number, "w_per_kg": number },
+    "p30s":  { "watts": number, "w_per_kg": number },
+    "p1min": { "watts": number, "w_per_kg": number },
+    "p3min": { "watts": number, "w_per_kg": number },
+    "p5min": { "watts": number, "w_per_kg": number },
+    "p20min": { "watts": number, "w_per_kg": number },
+    "curve_slope": number,
+    "period_days": number
+  },
   "weight": number,
   "age": number,
   "sex": "Male | Female",
@@ -69,9 +78,12 @@ Notes:
 - rolling_w_prime: rolling W' estimate derived from recent power data (42-day); reflects actual anaerobic capacity trend
 - w_prime_wellness: W' estimate from the intervals.icu wellness model (taps daily recovery signals like HRV and sleep); typically equals rolling_w_prime unless a separate wellness-based model is active
 - rolling_p_max: rolling maximum 1-second power (42-day)
-- p5min: best 5-minute power from the 42-day power curve in watts
+- power_profile: best power values for key durations from the 42-day power curve
+  - p15s / p30s / p1min / p3min / p5min / p20min: each with watts and w_per_kg
+  - curve_slope: slope of the power-duration curve on a log-log scale; less negative (e.g. −0.45) = more anaerobic/puncheur, more negative (e.g. −0.70) = more aerobic/climber; typically −0.45 to −0.75
+  - period_days: number of days covered by the curve (typically 42 or 43)
 - CTL = chronic training load (fitness), ATL = acute training load (fatigue)
-- VO2max estimated from p5min and weight using the intervals.icu formula
+- VO2max estimated from power_profile.p5min.watts and weight using the intervals.icu formula
 - HRV and resting HR indicate recovery state
 - lthr: lactate threshold heart rate (functional threshold HR) in bpm
 - max_hr: athlete's maximum heart rate in bpm; used to define HR zones
