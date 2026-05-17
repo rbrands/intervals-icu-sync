@@ -1,11 +1,13 @@
 """Analyze carbohydrate fueling quality for cycling activities from coach_input JSON."""
 
 import json
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+_DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+DATA_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
 
 
 def load_data() -> list:

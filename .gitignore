@@ -213,3 +213,10 @@ __marimo__/
 data/raw/*.json
 data/processed/*.json
 data/plans/*.json
+
+# Deployment configuration (contains secrets / subscription IDs)
+webservice/config.ps1
+webservice/infra/main.local.bicepparam
+
+# VS Code workspace settings (user-specific)
+.vscode/

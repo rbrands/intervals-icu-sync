@@ -1,0 +1,122 @@
+name: Preview Infrastructure Changes
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'webservice/infra/**'
+
+permissions:
+  id-token: write        # required for OIDC
+  contents: read
+  pull-requests: write   # required to post What-If comment
+
+jobs:
+  preview:
+    name: What-If
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if infra changed in this push
+        id: infra_check
+        run: |
+          ACTION="${{ github.event.action }}"
+          if [ "$ACTION" = "opened" ] || [ "$ACTION" = "reopened" ]; then
+            # Always preview when PR is first opened
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            # For synchronize: compare only the new commits in this push
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.event.after }}"
+            if git diff --name-only "$BEFORE" "$AFTER" -- webservice/infra/ | grep -q .; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "No infra changes in this push – skipping What-If preview."
+            fi
+          fi
+
+      - name: Azure Login (OIDC)
+        if: steps.infra_check.outputs.changed == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Lint Bicep
+        if: steps.infra_check.outputs.changed == 'true'
+        run: |
+          az bicep install
+          az bicep lint --file webservice/infra/main.bicep
+
+      - name: What-If
+        if: steps.infra_check.outputs.changed == 'true'
+        id: whatif
+        continue-on-error: true
+        run: |
+          az deployment group what-if \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --template-file webservice/infra/main.bicep \
+            --parameters \
+              appName="${{ secrets.APP_NAME }}" \
+              location="${{ secrets.AZURE_LOCATION }}" \
+              appServicePlanName="${{ secrets.APP_SERVICE_PLAN_NAME }}" \
+            > whatif-output.txt 2>&1
+
+      - name: Post What-If as PR Comment
+        if: steps.infra_check.outputs.changed == 'true' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let raw = '';
+            try {
+              raw = fs.readFileSync('whatif-output.txt', 'utf8');
+            } catch {
+              raw = 'No output captured.';
+            }
+
+            // Strip ANSI colour codes produced by az CLI
+            const clean = raw.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r/g, '');
+            const truncated = clean.length > 60000
+              ? clean.substring(0, 60000) + '\n...(output truncated)'
+              : clean;
+
+            const success = '${{ steps.whatif.outcome }}' === 'success';
+            const icon = success ? '✅' : '❌';
+            const MARKER = '<!-- azure-whatif -->';
+            const body = `${MARKER}\n## ${icon} Azure What-If Results\n\n\`\`\`\n${truncated}\n\`\`\``;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body.includes(MARKER));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail if What-If failed
+        if: steps.infra_check.outputs.changed == 'true' && steps.whatif.outcome == 'failure'
+        run: exit 1

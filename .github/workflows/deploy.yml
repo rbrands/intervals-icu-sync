@@ -1,0 +1,146 @@
+name: Deploy Code
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'webservice/**'
+      - 'scripts/**'
+      - 'src/**'
+      - '!webservice/infra/**'
+      - '!webservice/README.md'
+      - '!webservice/config*.ps1'
+      - '!webservice/setup.ps1'
+      - '!webservice/Check-Deployment.ps1'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'webservice/**'
+      - 'scripts/**'
+      - 'src/**'
+      - '!webservice/infra/**'
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: 'Target deployment slot'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - dev
+
+permissions:
+  id-token: write   # required for OIDC
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event_name == 'push' && 'staging' || 'dev' }} slot
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set target slot
+        id: slot
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "name=staging" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.slot }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Check if App Service exists
+        id: check_app
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            if az webapp show \
+                --name "${{ secrets.APP_NAME }}" \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                --query name --output tsv 2>/dev/null; then
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+            fi
+
+      - name: Skip notice (infrastructure not yet deployed)
+        if: steps.check_app.outputs.exists == 'false'
+        run: |
+          echo "::warning::App Service '${{ secrets.APP_NAME }}' not found in '${{ secrets.AZURE_RESOURCE_GROUP }}'."
+          echo "::warning::Deploy infrastructure first: run the 'Deploy Infrastructure' workflow manually (workflow_dispatch)."
+
+      - name: Build deployment package
+        if: steps.check_app.outputs.exists == 'true'
+        run: |
+          mkdir -p _deploy/webservice _deploy/scripts _deploy/src/intervals_icu
+
+          # Python package marker so 'webservice' is importable as a package
+          touch _deploy/webservice/__init__.py
+
+          # Copy only the runtime files
+          cp webservice/mcp_server.py  _deploy/webservice/
+          cp webservice/context.py     _deploy/webservice/
+          cp scripts/*.py              _deploy/scripts/
+          cp src/intervals_icu/*.py    _deploy/src/intervals_icu/
+
+          # VERSION at the zip root (mcp_server.py resolves it via parents[1])
+          cp VERSION _deploy/VERSION
+
+          # Place webservice requirements.txt at the package root so Oryx picks it up
+          cp webservice/requirements.txt _deploy/requirements.txt
+
+          cd _deploy
+          zip -r ../deploy.zip .
+
+      - name: Deploy to slot
+        if: steps.check_app.outputs.exists == 'true'
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az webapp deploy \
+              --name "${{ secrets.APP_NAME }}" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --slot "${{ steps.slot.outputs.name }}" \
+              --src-path deploy.zip \
+              --type zip \
+              --async false
+
+      - name: Verify health endpoint
+        if: steps.check_app.outputs.exists == 'true'
+        run: |
+          SLOT="${{ steps.slot.outputs.name }}"
+          APP="${{ secrets.APP_NAME }}"
+          URL="https://${APP}-${SLOT}.azurewebsites.net/health"
+          echo "Checking $URL ..."
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed (attempt $i)"
+              curl -s "$URL" | python3 -m json.tool
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS – waiting 15s..."
+            sleep 15
+          done
+          echo "Health check failed after 10 attempts." >&2
+          exit 1

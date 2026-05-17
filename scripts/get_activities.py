@@ -1,6 +1,7 @@
 """Fetch activities from intervals.icu for the current calendar week (Mon–today) and save to data/raw."""
 
 import json
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -11,7 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from intervals_icu.client import get_activities
 from intervals_icu.config import API_KEY, ATHLETE_ID
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
+_DEFAULT_RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
+DATA_DIR = Path(os.environ.get("INTERVALS_RAW_DIR", str(_DEFAULT_RAW_DIR)))
 
 
 def main() -> None:

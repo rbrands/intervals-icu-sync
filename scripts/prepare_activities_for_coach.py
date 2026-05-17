@@ -1,6 +1,7 @@
 """Read latest activities JSON from data/raw and output a simplified JSON for coach analysis."""
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -13,8 +14,10 @@ from intervals_icu.client import get_activity_streams, get_activity_power_curve
 from intervals_icu.config import API_KEY
 from intervals_icu.wbal import compute_wbal, summarize_wbal
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+_DEFAULT_RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
+_DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+DATA_DIR = Path(os.environ.get("INTERVALS_RAW_DIR", str(_DEFAULT_RAW_DIR)))
+OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
 
 
 # ---------------------------------------------------------------------------
