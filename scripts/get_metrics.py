@@ -1,6 +1,7 @@
 """Fetch current athlete performance metrics from intervals.icu and save to data/processed/metrics_{date}.json."""
 
 import json
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -11,7 +12,8 @@ from intervals_icu.config import API_KEY, ATHLETE_ID
 import requests
 
 BASE_URL = "https://intervals.icu/api/v1"
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+_DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
 
 
 def fetch_athlete_info() -> dict:

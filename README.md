@@ -450,32 +450,18 @@ To avoid manually copying JSON files between scripts and the AI coach, the proje
 
 | Tool | Description |
 |---|---|
-| `prepare_week_data` | Runs the full pipeline (all scripts in order) and consolidates the result. Equivalent to `prepare_week_for_coach.py`. |
-| `get_coach_input` | Returns the consolidated `coach_input_{monday}.json` as JSON. Accepts an optional `monday` parameter (ISO date, defaults to current week). |
-| `get_fueling_analysis` | Returns the fueling analysis JSON for a specific week (defaults to current). |
-| `get_latest_metrics` | Returns the most recent metrics file (CTL, ATL, TSB, FTP, HRV, etc.). |
-| `save_week_plan` | Validates and saves a coach-generated training plan JSON to `data/plans/week_plan.json`. |
-| `upload_week_plan` | Uploads the saved `week_plan.json` to intervals.icu. Supports `dry_run` and `clear` flags. |
-
-### Resources
-
-| URI | Description |
-|---|---|
-| `coach://input/current` | Current week's consolidated coach input. |
-| `coach://fueling/current` | Current week's fueling analysis. |
-| `coach://metrics/latest` | Most recent athlete performance metrics. |
+| `prepare_week_data` | Runs the full pipeline (activities, metrics, training plan, fueling, week analysis) and returns the consolidated coach input as JSON. Nothing is stored on the server. |
+| `upload_week_plan` | Uploads a JSON training plan to intervals.icu as planned workout events. Supports `dry_run` and `clear` flags. |
 
 ### End-to-end workflow
 
 ```
-1. prepare_week_data      → fetch & consolidate data from intervals.icu
-2. get_coach_input        → load data into the AI's context
-3. [AI generates plan, user reviews and confirms]
-4. save_week_plan         → validate and save the plan to data/plans/week_plan.json
-5. upload_week_plan       → push the plan to the intervals.icu calendar
+1. prepare_week_data      → fetch & consolidate all training data from intervals.icu
+2. [AI analyses data and generates a weekly plan]
+3. [User reviews and confirms the plan]
+4. upload_week_plan       → push the confirmed plan to the intervals.icu calendar
 ```
 
-The AI will only call `save_week_plan` and `upload_week_plan` after explicit user confirmation.  
 To preview the upload without making API calls, pass `dry_run=true` to `upload_week_plan`.
 
 ### Use with Claude Desktop
@@ -509,10 +495,8 @@ Add the following block, replacing the path with the absolute path to your proje
 **2 — Weekly workflow**
 
 ```bash
-# Step 1: fetch current training data (run once in terminal before opening Claude)
-python scripts/prepare_week_for_coach.py
-
-# Step 2: open Claude Desktop — the MCP server starts automatically
+# Just open Claude Desktop — the MCP server starts automatically.
+# prepare_week_data fetches all training data live from intervals.icu.
 ```
 
 In Claude, attach `prompts/system_prompt.md` (and optionally a discipline prompt from `prompts/`) and send your request, e.g.:
@@ -520,12 +504,12 @@ In Claude, attach `prompts/system_prompt.md` (and optionally a discipline prompt
 > *"Analyse my training week and create a plan for the coming week."*
 
 Claude will then:
-1. Call `get_coach_input` to load the pre-prepared data (instant file read).
+1. Call `prepare_week_data` to fetch and consolidate all training data from intervals.icu.
 2. Analyse activities, metrics, fueling and the active training plan.
 3. Generate a weekly plan and ask for your confirmation.
-4. After confirmation: call `save_week_plan` → `upload_week_plan` to push the plan to intervals.icu.
+4. After confirmation: call `upload_week_plan` to push the plan to intervals.icu.
 
-> **Note:** `prepare_week_data` is also available as an MCP tool if the data files are missing, but it takes several minutes and may hit Claude Desktop's request timeout. Running `prepare_week_for_coach.py` manually beforehand is the recommended approach.
+> **Note:** `prepare_week_data` fetches all data live from intervals.icu — no manual pre-run is needed. The call may take up to a minute depending on your data volume.
 
 ### Use with ChatGPT (SSE mode)
 

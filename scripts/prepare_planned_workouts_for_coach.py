@@ -9,11 +9,13 @@ Usage:
 """
 
 import json
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+_DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+PROCESSED_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
 
 
 def load_training_plan() -> dict | None:

@@ -1,13 +1,16 @@
 """Analyze the latest week of cycling training data from data/raw/."""
 
 import json
+import os
 import re
 import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+_DEFAULT_RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
+_DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+DATA_DIR = Path(os.environ.get("INTERVALS_RAW_DIR", str(_DEFAULT_RAW_DIR)))
+OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
 METRICS_DIR = OUTPUT_DIR
 
 
