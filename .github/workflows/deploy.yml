@@ -21,6 +21,16 @@ on:
       - 'scripts/**'
       - 'src/**'
       - '!webservice/infra/**'
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: 'Target deployment slot'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - dev
 
 permissions:
   id-token: write   # required for OIDC
@@ -40,6 +50,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
             echo "name=staging" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.slot }}" >> "$GITHUB_OUTPUT"
           else
             echo "name=dev" >> "$GITHUB_OUTPUT"
           fi
@@ -51,7 +63,29 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Check if App Service exists
+        id: check_app
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            if az webapp show \
+                --name "${{ secrets.APP_NAME }}" \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                --query name --output tsv 2>/dev/null; then
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+            fi
+
+      - name: Skip notice (infrastructure not yet deployed)
+        if: steps.check_app.outputs.exists == 'false'
+        run: |
+          echo "::warning::App Service '${{ secrets.APP_NAME }}' not found in '${{ secrets.AZURE_RESOURCE_GROUP }}'."
+          echo "::warning::Deploy infrastructure first: run the 'Deploy Infrastructure' workflow manually (workflow_dispatch)."
+
       - name: Build deployment package
+        if: steps.check_app.outputs.exists == 'true'
         run: |
           mkdir -p _deploy/webservice _deploy/scripts _deploy/src/intervals_icu
 
@@ -71,6 +105,7 @@ jobs:
           zip -r ../deploy.zip .
 
       - name: Deploy to slot
+        if: steps.check_app.outputs.exists == 'true'
         uses: azure/cli@v2
         with:
           azcliversion: latest
@@ -84,6 +119,7 @@ jobs:
               --async false
 
       - name: Verify health endpoint
+        if: steps.check_app.outputs.exists == 'true'
         run: |
           SLOT="${{ steps.slot.outputs.name }}"
           APP="${{ secrets.APP_NAME }}"
