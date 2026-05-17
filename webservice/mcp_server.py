@@ -81,6 +81,7 @@ if str(_WEBSERVICE_DIR) not in sys.path:
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import TransportSecuritySettings
+from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 
 from context import api_key_var, athlete_id_var
@@ -559,8 +560,16 @@ def upload_week_plan(
 # MCP Inspector and browsers) always get proper CORS headers, even for
 # endpoints that don't exist (404).  Without this the Inspector shows
 # "Error Connecting to MCP Inspector Proxy".
+#
+# Both transport endpoints are merged into one Starlette app:
+#   /sse  /messages/  – SSE transport (legacy)
+#   /mcp              – Streamable HTTP transport (modern)
+_sse = mcp.sse_app()
+_http = mcp.streamable_http_app()
+_combined = Starlette(routes=list(_sse.routes) + list(_http.routes))
+
 app = CORSMiddleware(
-    AuthHeaderMiddleware(mcp.sse_app()),
+    AuthHeaderMiddleware(_combined),
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],

@@ -30,7 +30,12 @@ MCP_TRANSPORT=sse INTERVALS_DEV_MODE=true python webservice/mcp_server.py
 $env:MCP_TRANSPORT="sse"; $env:INTERVALS_DEV_MODE="true"; python webservice/mcp_server.py
 ```
 
-The server listens on `http://localhost:8000/sse` by default.
+The server exposes two transport endpoints:
+
+| Endpoint | Protocol | Notes |
+|---|---|---|
+| `http://localhost:8000/sse` | SSE (legacy) | `GET /sse` for stream, `POST /messages` for client→server |
+| `http://localhost:8000/mcp` | Streamable HTTP (modern) | Single `POST /mcp` endpoint, bidirectional |
 
 Environment variables:
 
@@ -47,12 +52,19 @@ Environment variables:
 npx @modelcontextprotocol/inspector
 ```
 
+**SSE transport (legacy):**
 1. Transport Type: **SSE**
 2. URL: `http://localhost:8000/sse`
 3. Connection Type: **Direct** (not "Via Proxy" – the proxy requires its own auth token that can expire)
 4. Click **Connect**
 
-The inspector connects directly to the server. CORS headers are served for all `localhost` origins, so no additional configuration is needed.
+**Streamable HTTP transport (modern):**
+1. Transport Type: **Streamable HTTP**
+2. URL: `http://localhost:8000/mcp`
+3. Connection Type: **Direct**
+4. Click **Connect**
+
+CORS headers are served for all `localhost` origins, so no additional configuration is needed.
 
 ## Azure App Service deployment
 
@@ -152,6 +164,15 @@ From the second PR onwards `deploy.yml` and `preview.yml` run automatically; `in
 | `swap.yml` | manual (`workflow_dispatch` only) | Health check staging → swap staging → production → health check production |
 
 Slot URLs follow the pattern `https://<appName>-<slot>.azurewebsites.net`.
+
+### Transport endpoints
+
+Both transports share the same tools, middleware, and Application Insights instrumentation:
+
+| Endpoint | Protocol | Use case |
+|---|---|---|
+| `/sse` + `/messages` | SSE | MCP Inspector, older clients |
+| `/mcp` | Streamable HTTP | Modern MCP clients, Claude Desktop |
 
 ### App Settings set by Bicep
 

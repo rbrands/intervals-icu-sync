@@ -75,7 +75,19 @@ The combination of:
 
 creates a lightweight but powerful coaching system. The full system prompt is maintained in [`prompts/system_prompt.md`](prompts/system_prompt.md).
 
-## Project Structure
+## MCP Server (Azure App Service)
+
+The tools are also available as a publicly hosted **MCP server** deployed as an Azure App Service.
+It exposes two MCP transport endpoints:
+
+| Endpoint | Protocol |
+|---|---|
+| `https://ta-intervals-mcp.azurewebsites.net/sse` | SSE (legacy) |
+| `https://ta-intervals-mcp.azurewebsites.net/mcp` | Streamable HTTP (modern) |
+
+Credentials (`X-Intervals-Athlete-Id`, `X-Intervals-Api-Key`) are passed per request via HTTP headers — nothing is stored on the server.
+
+Infrastructure, CI/CD pipelines, and local development instructions are documented in [webservice/README.md](webservice/README.md).
 
 ```
 intervals-icu-sync/
@@ -127,6 +139,7 @@ intervals-icu-sync/
 ├── requirements.txt
 ├── VERSION                       # Current project version (SemVer)
 ├── start_mcp_server.ps1            # Start/stop the MCP server in SSE mode (Windows PowerShell)
+├── webservice/                     # MCP server deployed as Azure App Service (see webservice/README.md)
 └── README.md
 ```
 
