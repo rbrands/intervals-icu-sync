@@ -98,6 +98,9 @@ jobs:
           cp scripts/*.py              _deploy/scripts/
           cp src/intervals_icu/*.py    _deploy/src/intervals_icu/
 
+          # VERSION at the zip root (mcp_server.py resolves it via parents[1])
+          cp VERSION _deploy/VERSION
+
           # Place webservice requirements.txt at the package root so Oryx picks it up
           cp webservice/requirements.txt _deploy/requirements.txt
 

@@ -97,23 +97,38 @@ Copy-Item config.example.ps1 config.ps1
 .\setup.ps1 -All    # generates infra/main.local.bicepparam + pushes GitHub Secrets
 ```
 
-### 5. Preview before deploying
+### 5. Preview and deploy infrastructure
 
 ```powershell
-.\Check-Deployment.ps1
+.\Check-Deployment.ps1           # lint + what-if only
+.\Check-Deployment.ps1 -Deploy   # lint + what-if + deploy (with confirmation prompt)
 ```
 
-### 6. Deploy infrastructure
+### 6. Deploy infrastructure (first-time bootstrap)
 
-Push to `main` — the `infra.yml` workflow deploys automatically.
-Or run manually:
+Because `infra.yml` only appears in the GitHub Actions UI after it has been merged to `main`,
+the very first deployment must be done **locally**:
 
 ```powershell
-az deployment group create `
-  --resource-group <your-resource-group> `
-  --template-file infra/main.bicep `
-  --parameters infra/main.local.bicepparam
+cd webservice
+.\Check-Deployment.ps1 -Deploy   # lint + what-if + deploy (with confirmation)
 ```
+
+> After the PR is merged, `infra.yml` becomes available in the GitHub Actions UI under
+> **Actions → Deploy Infrastructure → Run workflow** and can be triggered from there for
+> all future infrastructure changes.
+
+### 7. Deploy code (first time)
+
+After the infrastructure exists, trigger the code deploy manually:
+
+```powershell
+gh workflow run deploy.yml --ref feature/<your-branch>
+```
+
+Or, once on `main`, via **Actions → Deploy Code → Run workflow** (target slot: `staging`).
+
+From the second PR onwards the workflows run automatically.
 
 ### CI/CD Workflows
 
