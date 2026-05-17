@@ -7,15 +7,31 @@ param location string = resourceGroup().location
 @description('Name of the existing App Service Plan to deploy into.')
 param appServicePlanName string
 
+@description('Name of the existing Application Insights instance. Leave empty to skip.')
+param appInsightsName string = ''
+
 // Reference the existing App Service Plan – it is not modified.
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' existing = {
   name: appServicePlanName
+}
+
+// Reference the existing Application Insights instance (if provided).
+resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = if (appInsightsName != '') {
+  name: appInsightsName
 }
 
 var tags = {
   project: 'intervals-icu-sync'
   'managed-by': 'bicep'
 }
+
+// Application Insights connection string setting (empty array when AI is not configured).
+var appInsightsSettings = appInsightsName != '' ? [
+  {
+    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+    value: appInsights.properties.ConnectionString
+  }
+] : []
 
 // Shared app settings used by the production slot and all deployment slots.
 var commonAppSettings = [
@@ -53,7 +69,7 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
       linuxFxVersion: 'PYTHON|3.12'
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: true
-      appSettings: union(commonAppSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           // Computed from the app name – no manual update needed after deploy.
@@ -87,7 +103,7 @@ resource stagingSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       linuxFxVersion: 'PYTHON|3.12'
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
-      appSettings: union(commonAppSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-staging.azurewebsites.net'
@@ -110,7 +126,7 @@ resource devSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       linuxFxVersion: 'PYTHON|3.12'
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
-      appSettings: union(commonAppSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-dev.azurewebsites.net'

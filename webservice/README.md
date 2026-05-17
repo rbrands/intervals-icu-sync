@@ -90,6 +90,17 @@ After this step no client secret is stored anywhere. OIDC handles authentication
 Copy `config.example.ps1` to `config.ps1` and fill in all values.
 `config.ps1` is excluded from source control via `.gitignore` and must **never** be committed.
 
+| Key in `config.ps1` | GitHub Secret | Description |
+|---|---|---|
+| `SubscriptionId` | `AZURE_SUBSCRIPTION_ID` | Azure subscription GUID |
+| `TenantId` | `AZURE_TENANT_ID` | Entra ID tenant GUID |
+| `AzureClientId` | `AZURE_CLIENT_ID` | Service principal client ID |
+| `ResourceGroup` | `AZURE_RESOURCE_GROUP` | Target resource group |
+| `Location` | `AZURE_LOCATION` | Azure region |
+| `AppName` | `APP_NAME` | App Service name (globally unique) |
+| `AppServicePlanName` | `APP_SERVICE_PLAN_NAME` | Existing App Service Plan name |
+| `AppInsightsName` | `APP_INSIGHTS_NAME` | Existing Application Insights instance name |
+
 ```powershell
 cd webservice
 Copy-Item config.example.ps1 config.ps1
@@ -134,8 +145,8 @@ From the second PR onwards `deploy.yml` and `preview.yml` run automatically; `in
 
 | Workflow | Trigger | Action |
 |---|---|---|
-| `infra.yml` | push to `main` (infra changes) + manual | Deploy Bicep infrastructure |
-| `preview.yml` | PR to `main` (infra changes) | What-If → PR comment |
+| `infra.yml` | manual (`workflow_dispatch` only) | Deploy Bicep infrastructure |
+| `preview.yml` | PR to `main` (only if infra files changed in push) | What-If → PR comment |
 | `deploy.yml` | push to `main` | Zip-deploy code → **staging** slot |
 | `deploy.yml` | PR to `main` | Zip-deploy code → **dev** slot |
 | `swap.yml` | manual (`workflow_dispatch` only) | Health check staging → swap staging → production → health check production |
@@ -149,8 +160,10 @@ Slot URLs follow the pattern `https://<appName>-<slot>.azurewebsites.net`.
 | `MCP_TRANSPORT` | `sse` |
 | `FASTMCP_HOST` | `0.0.0.0` |
 | `FASTMCP_PORT` | `8000` |
-| `FASTMCP_ALLOWED_HOST` | `<appName>.azurewebsites.net` |
+| `FASTMCP_ALLOWED_HOST` | `<appName>.azurewebsites.net` (slot-sticky) |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Connection string of the existing Application Insights instance |
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` |
+| `ENABLE_ORYX_BUILD` | `true` |
 
 The startup command configured in Bicep:
 

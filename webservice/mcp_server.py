@@ -39,6 +39,14 @@ try:
 except ImportError:
     pass  # python-dotenv not installed – fine in production
 
+# Application Insights telemetry (no-op if connection string is not set)
+try:
+    from azure.monitor.opentelemetry import configure_azure_monitor
+    if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+        configure_azure_monitor()
+except ImportError:
+    pass  # azure-monitor-opentelemetry not installed – fine in local dev
+
 # Allow imports from src/ and from this package when run directly
 sys.path.insert(0, str(_ROOT / "src"))
 _WEBSERVICE_DIR = Path(__file__).resolve().parent

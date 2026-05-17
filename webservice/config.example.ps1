@@ -30,4 +30,7 @@ $config = @{
 
     # Name of the existing App Service Plan (from brands-advisory-central-infra)
     AppServicePlanName   = "__APP_SERVICE_PLAN_NAME__"
+
+    # Name of the existing Application Insights instance (from brands-advisory-central-infra)
+    AppInsightsName      = "__APP_INSIGHTS_NAME__"
 }
