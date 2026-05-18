@@ -164,7 +164,9 @@ _DEV_MODE: bool = bool(os.environ.get("INTERVALS_DEV_MODE"))
 
 # Matches URL-embedded credentials: /{athlete_id}/{api_key}/{mcp|sse|messages...}
 # Allows clients that cannot set custom headers to pass credentials via the path.
-_URL_AUTH_RE = re.compile(r"^/([^/]+)/([^/]+)(/(?:mcp|sse|messages).*)$")
+# The negative lookahead (?!\.) excludes dot-prefixed segments (e.g. .well-known)
+# so that OAuth discovery paths are never misinterpreted as URL-embedded credentials.
+_URL_AUTH_RE = re.compile(r"^/(?!\.)([^/]+)/([^/]+)(/(?:mcp|sse|messages).*)$")
 
 
 # MCP protocol endpoints that require authentication.
