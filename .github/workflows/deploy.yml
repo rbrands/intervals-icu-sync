@@ -97,8 +97,9 @@ jobs:
           touch _deploy/webservice/__init__.py
 
           # Copy only the runtime files
-          cp webservice/mcp_server.py  _deploy/webservice/
-          cp webservice/context.py     _deploy/webservice/
+          cp webservice/mcp_server.py    _deploy/webservice/
+          cp webservice/context.py       _deploy/webservice/
+          cp webservice/oauth_provider.py _deploy/webservice/
           cp scripts/*.py              _deploy/scripts/
           cp src/intervals_icu/*.py    _deploy/src/intervals_icu/
 
