@@ -13,6 +13,10 @@ param appInsightsName string = ''
 @description('Optional custom domain (e.g. intervals-mcp.training-architect.com). Leave empty to use only the azurewebsites.net hostname.')
 param customDomain string = ''
 
+@description('Fernet key for stateless OAuth tokens. Leave empty to use an ephemeral key (tokens lost on restart).')
+@secure()
+param oauthTokenSecret string = ''
+
 // Reference the existing App Service Plan – it is not modified.
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' existing = {
   name: appServicePlanName
@@ -77,7 +81,14 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: true
       healthCheckPath: '/health'
-      appSettings: union(commonAppSettings, appInsightsSettings, [
+var oauthTokenSettings = oauthTokenSecret != '' ? [
+  {
+    name: 'OAUTH_TOKEN_SECRET'
+    value: oauthTokenSecret
+  }
+] : []
+
+      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           // Comma-separated: azurewebsites.net hostname + optional custom domain.

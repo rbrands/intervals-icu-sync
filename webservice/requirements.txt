@@ -7,3 +7,4 @@ uvicorn[standard]
 azure-monitor-opentelemetry
 azure-identity
 opentelemetry-instrumentation-starlette
+cryptography

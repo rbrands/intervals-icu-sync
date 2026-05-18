@@ -5,15 +5,22 @@ Exposes two MCP tools over SSE transport:
                               consolidated coach input as JSON
   - upload_plan             – uploads a JSON training plan to intervals.icu
 
-Credentials are passed per-request via HTTP headers (never stored on the server):
-  X-Intervals-Athlete-Id   – athlete ID (e.g. "i12345")
-  X-Intervals-Api-Key      – intervals.icu API key
+Credentials are resolved in priority order:
+  1. URL path   /{athlete_id}/{api_key}/mcp  or  /{athlete_id}/{api_key}/sse
+  2. Headers    X-Intervals-Athlete-Id  /  X-Intervals-Api-Key
+  3. OAuth 2.0  Authorization: Bearer <token>  (issued after the login form flow)
 
-Alternatively, credentials can be embedded in the URL path:
-  /{athlete_id}/{api_key}/mcp   – Streamable HTTP transport
-  /{athlete_id}/{api_key}/sse   – SSE transport
-This is useful for clients that do not support custom HTTP headers.
-URL credentials take precedence over headers.
+OAuth 2.0 endpoints (for Claude.ai and other OAuth-capable MCP clients):
+  GET  /.well-known/oauth-protected-resource   – resource metadata (RFC 9728)
+  GET  /.well-known/oauth-authorization-server – authorization server metadata
+  POST /register                               – dynamic client registration
+  GET  /authorize                              – start authorization code flow
+  GET  /oauth/form                             – credentials entry form
+  POST /oauth/form                             – form submit → auth code
+  POST /token                                  – exchange code for Bearer token
+
+MCP endpoints return 401 + WWW-Authenticate when no credentials are supplied,
+which lets OAuth-capable clients discover and start the OAuth flow automatically.
 
 Run locally (SSE mode):
     # Linux / macOS:
@@ -99,6 +106,10 @@ from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 
 from context import api_key_var, athlete_id_var
+from oauth_provider import IntervalsOAuthProvider
+
+# Singleton OAuth provider – shared between the ASGI app and the auth middleware.
+_oauth = IntervalsOAuthProvider()
 
 _VERSION_FILE = _ROOT / "VERSION"
 _SCHEMA_VERSION = (
@@ -156,21 +167,25 @@ _DEV_MODE: bool = bool(os.environ.get("INTERVALS_DEV_MODE"))
 _URL_AUTH_RE = re.compile(r"^/([^/]+)/([^/]+)(/(?:mcp|sse|messages).*)$")
 
 
+# MCP protocol endpoints that require authentication.
+_MCP_PATHS = ("/mcp", "/sse", "/messages")
+
+
 class AuthHeaderMiddleware:
-    """Reads X-Intervals-Athlete-Id and X-Intervals-Api-Key from incoming HTTP
-    headers and stores them in ContextVars for the duration of the request.
+    """Resolves credentials from (in priority order):
 
-    Implemented as a pure ASGI middleware (not BaseHTTPMiddleware) so that SSE
-    streaming responses are never buffered.
+    1. URL-embedded path  ``/{athlete_id}/{api_key}/{mcp|sse|messages…}``
+    2. Custom request headers  ``X-Intervals-Athlete-Id`` / ``X-Intervals-Api-Key``
+    3. OAuth 2.0 Bearer token  ``Authorization: Bearer <token>``
+    4. Dev-mode env-var fallback (``INTERVALS_DEV_MODE=true`` only)
 
-    Always available:
-    - GET /health  – returns JSON {status, schema_version, dev_mode, timestamp}.
-      Suitable as an Azure App Service health-check path.
+    Implemented as a pure ASGI middleware so SSE streams are never buffered.
 
-    Dev mode only (INTERVALS_DEV_MODE=true):
-    - When credential headers are absent, falls back to ATHLETE_ID /
-      INTERVALS_API_KEY environment variables (loaded from .env locally).
-      Never enable this in production.
+    Public routes (health, OAuth discovery, login form, token endpoint) are
+    forwarded unconditionally.  MCP endpoints (``/mcp``, ``/sse``, ``/messages``)
+    return ``401 Unauthorized`` with a ``WWW-Authenticate`` header when no
+    credentials can be resolved, so that OAuth-capable clients can start the
+    OAuth 2.0 Authorization Code flow automatically.
     """
 
     def __init__(self, asgi_app) -> None:
@@ -180,11 +195,11 @@ class AuthHeaderMiddleware:
         if scope["type"] == "http":
             path = scope.get("path", "")
             # Root path – always-on ping from Azure App Service hits "/";
-            # redirect to /health so it gets a 200 instead of a 404.
+            # serve health so it gets a 200 instead of a 404.
             if path == "/":
                 await self._handle_health(scope, receive, send)
                 return
-            # Health endpoints (also handles /sse/health and /mcp/health for MCP Inspector probe)
+            # Health endpoints (also handles /sse/health and /mcp/health for MCP Inspector)
             if path in ("/health", "/sse/health", "/mcp/health"):
                 await self._handle_health(scope, receive, send)
                 return
@@ -195,18 +210,19 @@ class AuthHeaderMiddleware:
 
         if scope["type"] in ("http", "websocket"):
             header_dict = {k.lower(): v for k, v in scope.get("headers", [])}
+            athlete_id = ""
+            api_key = ""
 
-            # URL-embedded credentials take precedence over headers.
-            # Pattern: /{athlete_id}/{api_key}/{mcp|sse|messages...}
-            # The path is rewritten to the inner endpoint before forwarding.
+            # 1) URL-embedded credentials: /{athlete_id}/{api_key}/{mcp|sse|messages…}
             url_match = _URL_AUTH_RE.match(scope.get("path", ""))
             if url_match:
                 athlete_id = url_match.group(1)
                 api_key = url_match.group(2)
                 inner_path = url_match.group(3)
-                # Rewrite scope so the inner app sees /mcp, /sse, etc.
                 scope = {**scope, "path": inner_path, "raw_path": inner_path.encode()}
-            else:
+
+            # 2) Custom request headers
+            if not (athlete_id and api_key):
                 athlete_id = header_dict.get(
                     b"x-intervals-athlete-id", b""
                 ).decode("utf-8", errors="replace")
@@ -214,10 +230,30 @@ class AuthHeaderMiddleware:
                     b"x-intervals-api-key", b""
                 ).decode("utf-8", errors="replace")
 
-            # Dev-mode fallback: use .env / process env when headers are missing
-            if _DEV_MODE and (not athlete_id or not api_key):
+            # 3) OAuth 2.0 Bearer token
+            if not (athlete_id and api_key):
+                auth_val = header_dict.get(b"authorization", b"").decode(
+                    "utf-8", errors="replace"
+                )
+                if auth_val.lower().startswith("bearer "):
+                    bearer = auth_val[7:].strip()
+                    creds = _oauth.get_credentials(bearer)
+                    if creds:
+                        athlete_id, api_key = creds
+
+            # 4) Dev-mode env-var fallback
+            if _DEV_MODE and not (athlete_id and api_key):
                 athlete_id = athlete_id or os.environ.get("ATHLETE_ID", "")
                 api_key = api_key or os.environ.get("INTERVALS_API_KEY", "")
+
+            # Return 401 for MCP endpoints when credentials are still missing.
+            # The WWW-Authenticate header tells OAuth-capable clients where to
+            # discover the authorization server (RFC 9728 / MCP spec).
+            if not (athlete_id and api_key) and scope["type"] == "http":
+                current_path = scope.get("path", "")
+                if any(current_path.startswith(p) for p in _MCP_PATHS):
+                    await self._handle_401(scope, receive, send, header_dict)
+                    return
 
             token_a = athlete_id_var.set(athlete_id)
             token_k = api_key_var.set(api_key)
@@ -228,6 +264,30 @@ class AuthHeaderMiddleware:
                 api_key_var.reset(token_k)
         else:
             await self._asgi_app(scope, receive, send)
+
+    @staticmethod
+    async def _handle_401(scope, receive, send, header_dict: dict) -> None:  # noqa: ARG004
+        """Return 401 with a WWW-Authenticate header for unauthenticated MCP requests."""
+        # Derive the public base URL from the Host header so the resource
+        # metadata URL is correct regardless of which hostname the client used.
+        host = header_dict.get(b"host", b"localhost").decode("utf-8", errors="replace")
+        # X-Forwarded-Proto is set by App Service / Cloudflare
+        proto = header_dict.get(b"x-forwarded-proto", b"http").decode("utf-8", errors="replace")
+        base = f"{proto}://{host}"
+        resource_meta_url = f"{base}/.well-known/oauth-protected-resource"
+        www_auth = f'Bearer resource_metadata="{resource_meta_url}"'
+        body = b'{"error":"unauthorized","error_description":"Authentication required."}'
+        await send({
+            "type": "http.response.start",
+            "status": 401,
+            "headers": [
+                [b"content-type", b"application/json"],
+                [b"content-length", str(len(body)).encode()],
+                [b"www-authenticate", www_auth.encode()],
+                [b"access-control-allow-origin", b"*"],
+            ],
+        })
+        await send({"type": "http.response.body", "body": body})
 
     @staticmethod
     async def _handle_sse_config(scope, receive, send) -> None:  # noqa: ARG004
@@ -612,7 +672,7 @@ def upload_week_plan(
 _sse = mcp.sse_app()
 _http = mcp.streamable_http_app()  # initialises mcp._session_manager
 _combined = Starlette(
-    routes=list(_sse.routes) + list(_http.routes),
+    routes=_oauth.get_routes() + list(_sse.routes) + list(_http.routes),
     lifespan=lambda app: mcp.session_manager.run(),
 )
 
