@@ -82,10 +82,21 @@ It exposes two MCP transport endpoints:
 
 | Endpoint | Protocol |
 |---|---|
-| `https://ta-intervals-mcp.azurewebsites.net/sse` | SSE (legacy) |
-| `https://ta-intervals-mcp.azurewebsites.net/mcp` | Streamable HTTP (modern) |
+| `https://intervals-mcp.training-architect.com/sse` | SSE (legacy) |
+| `https://intervals-mcp.training-architect.com/mcp` | Streamable HTTP (modern) |
 
-Credentials (`X-Intervals-Athlete-Id`, `X-Intervals-Api-Key`) are passed per request via HTTP headers — nothing is stored on the server.
+### Authentication
+
+The server supports three methods:
+
+| Method | How | Best for |
+|---|---|---|
+| **OAuth 2.0** | Browser login form — enter Athlete ID + API Key once, token valid 30 days | Claude.ai web |
+| **Custom headers** | `X-Intervals-Athlete-Id` + `X-Intervals-Api-Key` on every request | Claude Desktop, API clients |
+| **URL path** | `https://<host>/<athlete_id>/<api_key>/mcp` | Claude Desktop config |
+
+Claude.ai web discovers OAuth automatically via `/.well-known/oauth-authorization-server` and opens the login form without any manual configuration.
+Credentials are never stored on the server — the Bearer token is a Fernet-encrypted, self-contained token.
 
 Infrastructure, CI/CD pipelines, and local development instructions are documented in [webservice/README.md](webservice/README.md).
 
