@@ -137,7 +137,17 @@ class IntervalsOAuthProvider:
                 methods=["GET"],
             ),
             Route(
+                "/.well-known/oauth-protected-resource/{path:path}",
+                endpoint=self._handle_protected_resource,
+                methods=["GET"],
+            ),
+            Route(
                 "/.well-known/oauth-authorization-server",
+                endpoint=self._handle_auth_server_meta,
+                methods=["GET"],
+            ),
+            Route(
+                "/.well-known/oauth-authorization-server/{path:path}",
                 endpoint=self._handle_auth_server_meta,
                 methods=["GET"],
             ),
