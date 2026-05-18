@@ -41,6 +41,14 @@ var appInsightsSettings = appInsightsName != '' ? [
   }
 ] : []
 
+// Fernet key setting for stateless OAuth tokens (empty array when secret is not configured).
+var oauthTokenSettings = oauthTokenSecret != '' ? [
+  {
+    name: 'OAUTH_TOKEN_SECRET'
+    value: oauthTokenSecret
+  }
+] : []
+
 // Shared app settings used by the production slot and all deployment slots.
 var commonAppSettings = [
   {
@@ -81,13 +89,6 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: true
       healthCheckPath: '/health'
-var oauthTokenSettings = oauthTokenSecret != '' ? [
-  {
-    name: 'OAUTH_TOKEN_SECRET'
-    value: oauthTokenSecret
-  }
-] : []
-
       appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
