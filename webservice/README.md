@@ -11,12 +11,36 @@ MCP server for Azure App Service. Exposes two tools over SSE transport, with cre
 
 ## Authentication
 
-Credentials are **not** stored on the server. Each MCP client connection must supply:
+The server supports three authentication methods, resolved in this priority order:
+
+### 1. OAuth 2.0 (recommended for Claude.ai web)
+
+The server implements a full OAuth 2.0 Authorization Server (RFC 6749) with PKCE (RFC 7636)
+and Dynamic Client Registration (RFC 7591). Claude.ai and other OAuth-capable MCP clients
+will discover the OAuth endpoints automatically via `/.well-known/oauth-authorization-server`
+and open a browser login form where the user enters their Athlete ID and API Key.
+
+The issued Bearer token is **stateless and Fernet-encrypted** — it contains the encrypted
+credentials and an expiry timestamp. No token table is kept in memory; tokens survive
+server restarts as long as `OAUTH_TOKEN_SECRET` stays the same.
+
+Token lifetime: **30 days**.
+
+### 2. Custom headers (Claude Desktop / API clients)
 
 | Header | Value |
 |---|---|
 | `X-Intervals-Athlete-Id` | Your athlete ID (e.g. `i12345`) |
 | `X-Intervals-Api-Key` | Your intervals.icu API key |
+
+### 3. URL path (Claude Desktop)
+
+Credentials can be embedded directly in the URL path:
+```
+https://<host>/<athlete_id>/<api_key>/mcp
+```
+
+Credentials are **never stored** on the server.
 
 ## Local development
 
@@ -46,6 +70,7 @@ Environment variables:
 | `FASTMCP_HOST` | `0.0.0.0` | Bind address |
 | `FASTMCP_PORT` | `8000` | Port |
 | `FASTMCP_ALLOWED_HOST` | *(empty)* | Additional hostname for the `allowed_hosts` security check (e.g. the App Service hostname) |
+| `OAUTH_TOKEN_SECRET` | *(empty)* | Fernet key for stateless OAuth tokens. Generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. If not set, an ephemeral key is generated at startup and tokens are lost on restart. |
 | `INTERVALS_DEV_MODE` | *(empty)* | Set to `true` for local development: enables `/health` endpoint and falls back to `ATHLETE_ID` / `INTERVALS_API_KEY` from `.env` when credential headers are absent. **Never enable in production.** |
 
 ### Testing with MCP Inspector
@@ -118,6 +143,8 @@ Copy `config.example.ps1` to `config.ps1` and fill in all values.
 | `AppName` | `APP_NAME` | App Service name (globally unique) |
 | `AppServicePlanName` | `APP_SERVICE_PLAN_NAME` | Existing App Service Plan name |
 | `AppInsightsName` | `APP_INSIGHTS_NAME` | Existing Application Insights instance name |
+| `CustomDomain` | `APP_CUSTOM_DOMAIN` | Optional custom domain (e.g. `intervals-mcp.training-architect.com`). Leave empty to use only the `.azurewebsites.net` hostname. |
+| `OAuthTokenSecret` | `OAUTH_TOKEN_SECRET` | Fernet key for stateless OAuth tokens. Generate once and store permanently. See `OAUTH_TOKEN_SECRET` above. |
 
 ```powershell
 cd webservice
@@ -203,6 +230,7 @@ Both transports share the same tools, middleware, and Application Insights instr
 | `FASTMCP_PORT` | `8000` |
 | `FASTMCP_ALLOWED_HOST` | `<appName>.azurewebsites.net` (slot-sticky) |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Connection string of the existing Application Insights instance |
+| `OAUTH_TOKEN_SECRET` | Fernet key for stateless OAuth tokens (from GitHub Secret `OAUTH_TOKEN_SECRET`) |
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` |
 | `ENABLE_ORYX_BUILD` | `true` |
 
