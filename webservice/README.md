@@ -71,7 +71,7 @@ Environment variables:
 | `FASTMCP_PORT` | `8000` | Port |
 | `FASTMCP_ALLOWED_HOST` | *(empty)* | Additional hostname for the `allowed_hosts` security check (e.g. the App Service hostname) |
 | `OAUTH_TOKEN_SECRET` | *(empty)* | Fernet key for stateless OAuth tokens. Generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. If not set, an ephemeral key is generated at startup and tokens are lost on restart. |
-| `INTERVALS_DEV_MODE` | *(empty)* | Set to `true` for local development: enables `/health` endpoint and falls back to `ATHLETE_ID` / `INTERVALS_API_KEY` from `.env` when credential headers are absent. **Never enable in production.** |
+| `INTERVALS_DEV_MODE` | *(empty)* | Set to `true` for local development: falls back to `ATHLETE_ID` / `INTERVALS_API_KEY` from `.env` when no credentials are supplied. **Never enable in production.** |
 
 ### Testing with MCP Inspector
 
