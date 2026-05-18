@@ -62,7 +62,7 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
   name: appName
   location: location
   kind: 'app,linux'
-  tags: tags
+  tags: union(tags, { environment: 'prod' })
   identity: {
     type: 'SystemAssigned'
   }
@@ -73,6 +73,7 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
       linuxFxVersion: 'PYTHON|3.12'
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: true
+      healthCheckPath: '/health'
       appSettings: union(commonAppSettings, appInsightsSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
@@ -145,6 +146,7 @@ resource stagingSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       linuxFxVersion: 'PYTHON|3.12'
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
+      healthCheckPath: '/health'
       appSettings: union(commonAppSettings, appInsightsSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
@@ -171,6 +173,7 @@ resource devSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       linuxFxVersion: 'PYTHON|3.12'
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
+      healthCheckPath: '/health'
       appSettings: union(commonAppSettings, appInsightsSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
