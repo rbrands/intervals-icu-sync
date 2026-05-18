@@ -23,6 +23,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = if (a
 var tags = {
   project: 'intervals-icu-sync'
   'managed-by': 'bicep'
+  tier: 'application'
 }
 
 // Application Insights connection string setting (empty array when AI is not configured).
@@ -133,7 +134,7 @@ resource stagingSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
   name: 'staging'
   location: location
   kind: 'app,linux'
-  tags: tags
+  tags: union(tags, { environment: 'staging' })
   identity: {
     type: 'SystemAssigned'
   }
@@ -159,7 +160,7 @@ resource devSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
   name: 'dev'
   location: location
   kind: 'app,linux'
-  tags: tags
+  tags: union(tags, { environment: 'dev' })
   identity: {
     type: 'SystemAssigned'
   }
