@@ -164,8 +164,8 @@ class AuthHeaderMiddleware:
     async def __call__(self, scope, receive, send) -> None:
         if scope["type"] == "http":
             path = scope.get("path", "")
-            # Health endpoints (also handles /sse/health for MCP Inspector probe)
-            if path in ("/health", "/sse/health"):
+            # Health endpoints (also handles /sse/health and /mcp/health for MCP Inspector probe)
+            if path in ("/health", "/sse/health", "/mcp/health"):
                 await self._handle_health(scope, receive, send)
                 return
             # Config probe used by MCP Inspector – return a minimal discovery doc
@@ -571,9 +571,18 @@ def upload_week_plan(
 # Both transport endpoints are merged into one Starlette app:
 #   /sse  /messages/  – SSE transport (legacy)
 #   /mcp              – Streamable HTTP transport (modern)
+#
+# streamable_http_app() lazily creates mcp._session_manager. Its Starlette app
+# passes `lifespan=lambda app: self.session_manager.run()` internally; that
+# lifespan is lost when we extract routes only. We therefore carry it over
+# explicitly so the StreamableHTTPSessionManager's task group is initialised
+# before any /mcp request arrives.
 _sse = mcp.sse_app()
-_http = mcp.streamable_http_app()
-_combined = Starlette(routes=list(_sse.routes) + list(_http.routes))
+_http = mcp.streamable_http_app()  # initialises mcp._session_manager
+_combined = Starlette(
+    routes=list(_sse.routes) + list(_http.routes),
+    lifespan=lambda app: mcp.session_manager.run(),
+)
 
 app = CORSMiddleware(
     AuthHeaderMiddleware(_combined),

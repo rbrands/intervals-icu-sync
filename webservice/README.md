@@ -30,6 +30,8 @@ MCP_TRANSPORT=sse INTERVALS_DEV_MODE=true python webservice/mcp_server.py
 $env:MCP_TRANSPORT="sse"; $env:INTERVALS_DEV_MODE="true"; python webservice/mcp_server.py
 ```
 
+`MCP_TRANSPORT=sse` tells FastMCP to run in ASGI mode (instead of stdio).
+**Both transports are always active with a single start command** — there is no separate mode for Streamable HTTP.
 The server exposes two transport endpoints:
 
 | Endpoint | Protocol | Notes |
@@ -48,6 +50,10 @@ Environment variables:
 
 ### Testing with MCP Inspector
 
+`npx` is part of **Node.js** (included since npm v5.2). It must be installed on your machine —
+download from [nodejs.org](https://nodejs.org) or run `winget install OpenJS.NodeJS`.
+`npx` downloads and runs `@modelcontextprotocol/inspector` on demand without a permanent installation.
+
 ```bash
 npx @modelcontextprotocol/inspector
 ```
@@ -55,7 +61,7 @@ npx @modelcontextprotocol/inspector
 **SSE transport (legacy):**
 1. Transport Type: **SSE**
 2. URL: `http://localhost:8000/sse`
-3. Connection Type: **Direct** (not "Via Proxy" – the proxy requires its own auth token that can expire)
+3. Connection Type: **Direct**
 4. Click **Connect**
 
 **Streamable HTTP transport (modern):**
@@ -164,6 +170,20 @@ From the second PR onwards `deploy.yml` and `preview.yml` run automatically; `in
 | `swap.yml` | manual (`workflow_dispatch` only) | Health check staging → swap staging → production → health check production |
 
 Slot URLs follow the pattern `https://<appName>-<slot>.azurewebsites.net`.
+
+#### Typical development workflow
+
+1. **Create a feature branch** — `git checkout -b feature/<short-title>`
+2. **Open a PR** against `main`
+   - `deploy.yml` deploys the code to the **dev** slot automatically
+   - `preview.yml` runs a Bicep What-If and posts the result as a PR comment (only if infra files changed)
+   - Test at `https://<appName>-dev.azurewebsites.net`
+3. **Merge the PR** — `deploy.yml` deploys the code to the **staging** slot automatically
+   - Test at `https://<appName>-staging.azurewebsites.net`
+4. **Infrastructure changes** (Bicep) — always trigger `infra.yml` manually via
+   **Actions → Deploy Infrastructure → Run workflow** before or after merging
+5. **Go live** — trigger `swap.yml` manually via **Actions → Swap Slots → Run workflow**
+   - Health-checks staging, swaps staging ↔ production, health-checks production
 
 ### Transport endpoints
 
