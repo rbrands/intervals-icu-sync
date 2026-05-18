@@ -9,12 +9,16 @@ param location string = resourceGroup().location
 @description('Name of the existing App Service Plan to deploy into.')
 param appServicePlanName string
 
+@description('Name of the existing Application Insights instance in this resource group. Leave empty to skip AI instrumentation.')
+param appInsightsName string = ''
+
 module appservice 'modules/appservice.bicep' = {
   name: 'deploy-${appName}'
   params: {
     appName: appName
     location: location
     appServicePlanName: appServicePlanName
+    appInsightsName: appInsightsName
   }
 }
 

@@ -23,6 +23,7 @@ import json
 import os
 import subprocess
 import sys
+import contextlib
 import tempfile
 from datetime import date, timedelta
 from pathlib import Path
@@ -39,6 +40,46 @@ try:
 except ImportError:
     pass  # python-dotenv not installed – fine in production
 
+# Application Insights telemetry (no-op if connection string is not set).
+# On Azure App Service (WEBSITE_INSTANCE_ID is set), Managed Identity is used for
+# authentication so the connection string cannot be abused as a write credential.
+# Locally, key-based auth is used as a fallback.
+try:
+    from azure.monitor.opentelemetry import configure_azure_monitor
+    if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+        if os.environ.get("WEBSITE_INSTANCE_ID"):  # running on Azure App Service
+            from azure.identity import ManagedIdentityCredential
+            configure_azure_monitor(credential=ManagedIdentityCredential())
+        else:
+            configure_azure_monitor()
+except ImportError:
+    pass  # azure-monitor-opentelemetry not installed – fine in local dev
+
+# OpenTelemetry tracer for MCP tool spans (no-op when OTel is not available)
+class _NoOpSpan:
+    def set_attribute(self, *a, **kw): pass
+    def set_status(self, *a, **kw): pass
+    def record_exception(self, *a, **kw): pass
+
+try:
+    from opentelemetry import trace as _otel_trace
+    _tracer = _otel_trace.get_tracer(__name__)
+    _OK = _otel_trace.StatusCode.OK
+    _ERROR = _otel_trace.StatusCode.ERROR
+except ImportError:
+    _tracer = None
+    _OK = None
+    _ERROR = None
+
+@contextlib.contextmanager
+def _tool_span(name: str):
+    """Context manager for an OTel span; falls back to a no-op if OTel is unavailable."""
+    if _tracer is not None:
+        with _tracer.start_as_current_span(name) as span:
+            yield span
+    else:
+        yield _NoOpSpan()
+
 # Allow imports from src/ and from this package when run directly
 sys.path.insert(0, str(_ROOT / "src"))
 _WEBSERVICE_DIR = Path(__file__).resolve().parent
@@ -47,6 +88,7 @@ if str(_WEBSERVICE_DIR) not in sys.path:
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import TransportSecuritySettings
+from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 
 from context import api_key_var, athlete_id_var
@@ -122,8 +164,8 @@ class AuthHeaderMiddleware:
     async def __call__(self, scope, receive, send) -> None:
         if scope["type"] == "http":
             path = scope.get("path", "")
-            # Health endpoints (also handles /sse/health for MCP Inspector probe)
-            if path in ("/health", "/sse/health"):
+            # Health endpoints (also handles /sse/health and /mcp/health for MCP Inspector probe)
+            if path in ("/health", "/sse/health", "/mcp/health"):
                 await self._handle_health(scope, receive, send)
                 return
             # Config probe used by MCP Inspector – return a minimal discovery doc
@@ -321,97 +363,101 @@ def prepare_week_data() -> str:
     Credentials are read from the X-Intervals-Athlete-Id and X-Intervals-Api-Key
     request headers.
     """
-    err = _check_credentials()
-    if err:
-        return err
+    with _tool_span("mcp.tool/prepare_week_data") as span:
+        err = _check_credentials()
+        if err:
+            span.set_status(_ERROR, "missing credentials")
+            return err
 
-    pipeline = [
-        "get_activities.py",
-        "get_metrics.py",
-        "get_training_plan.py",
-        "prepare_activities_for_coach.py",
-        "prepare_planned_workouts_for_coach.py",
-        "fueling_analysis.py",
-        "analyze_week.py",
-    ]
+        pipeline = [
+            "get_activities.py",
+            "get_metrics.py",
+            "get_training_plan.py",
+            "prepare_activities_for_coach.py",
+            "prepare_planned_workouts_for_coach.py",
+            "fueling_analysis.py",
+            "analyze_week.py",
+        ]
 
-    # Each request writes to its own isolated temp directories so that
-    # concurrent requests for different athletes never overwrite each other.
-    with tempfile.TemporaryDirectory(prefix="intervals_raw_") as tmp_raw, \
-         tempfile.TemporaryDirectory(prefix="intervals_proc_") as tmp_proc:
+        # Each request writes to its own isolated temp directories so that
+        # concurrent requests for different athletes never overwrite each other.
+        with tempfile.TemporaryDirectory(prefix="intervals_raw_") as tmp_raw, \
+             tempfile.TemporaryDirectory(prefix="intervals_proc_") as tmp_proc:
 
-        tmp_raw_path = Path(tmp_raw)
-        tmp_proc_path = Path(tmp_proc)
-        extra_env = {
-            "INTERVALS_RAW_DIR": str(tmp_raw_path),
-            "INTERVALS_PROCESSED_DIR": str(tmp_proc_path),
-        }
+            tmp_raw_path = Path(tmp_raw)
+            tmp_proc_path = Path(tmp_proc)
+            extra_env = {
+                "INTERVALS_RAW_DIR": str(tmp_raw_path),
+                "INTERVALS_PROCESSED_DIR": str(tmp_proc_path),
+            }
 
-        log_lines: list[str] = []
-        for script in pipeline:
-            ok, output = _run_script(script, extra_env=extra_env)
-            status = "OK" if ok else "FAILED"
-            log_lines.append(f"[{status}] {script}")
-            if output:
-                log_lines.append(f"       {output[:300]}")
-            if not ok:
-                return json.dumps(
-                    {
-                        "error": f"Pipeline failed at {script}",
-                        "log": "\n".join(log_lines),
-                    },
-                    ensure_ascii=False,
-                )
+            log_lines: list[str] = []
+            for script in pipeline:
+                ok, output = _run_script(script, extra_env=extra_env)
+                status = "OK" if ok else "FAILED"
+                log_lines.append(f"[{status}] {script}")
+                if output:
+                    log_lines.append(f"       {output[:300]}")
+                if not ok:
+                    span.set_status(_ERROR, f"pipeline failed at {script}")
+                    return json.dumps(
+                        {
+                            "error": f"Pipeline failed at {script}",
+                            "log": "\n".join(log_lines),
+                        },
+                        ensure_ascii=False,
+                    )
 
-        # Consolidate outputs from the isolated temp directory
-        today = date.today()
-        monday = _current_monday()
-        monday_str = monday.isoformat()
+            # Consolidate outputs from the isolated temp directory
+            today = date.today()
+            monday = _current_monday()
+            monday_str = monday.isoformat()
 
-        metrics_files = sorted(tmp_proc_path.glob("metrics_*.json"))
-        metrics = (
-            json.loads(metrics_files[-1].read_text(encoding="utf-8"))
-            if metrics_files
-            else None
-        )
+            metrics_files = sorted(tmp_proc_path.glob("metrics_*.json"))
+            metrics = (
+                json.loads(metrics_files[-1].read_text(encoding="utf-8"))
+                if metrics_files
+                else None
+            )
 
-        activities_data = _load_json_file(tmp_proc_path / f"coach_input_{monday_str}.json")
-        fueling_data = _load_json_file(
-            tmp_proc_path / f"fueling_analysis_{monday_str}.json"
-        )
-        week_data = _load_json_file(tmp_proc_path / f"week_summary_{monday_str}.json")
-        plan_data = _load_json_file(
-            tmp_proc_path / f"training_plan_{today.isoformat()}.json"
-        )
-        planned_workouts_data = _load_json_file(
-            tmp_proc_path / f"planned_workouts_{monday_str}.json"
-        )
+            activities_data = _load_json_file(tmp_proc_path / f"coach_input_{monday_str}.json")
+            fueling_data = _load_json_file(
+                tmp_proc_path / f"fueling_analysis_{monday_str}.json"
+            )
+            week_data = _load_json_file(tmp_proc_path / f"week_summary_{monday_str}.json")
+            plan_data = _load_json_file(
+                tmp_proc_path / f"training_plan_{today.isoformat()}.json"
+            )
+            planned_workouts_data = _load_json_file(
+                tmp_proc_path / f"planned_workouts_{monday_str}.json"
+            )
 
-        ride_plan = _extract_ride_plan_summary(plan_data, monday)
-        if ride_plan:
-            if not isinstance(week_data, dict):
-                week_data = {}
-            week_data["training_plan"] = ride_plan
+            ride_plan = _extract_ride_plan_summary(plan_data, monday)
+            if ride_plan:
+                if not isinstance(week_data, dict):
+                    week_data = {}
+                week_data["training_plan"] = ride_plan
 
-        activities = (
-            activities_data
-            if isinstance(activities_data, list)
-            else (activities_data or {}).get("activities")
-        )
+            activities = (
+                activities_data
+                if isinstance(activities_data, list)
+                else (activities_data or {}).get("activities")
+            )
 
-        coach_input = {
-            "schema_version": _SCHEMA_VERSION,
-            "week_starting": monday_str,
-            "current_date": today.isoformat(),
-            "metrics": metrics,
-            "week_summary": week_data,
-            "activities": activities,
-            "fueling_analysis": fueling_data,
-            "planned_workouts": planned_workouts_data,
-        }
+            coach_input = {
+                "schema_version": _SCHEMA_VERSION,
+                "week_starting": monday_str,
+                "current_date": today.isoformat(),
+                "metrics": metrics,
+                "week_summary": week_data,
+                "activities": activities,
+                "fueling_analysis": fueling_data,
+                "planned_workouts": planned_workouts_data,
+            }
 
-    # TemporaryDirectory context exited — both temp dirs are deleted automatically
-    return json.dumps(coach_input, indent=2, ensure_ascii=False)
+        # TemporaryDirectory context exited — both temp dirs are deleted automatically
+        span.set_status(_OK)
+        return json.dumps(coach_input, indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -447,57 +493,70 @@ def upload_week_plan(
         clear:      If True, delete all existing WORKOUT events for the plan's
                     date range before uploading (use to fix duplicates).
     """
-    err = _check_credentials()
-    if err:
-        return err
+    with _tool_span("mcp.tool/upload_week_plan") as span:
+        span.set_attribute("dry_run", dry_run)
+        span.set_attribute("clear", clear)
 
-    try:
-        json.loads(plan_json)
-    except json.JSONDecodeError as exc:
-        return json.dumps({"error": f"Invalid JSON: {exc}"}, ensure_ascii=False)
+        err = _check_credentials()
+        if err:
+            span.set_status(_ERROR, "missing credentials")
+            return err
 
-    athlete_id, api_key = _get_credentials()
-    env = os.environ.copy()
-    env["INTERVALS_API_KEY"] = api_key
-    env["ATHLETE_ID"] = athlete_id
+        try:
+            json.loads(plan_json)
+        except json.JSONDecodeError as exc:
+            span.set_status(_ERROR, f"invalid plan JSON: {exc}")
+            return json.dumps({"error": f"Invalid JSON: {exc}"}, ensure_ascii=False)
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False, encoding="utf-8"
-    ) as tmp:
-        tmp.write(plan_json)
-        tmp_path = Path(tmp.name)
+        athlete_id, api_key = _get_credentials()
+        env = os.environ.copy()
+        env["INTERVALS_API_KEY"] = api_key
+        env["ATHLETE_ID"] = athlete_id
 
-    try:
-        cmd = [
-            sys.executable,
-            str(SCRIPTS_DIR / "upload_plan.py"),
-            "--plan",
-            str(tmp_path),
-        ]
-        if dry_run:
-            cmd.append("--dry-run")
-        if clear:
-            cmd.append("--clear")
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        ) as tmp:
+            tmp.write(plan_json)
+            tmp_path = Path(tmp.name)
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            stdin=subprocess.DEVNULL,
-            env=env,
-            check=False,
-        )
-        output = result.stdout + (
-            f"\nSTDERR: {result.stderr}" if result.stderr.strip() else ""
-        )
-        if not output.strip():
-            return "Done." if result.returncode == 0 else "Upload failed with no output."
-        return output.strip()
-    except subprocess.TimeoutExpired:
-        return json.dumps({"error": "Upload timed out after 120s"}, ensure_ascii=False)
-    finally:
-        tmp_path.unlink(missing_ok=True)
+        try:
+            cmd = [
+                sys.executable,
+                str(SCRIPTS_DIR / "upload_plan.py"),
+                "--plan",
+                str(tmp_path),
+            ]
+            if dry_run:
+                cmd.append("--dry-run")
+            if clear:
+                cmd.append("--clear")
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                stdin=subprocess.DEVNULL,
+                env=env,
+                check=False,
+            )
+            output = result.stdout + (
+                f"\nSTDERR: {result.stderr}" if result.stderr.strip() else ""
+            )
+            if not output.strip():
+                msg = "Done." if result.returncode == 0 else "Upload failed with no output."
+                span.set_status(_OK if result.returncode == 0 else _ERROR, msg)
+                return msg
+            if result.returncode != 0:
+                span.set_status(_ERROR, "upload script failed")
+            else:
+                span.set_status(_OK)
+            return output.strip()
+        except subprocess.TimeoutExpired:
+            span.set_status(_ERROR, "upload timed out")
+            return json.dumps({"error": "Upload timed out after 120s"}, ensure_ascii=False)
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -508,8 +567,25 @@ def upload_week_plan(
 # MCP Inspector and browsers) always get proper CORS headers, even for
 # endpoints that don't exist (404).  Without this the Inspector shows
 # "Error Connecting to MCP Inspector Proxy".
+#
+# Both transport endpoints are merged into one Starlette app:
+#   /sse  /messages/  – SSE transport (legacy)
+#   /mcp              – Streamable HTTP transport (modern)
+#
+# streamable_http_app() lazily creates mcp._session_manager. Its Starlette app
+# passes `lifespan=lambda app: self.session_manager.run()` internally; that
+# lifespan is lost when we extract routes only. We therefore carry it over
+# explicitly so the StreamableHTTPSessionManager's task group is initialised
+# before any /mcp request arrives.
+_sse = mcp.sse_app()
+_http = mcp.streamable_http_app()  # initialises mcp._session_manager
+_combined = Starlette(
+    routes=list(_sse.routes) + list(_http.routes),
+    lifespan=lambda app: mcp.session_manager.run(),
+)
+
 app = CORSMiddleware(
-    AuthHeaderMiddleware(mcp.sse_app()),
+    AuthHeaderMiddleware(_combined),
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],

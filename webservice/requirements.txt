@@ -4,3 +4,5 @@ pandas
 matplotlib
 mcp[cli]
 uvicorn[standard]
+azure-monitor-opentelemetry
+azure-identity

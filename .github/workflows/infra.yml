@@ -39,4 +39,5 @@ jobs:
               --parameters \
                 appName="${{ secrets.APP_NAME }}" \
                 location="${{ secrets.AZURE_LOCATION }}" \
-                appServicePlanName="${{ secrets.APP_SERVICE_PLAN_NAME }}"
+                appServicePlanName="${{ secrets.APP_SERVICE_PLAN_NAME }}" \
+                appInsightsName="${{ secrets.APP_INSIGHTS_NAME }}"

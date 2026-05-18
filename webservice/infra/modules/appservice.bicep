@@ -7,15 +7,31 @@ param location string = resourceGroup().location
 @description('Name of the existing App Service Plan to deploy into.')
 param appServicePlanName string
 
+@description('Name of the existing Application Insights instance. Leave empty to skip.')
+param appInsightsName string = ''
+
 // Reference the existing App Service Plan – it is not modified.
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' existing = {
   name: appServicePlanName
+}
+
+// Reference the existing Application Insights instance (if provided).
+resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = if (appInsightsName != '') {
+  name: appInsightsName
 }
 
 var tags = {
   project: 'intervals-icu-sync'
   'managed-by': 'bicep'
 }
+
+// Application Insights connection string setting (empty array when AI is not configured).
+var appInsightsSettings = appInsightsName != '' ? [
+  {
+    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+    value: appInsights.properties.ConnectionString
+  }
+] : []
 
 // Shared app settings used by the production slot and all deployment slots.
 var commonAppSettings = [
@@ -46,6 +62,9 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
   location: location
   kind: 'app,linux'
   tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
@@ -53,7 +72,7 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
       linuxFxVersion: 'PYTHON|3.12'
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: true
-      appSettings: union(commonAppSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           // Computed from the app name – no manual update needed after deploy.
@@ -74,12 +93,50 @@ resource slotConfigNames 'Microsoft.Web/sites/config@2023-01-01' = {
   }
 }
 
+// Monitoring Metrics Publisher (built-in role) – grants each slot's Managed Identity
+// the right to send telemetry to Application Insights. This avoids storing the
+// instrumentation key as a usable credential: auth is handled via Entra ID tokens.
+var monitoringPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
+
+resource aiRoleProduction 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (appInsightsName != '') {
+  name: guid(webApp.id, appInsights.id, monitoringPublisherRoleId)
+  scope: appInsights
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringPublisherRoleId)
+    principalId: webApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource aiRoleStaging 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (appInsightsName != '') {
+  name: guid(stagingSlot.id, appInsights.id, monitoringPublisherRoleId)
+  scope: appInsights
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringPublisherRoleId)
+    principalId: stagingSlot.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource aiRoleDev 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (appInsightsName != '') {
+  name: guid(devSlot.id, appInsights.id, monitoringPublisherRoleId)
+  scope: appInsights
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringPublisherRoleId)
+    principalId: devSlot.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource stagingSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
   parent: webApp
   name: 'staging'
   location: location
   kind: 'app,linux'
   tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
@@ -87,7 +144,7 @@ resource stagingSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       linuxFxVersion: 'PYTHON|3.12'
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
-      appSettings: union(commonAppSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-staging.azurewebsites.net'
@@ -103,6 +160,9 @@ resource devSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
   location: location
   kind: 'app,linux'
   tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
@@ -110,7 +170,7 @@ resource devSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       linuxFxVersion: 'PYTHON|3.12'
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
-      appSettings: union(commonAppSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-dev.azurewebsites.net'

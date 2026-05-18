@@ -47,6 +47,7 @@ if ($GitHub -or $All) {
     gh secret set AZURE_LOCATION           --body $config.Location
     gh secret set APP_NAME                 --body $config.AppName
     gh secret set APP_SERVICE_PLAN_NAME    --body $config.AppServicePlanName
+    gh secret set APP_INSIGHTS_NAME        --body $config.AppInsightsName
 
     Write-Host "GitHub Secrets set." -ForegroundColor Green
 }
@@ -66,6 +67,7 @@ using './main.bicep'
 param appName            = '$($config.AppName)'
 param location           = '$($config.Location)'
 param appServicePlanName = '$($config.AppServicePlanName)'
+param appInsightsName    = '$($config.AppInsightsName)'
 "@
 
     $outputPath = Join-Path $PSScriptRoot "infra/main.local.bicepparam"
