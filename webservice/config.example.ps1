@@ -37,4 +37,10 @@ $config = @{
     # Optional custom domain for the production slot.
     # Leave empty string to use only the azurewebsites.net hostname.
     CustomDomain         = "intervals-mcp...."
+
+    # Fernet key for stateless OAuth tokens (survives server restarts).
+    # Generate once with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # Store in Azure App Service Application Settings as OAUTH_TOKEN_SECRET.
+    # If not set, an ephemeral key is generated at startup (tokens lost on restart).
+    OAuthTokenSecret     = "__OAUTH_TOKEN_SECRET__"
 }

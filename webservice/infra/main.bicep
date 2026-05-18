@@ -15,6 +15,10 @@ param appInsightsName string = ''
 @description('Optional custom domain for the production slot (e.g. intervals-mcp.training-architect.com). Leave empty to use only the azurewebsites.net hostname.')
 param customDomain string = ''
 
+@description('Fernet key for stateless OAuth tokens. Leave empty to use an ephemeral key (tokens lost on restart).')
+@secure()
+param oauthTokenSecret string = ''
+
 module appservice 'modules/appservice.bicep' = {
   name: 'deploy-${appName}'
   params: {
@@ -23,6 +27,7 @@ module appservice 'modules/appservice.bicep' = {
     appServicePlanName: appServicePlanName
     appInsightsName: appInsightsName
     customDomain: customDomain
+    oauthTokenSecret: oauthTokenSecret
   }
 }
 

@@ -49,6 +49,9 @@ if ($GitHub -or $All) {
     gh secret set APP_SERVICE_PLAN_NAME    --body $config.AppServicePlanName
     gh secret set APP_INSIGHTS_NAME        --body $config.AppInsightsName
     gh secret set APP_CUSTOM_DOMAIN        --body $config.CustomDomain
+    if ($config.OAuthTokenSecret) {
+        gh secret set OAUTH_TOKEN_SECRET   --body $config.OAuthTokenSecret
+    }
 
     Write-Host "GitHub Secrets set." -ForegroundColor Green
 }
