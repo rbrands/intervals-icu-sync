@@ -40,11 +40,18 @@ try:
 except ImportError:
     pass  # python-dotenv not installed – fine in production
 
-# Application Insights telemetry (no-op if connection string is not set)
+# Application Insights telemetry (no-op if connection string is not set).
+# On Azure App Service (WEBSITE_INSTANCE_ID is set), Managed Identity is used for
+# authentication so the connection string cannot be abused as a write credential.
+# Locally, key-based auth is used as a fallback.
 try:
     from azure.monitor.opentelemetry import configure_azure_monitor
     if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
-        configure_azure_monitor()
+        if os.environ.get("WEBSITE_INSTANCE_ID"):  # running on Azure App Service
+            from azure.identity import ManagedIdentityCredential
+            configure_azure_monitor(credential=ManagedIdentityCredential())
+        else:
+            configure_azure_monitor()
 except ImportError:
     pass  # azure-monitor-opentelemetry not installed – fine in local dev
 

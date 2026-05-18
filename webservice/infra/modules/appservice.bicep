@@ -62,6 +62,9 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
   location: location
   kind: 'app,linux'
   tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
@@ -90,12 +93,50 @@ resource slotConfigNames 'Microsoft.Web/sites/config@2023-01-01' = {
   }
 }
 
+// Monitoring Metrics Publisher (built-in role) – grants each slot's Managed Identity
+// the right to send telemetry to Application Insights. This avoids storing the
+// instrumentation key as a usable credential: auth is handled via Entra ID tokens.
+var monitoringPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
+
+resource aiRoleProduction 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (appInsightsName != '') {
+  name: guid(webApp.id, appInsights.id, monitoringPublisherRoleId)
+  scope: appInsights
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringPublisherRoleId)
+    principalId: webApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource aiRoleStaging 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (appInsightsName != '') {
+  name: guid(stagingSlot.id, appInsights.id, monitoringPublisherRoleId)
+  scope: appInsights
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringPublisherRoleId)
+    principalId: stagingSlot.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource aiRoleDev 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (appInsightsName != '') {
+  name: guid(devSlot.id, appInsights.id, monitoringPublisherRoleId)
+  scope: appInsights
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringPublisherRoleId)
+    principalId: devSlot.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource stagingSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
   parent: webApp
   name: 'staging'
   location: location
   kind: 'app,linux'
   tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
@@ -119,6 +160,9 @@ resource devSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
   location: location
   kind: 'app,linux'
   tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
