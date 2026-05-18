@@ -9,6 +9,12 @@ Credentials are passed per-request via HTTP headers (never stored on the server)
   X-Intervals-Athlete-Id   – athlete ID (e.g. "i12345")
   X-Intervals-Api-Key      – intervals.icu API key
 
+Alternatively, credentials can be embedded in the URL path:
+  /{athlete_id}/{api_key}/mcp   – Streamable HTTP transport
+  /{athlete_id}/{api_key}/sse   – SSE transport
+This is useful for clients that do not support custom HTTP headers.
+URL credentials take precedence over headers.
+
 Run locally (SSE mode):
     # Linux / macOS:
     MCP_TRANSPORT=sse python webservice/mcp_server.py
@@ -21,6 +27,7 @@ App Service startup command:
 
 import json
 import os
+import re
 import subprocess
 import sys
 import contextlib
@@ -144,6 +151,10 @@ mcp = FastMCP(
 
 _DEV_MODE: bool = bool(os.environ.get("INTERVALS_DEV_MODE"))
 
+# Matches URL-embedded credentials: /{athlete_id}/{api_key}/{mcp|sse|messages...}
+# Allows clients that cannot set custom headers to pass credentials via the path.
+_URL_AUTH_RE = re.compile(r"^/([^/]+)/([^/]+)(/(?:mcp|sse|messages).*)$")
+
 
 class AuthHeaderMiddleware:
     """Reads X-Intervals-Athlete-Id and X-Intervals-Api-Key from incoming HTTP
@@ -184,12 +195,24 @@ class AuthHeaderMiddleware:
 
         if scope["type"] in ("http", "websocket"):
             header_dict = {k.lower(): v for k, v in scope.get("headers", [])}
-            athlete_id = header_dict.get(
-                b"x-intervals-athlete-id", b""
-            ).decode("utf-8", errors="replace")
-            api_key = header_dict.get(
-                b"x-intervals-api-key", b""
-            ).decode("utf-8", errors="replace")
+
+            # URL-embedded credentials take precedence over headers.
+            # Pattern: /{athlete_id}/{api_key}/{mcp|sse|messages...}
+            # The path is rewritten to the inner endpoint before forwarding.
+            url_match = _URL_AUTH_RE.match(scope.get("path", ""))
+            if url_match:
+                athlete_id = url_match.group(1)
+                api_key = url_match.group(2)
+                inner_path = url_match.group(3)
+                # Rewrite scope so the inner app sees /mcp, /sse, etc.
+                scope = {**scope, "path": inner_path, "raw_path": inner_path.encode()}
+            else:
+                athlete_id = header_dict.get(
+                    b"x-intervals-athlete-id", b""
+                ).decode("utf-8", errors="replace")
+                api_key = header_dict.get(
+                    b"x-intervals-api-key", b""
+                ).decode("utf-8", errors="replace")
 
             # Dev-mode fallback: use .env / process env when headers are missing
             if _DEV_MODE and (not athlete_id or not api_key):
