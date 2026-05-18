@@ -584,6 +584,14 @@ _combined = Starlette(
     lifespan=lambda app: mcp.session_manager.run(),
 )
 
+# configure_azure_monitor() auto-instruments FastAPI/Flask/Django but not plain
+# Starlette. Instrument explicitly so that HTTP request spans are captured.
+try:
+    from opentelemetry.instrumentation.starlette import StarletteInstrumentor
+    StarletteInstrumentor().instrument_app(_combined)
+except ImportError:
+    pass
+
 app = CORSMiddleware(
     AuthHeaderMiddleware(_combined),
     allow_origins=["*"],
