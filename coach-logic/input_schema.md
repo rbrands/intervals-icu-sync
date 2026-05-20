@@ -190,6 +190,8 @@ Notes:
 
     "tags": [string],
 
+    "notes": string | null,
+
     "power_curve": {
       "p5s": number,
       "p20s": number,
@@ -218,6 +220,7 @@ Notes:
 Notes:
 
 - Tags have highest priority for classification
+- notes: free-text description entered by the athlete in intervals.icu (activity description field); null if not set; use as qualitative context (e.g. perceived effort, conditions, how legs felt)
 - avg_hr: average heart rate during the activity in bpm
 - max_hr: maximum heart rate recorded during the activity in bpm
 - w_prime_j: athlete's W' (anaerobic work capacity) in joules, as configured in intervals.icu

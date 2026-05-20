@@ -252,6 +252,7 @@ def extract_fields(activity: dict, wbal_summary: dict | None = None, power_curve
             else None
         ),
         "tags": activity.get("tags") or [],
+        "notes": activity.get("description") or None,
         "power_curve": power_curve,
         "wbal_summary": wbal_summary,
     }

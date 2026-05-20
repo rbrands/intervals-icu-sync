@@ -9,6 +9,12 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Placeholder for upcoming changes.
 
+## [0.3.1] - 2026-05-20
+
+### Added
+
+- Activity notes (`description` field from intervals.icu) are now included in the coach input JSON and documented in `coach-logic/input_schema.md`.
+
 ## [0.3.0] - 2026-05-17
 
 ### Added

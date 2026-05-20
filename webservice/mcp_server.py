@@ -196,10 +196,10 @@ class AuthHeaderMiddleware:
     async def __call__(self, scope, receive, send) -> None:
         if scope["type"] == "http":
             path = scope.get("path", "")
-            # Root path – always-on ping from Azure App Service hits "/";
-            # serve health so it gets a 200 instead of a 404.
+            # Root path – serve a landing page for humans; Azure App Service
+            # health pings also hit "/" but accept any 2xx.
             if path == "/":
-                await self._handle_health(scope, receive, send)
+                await self._handle_landing(scope, receive, send)
                 return
             # Health endpoints (also handles /sse/health and /mcp/health for MCP Inspector)
             if path in ("/health", "/sse/health", "/mcp/health"):
@@ -300,6 +300,54 @@ class AuthHeaderMiddleware:
         ).encode()
         await send({"type": "http.response.start", "status": 200,
                     "headers": [[b"content-type", b"application/json"],
+                                 [b"content-length", str(len(body)).encode()]]})
+        await send({"type": "http.response.body", "body": body})
+
+    @staticmethod
+    async def _handle_landing(scope, receive, send) -> None:  # noqa: ARG004
+        """Return a human-readable landing page for the MCP server."""
+        header_dict = {k.lower(): v for k, v in scope.get("headers", [])}
+        host = header_dict.get(b"host", b"localhost").decode("utf-8", errors="replace")
+        proto = header_dict.get(b"x-forwarded-proto", b"http").decode("utf-8", errors="replace")
+        base = f"{proto}://{host}"
+        body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>intervals-icu-sync MCP Server</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; padding: 0 1.5rem; color: #222; }}
+    h1 {{ font-size: 1.5rem; margin-bottom: 0.25rem; }}
+    p.sub {{ color: #666; margin-top: 0; }}
+    table {{ border-collapse: collapse; width: 100%; margin: 1.5rem 0; }}
+    th, td {{ text-align: left; padding: 0.5rem 0.75rem; border: 1px solid #ddd; }}
+    th {{ background: #f5f5f5; }}
+    code {{ background: #f0f0f0; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.9em; }}
+    a {{ color: #0066cc; }}
+  </style>
+</head>
+<body>
+  <h1>intervals-icu-sync</h1>
+  <p class="sub">MCP Server — cycling training data from <a href="https://intervals.icu">intervals.icu</a></p>
+  <h2>Endpoints</h2>
+  <table>
+    <tr><th>URL</th><th>Protocol</th></tr>
+    <tr><td><code>{base}/mcp</code></td><td>Streamable HTTP (modern)</td></tr>
+    <tr><td><code>{base}/sse</code></td><td>SSE (legacy)</td></tr>
+  </table>
+  <h2>Authentication</h2>
+  <table>
+    <tr><th>Method</th><th>How</th></tr>
+    <tr><td>OAuth 2.0</td><td>Login via browser — automatic for Claude.ai</td></tr>
+    <tr><td>Custom headers</td><td><code>X-Intervals-Athlete-Id</code> + <code>X-Intervals-Api-Key</code></td></tr>
+    <tr><td>URL path</td><td><code>{base}/&lt;athlete_id&gt;/&lt;api_key&gt;/mcp</code></td></tr>
+  </table>
+  <p><a href="{base}/health">Health check</a></p>
+</body>
+</html>""".encode()
+        await send({"type": "http.response.start", "status": 200,
+                    "headers": [[b"content-type", b"text/html; charset=utf-8"],
                                  [b"content-length", str(len(body)).encode()]]})
         await send({"type": "http.response.body", "body": body})
 
