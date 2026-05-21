@@ -102,11 +102,13 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
 
 // FASTMCP_ALLOWED_HOST must be a slot-sticky setting so it does NOT swap
 // with the code. Each slot keeps its own hostname value after a swap.
+// OAUTH_TOKEN_SECRET is also sticky: the Fernet key must stay with the
+// production slot so tokens remain valid across deployments and swaps.
 resource slotConfigNames 'Microsoft.Web/sites/config@2023-01-01' = {
   parent: webApp
   name: 'slotConfigNames'
   properties: {
-    appSettingNames: ['FASTMCP_ALLOWED_HOST']
+    appSettingNames: ['FASTMCP_ALLOWED_HOST', 'OAUTH_TOKEN_SECRET']
   }
 }
 
@@ -162,7 +164,7 @@ resource stagingSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
       healthCheckPath: '/health'
-      appSettings: union(commonAppSettings, appInsightsSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-staging.azurewebsites.net'
@@ -189,7 +191,7 @@ resource devSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
       healthCheckPath: '/health'
-      appSettings: union(commonAppSettings, appInsightsSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-dev.azurewebsites.net'
