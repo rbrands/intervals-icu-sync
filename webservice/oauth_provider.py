@@ -88,6 +88,7 @@ class IntervalsOAuthProvider:
     """
 
     _TOKEN_LIFETIME = timedelta(days=30)
+    _REFRESH_TOKEN_LIFETIME = timedelta(days=365)
     _CODE_LIFETIME = timedelta(minutes=10)
     _PENDING_LIFETIME = timedelta(minutes=30)
 
@@ -115,6 +116,9 @@ class IntervalsOAuthProvider:
         try:
             plaintext = self._fernet.decrypt(bearer_token.encode()).decode()
         except (InvalidToken, ValueError):
+            return None
+        # Reject refresh tokens used as access tokens
+        if plaintext.startswith("refresh:"):
             return None
         parts = plaintext.split(":", 2)
         if len(parts) != 3:
@@ -185,7 +189,7 @@ class IntervalsOAuthProvider:
                 "token_endpoint": f"{base}/token",
                 "registration_endpoint": f"{base}/register",
                 "response_types_supported": ["code"],
-                "grant_types_supported": ["authorization_code"],
+                "grant_types_supported": ["authorization_code", "refresh_token"],
                 "code_challenge_methods_supported": ["S256"],
                 "token_endpoint_auth_methods_supported": [
                     "client_secret_post",
@@ -320,6 +324,9 @@ class IntervalsOAuthProvider:
         form = await request.form()
         grant_type = str(form.get("grant_type", ""))
 
+        if grant_type == "refresh_token":
+            return await self._handle_refresh_token(request, form)
+
         if grant_type != "authorization_code":
             return JSONResponse(
                 {"error": "unsupported_grant_type"}, status_code=400
@@ -388,11 +395,67 @@ class IntervalsOAuthProvider:
         token_str = self._fernet.encrypt(payload.encode()).decode()
         expires_in = int(self._TOKEN_LIFETIME.total_seconds())
 
+        # Issue refresh token (long-lived, Fernet-encrypted, stateless)
+        refresh_expires_at = datetime.now(timezone.utc) + self._REFRESH_TOKEN_LIFETIME
+        refresh_payload = f"refresh:{auth_code.athlete_id}:{auth_code.api_key}:{refresh_expires_at.isoformat()}"
+        refresh_token_str = self._fernet.encrypt(refresh_payload.encode()).decode()
+
         return JSONResponse(
             {
                 "access_token": token_str,
                 "token_type": "bearer",
                 "expires_in": expires_in,
+                "refresh_token": refresh_token_str,
+            },
+            headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+        )
+
+    async def _handle_refresh_token(self, _request: Request, form) -> JSONResponse:
+        """Handle grant_type=refresh_token: validate refresh token and issue new access token."""
+        refresh_token = str(form.get("refresh_token", ""))
+        if not refresh_token:
+            return JSONResponse({"error": "invalid_request", "error_description": "refresh_token required"}, status_code=400)
+
+        try:
+            plaintext = self._fernet.decrypt(refresh_token.encode()).decode()
+        except (InvalidToken, ValueError):
+            return JSONResponse({"error": "invalid_grant", "error_description": "Invalid refresh token"}, status_code=401)
+
+        if not plaintext.startswith("refresh:"):
+            return JSONResponse({"error": "invalid_grant", "error_description": "Not a refresh token"}, status_code=401)
+
+        parts = plaintext[len("refresh:"):].split(":", 2)
+        if len(parts) != 3:
+            return JSONResponse({"error": "invalid_grant"}, status_code=401)
+
+        athlete_id, api_key, expires_str = parts
+        try:
+            expires_at = datetime.fromisoformat(expires_str)
+        except ValueError:
+            return JSONResponse({"error": "invalid_grant"}, status_code=401)
+
+        if expires_at < datetime.now(timezone.utc):
+            return JSONResponse({"error": "invalid_grant", "error_description": "Refresh token expired"}, status_code=401)
+
+        # Issue new access token
+        new_expires_at = datetime.now(timezone.utc) + self._TOKEN_LIFETIME
+        payload = f"{athlete_id}:{api_key}:{new_expires_at.isoformat()}"
+        token_str = self._fernet.encrypt(payload.encode()).decode()
+        expires_in = int(self._TOKEN_LIFETIME.total_seconds())
+
+        # Issue a new (rotated) refresh token with a fresh expiry window.
+        # As long as the client refreshes at least once per year, re-authentication
+        # is never required.
+        new_refresh_expires_at = datetime.now(timezone.utc) + self._REFRESH_TOKEN_LIFETIME
+        new_refresh_payload = f"refresh:{athlete_id}:{api_key}:{new_refresh_expires_at.isoformat()}"
+        new_refresh_token_str = self._fernet.encrypt(new_refresh_payload.encode()).decode()
+
+        return JSONResponse(
+            {
+                "access_token": token_str,
+                "token_type": "bearer",
+                "expires_in": expires_in,
+                "refresh_token": new_refresh_token_str,  # Rotated: fresh 1-year expiry
             },
             headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
         )
