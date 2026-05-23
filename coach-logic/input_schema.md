@@ -192,6 +192,12 @@ Notes:
 
     "notes": string | null,
 
+    "weather": {
+      "average_weather_temp": number | null,
+      "average_feels_like": number | null,
+      "max_rain": number | null
+    } | null,
+
     "power_curve": {
       "p5s": number,
       "p20s": number,
@@ -221,6 +227,10 @@ Notes:
 
 - Tags have highest priority for classification
 - notes: free-text description entered by the athlete in intervals.icu (activity description field); null if not set; use as qualitative context (e.g. perceived effort, conditions, how legs felt)
+- weather: outdoor weather conditions automatically retrieved by intervals.icu from external weather services based on GPS location and activity time; null if no GPS data is available (e.g. indoor trainer rides)
+  - average_weather_temp: mean ambient temperature during the activity in °C (weather service, not device sensor)
+  - average_feels_like: mean apparent ("feels like") temperature in °C, accounting for wind and humidity
+  - max_rain: maximum rain intensity recorded during the activity in mm; 0 = dry, >0 = wet conditions
 - avg_hr: average heart rate during the activity in bpm
 - max_hr: maximum heart rate recorded during the activity in bpm
 - w_prime_j: athlete's W' (anaerobic work capacity) in joules, as configured in intervals.icu

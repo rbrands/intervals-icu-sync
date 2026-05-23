@@ -9,6 +9,17 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Placeholder for upcoming changes.
 
+## [0.3.2] - 2026-05-23
+
+### Added
+
+- Weather data section in coach input JSON (`prepare_activities_for_coach.py`): each activity now contains a `weather` object with `average_weather_temp`, `average_feels_like`, and `max_rain` from the intervals.icu weather service; `null` for indoor/GPS-less rides.
+- Weather fields documented in `coach-logic/input_schema.md`.
+
+### Improved
+
+- MCP server authentication hardened: improved credential handling in the web service.
+
 ## [0.3.1] - 2026-05-20
 
 ### Added

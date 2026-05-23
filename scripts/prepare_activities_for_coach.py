@@ -213,6 +213,24 @@ def classify_ride(
     return {"label": "Unique", "reason": f"No pattern matched (Z1+2={z1_z2_pct}%, Z3+4={z3_z4_pct}%, Z5+={z5_plus_pct}%)"}
 
 
+def _extract_weather(activity: dict) -> dict | None:
+    """Extract weather-service fields from an activity.
+
+    Returns a dict with average_weather_temp, average_feels_like and max_rain,
+    or None if no weather data is available.
+    """
+    temp = activity.get("average_weather_temp")
+    feels_like = activity.get("average_feels_like")
+    max_rain = activity.get("max_rain")
+    if temp is None and feels_like is None and max_rain is None:
+        return None
+    return {
+        "average_weather_temp": temp,
+        "average_feels_like": feels_like,
+        "max_rain": max_rain,
+    }
+
+
 def extract_fields(activity: dict, wbal_summary: dict | None = None, power_curve: dict | None = None) -> dict:
     zone_dist = _zone_distribution(activity.get("icu_zone_times") or [])
     ride_class = classify_ride(
@@ -253,6 +271,7 @@ def extract_fields(activity: dict, wbal_summary: dict | None = None, power_curve
         ),
         "tags": activity.get("tags") or [],
         "notes": activity.get("description") or None,
+        "weather": _extract_weather(activity),
         "power_curve": power_curve,
         "wbal_summary": wbal_summary,
     }
