@@ -1,9 +1,10 @@
 """MCP server for Azure App Service deployment.
 
-Exposes two MCP tools over SSE transport:
-  - prepare_week_for_coach  – runs the full data pipeline and returns the
-                              consolidated coach input as JSON
-  - upload_plan             – uploads a JSON training plan to intervals.icu
+Exposes three MCP tools over SSE transport:
+    - prepare_week_data       – runs the full data pipeline and returns the
+                                                            consolidated coach input as JSON
+    - get_latest_activities   – returns a compact list of latest rides
+    - upload_week_plan        – uploads a JSON training plan to intervals.icu
 
 Credentials are resolved in priority order:
   1. URL path   /{athlete_id}/{api_key}/mcp  or  /{athlete_id}/{api_key}/sse
@@ -338,6 +339,13 @@ class AuthHeaderMiddleware:
     <tr><td><code>{base}/mcp</code></td><td>Streamable HTTP (modern)</td></tr>
     <tr><td><code>{base}/sse</code></td><td>SSE (legacy)</td></tr>
   </table>
+    <h2>MCP Methods</h2>
+    <table>
+        <tr><th>Method</th><th>Description</th></tr>
+        <tr><td><code>prepare_week_data</code></td><td>Runs the full weekly pipeline and returns consolidated coach input JSON.</td></tr>
+        <tr><td><code>get_latest_activities</code></td><td>Returns a compact latest-first activity list to avoid large payload truncation.</td></tr>
+        <tr><td><code>upload_week_plan</code></td><td>Uploads a JSON training plan to intervals.icu (supports dry-run and clear).</td></tr>
+    </table>
   <h2>Authentication</h2>
   <table>
     <tr><th>Method</th><th>How</th></tr>
@@ -602,6 +610,105 @@ def prepare_week_data() -> str:
         # TemporaryDirectory context exited — both temp dirs are deleted automatically
         span.set_status(_OK)
         return json.dumps(coach_input, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def get_latest_activities(limit: int = 10) -> str:
+    """Return a compact, latest-first list of activities for the current week.
+
+    This tool is intended for MCP clients that may truncate very large tool
+    outputs. It runs a slim pipeline and returns only core fields.
+
+    Args:
+        limit: Maximum number of activities to return (1-100, default 10).
+    """
+    with _tool_span("mcp.tool/get_latest_activities") as span:
+        span.set_attribute("limit", limit)
+
+        err = _check_credentials()
+        if err:
+            span.set_status(_ERROR, "missing credentials")
+            return err
+
+        if limit < 1 or limit > 100:
+            span.set_status(_ERROR, "invalid limit")
+            return json.dumps(
+                {"error": "limit must be between 1 and 100"},
+                ensure_ascii=False,
+            )
+
+        pipeline = [
+            "get_activities.py",
+            "prepare_activities_for_coach.py",
+        ]
+
+        with tempfile.TemporaryDirectory(prefix="intervals_raw_") as tmp_raw, \
+             tempfile.TemporaryDirectory(prefix="intervals_proc_") as tmp_proc:
+
+            tmp_raw_path = Path(tmp_raw)
+            tmp_proc_path = Path(tmp_proc)
+            extra_env = {
+                "INTERVALS_RAW_DIR": str(tmp_raw_path),
+                "INTERVALS_PROCESSED_DIR": str(tmp_proc_path),
+            }
+
+            for script in pipeline:
+                ok, output = _run_script(script, extra_env=extra_env)
+                if not ok:
+                    span.set_status(_ERROR, f"pipeline failed at {script}")
+                    return json.dumps(
+                        {
+                            "error": f"Pipeline failed at {script}",
+                            "details": output[:500],
+                        },
+                        ensure_ascii=False,
+                    )
+
+            monday_str = _current_monday().isoformat()
+            activities_data = _load_json_file(tmp_proc_path / f"coach_input_{monday_str}.json")
+            activities = (
+                activities_data
+                if isinstance(activities_data, list)
+                else (activities_data or {}).get("activities")
+            )
+
+            if not isinstance(activities, list):
+                span.set_status(_ERROR, "no activities")
+                return json.dumps(
+                    {"error": "No activities generated for current week."},
+                    ensure_ascii=False,
+                )
+
+            activities_sorted = sorted(
+                activities,
+                key=lambda a: (a.get("date") or "", a.get("name") or ""),
+                reverse=True,
+            )
+            compact = [
+                {
+                    "date": a.get("date"),
+                    "name": a.get("name"),
+                    "duration_hours": a.get("duration_hours"),
+                    "training_load": a.get("training_load"),
+                    "rpe": a.get("rpe"),
+                    "tags": a.get("tags") or [],
+                }
+                for a in activities_sorted[:limit]
+            ]
+
+        span.set_status(_OK)
+        return json.dumps(
+            {
+                "schema_version": _SCHEMA_VERSION,
+                "week_starting": _current_monday().isoformat(),
+                "current_date": date.today().isoformat(),
+                "total_activities": len(activities),
+                "returned": len(compact),
+                "activities": compact,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
 
 
 @mcp.tool()

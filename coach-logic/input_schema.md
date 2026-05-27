@@ -225,6 +225,7 @@ Notes:
 
 Notes:
 
+- activities are ordered newest-first by activity start date/time (most recent ride first)
 - Tags have highest priority for classification
 - notes: free-text description entered by the athlete in intervals.icu (activity description field); null if not set; use as qualitative context (e.g. perceived effort, conditions, how legs felt)
 - weather: outdoor weather conditions automatically retrieved by intervals.icu from external weather services based on GPS location and activity time; null if no GPS data is available (e.g. indoor trainer rides)

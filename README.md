@@ -336,6 +336,7 @@ Output: console + `data/processed/week_summary_{monday}.json`
 ### `prepare_activities_for_coach.py`
 
 Exports a simplified JSON of this week's rides for sharing with a coach or ChatGPT. Includes duration, training load, power, RPE, interval summary, decoupling, and carbohydrate intake.
+Activities in the exported list are sorted by date/time with the newest ride first.
 
 ```bash
 python scripts/prepare_activities_for_coach.py
@@ -460,7 +461,7 @@ Output: `data/processed/wbal_{activity_id}.json`
 
 ### `mcp_server.py`
 
-FastMCP server that exposes the training data pipeline and plan upload as MCP tools. Allows AI assistants to fetch, analyse, and discuss training data without any manual file copying. See [MCP Server Integration](#mcp-server-integration) for setup and usage.
+FastMCP server that exposes the training data pipeline and plan upload as MCP tools. It also offers a compact latest-activities method for clients that truncate large tool outputs. Allows AI assistants to fetch, analyse, and discuss training data without any manual file copying. See [MCP Server Integration](#mcp-server-integration) for setup and usage.
 
 ---
 

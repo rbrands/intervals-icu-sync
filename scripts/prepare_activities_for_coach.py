@@ -283,7 +283,8 @@ def main() -> None:
     output_file = OUTPUT_DIR / f"coach_input_{monday.isoformat()}.json"
     activities = load_data()
     rides = filter_activities(activities)
-    rides.sort(key=lambda a: (a.get("start_date_local") or ""))
+    # Newest activities first so consumers with truncated outputs still see the latest rides.
+    rides.sort(key=lambda a: (a.get("start_date_local") or ""), reverse=True)
     output = []
     for a in rides:
         zone_dist = _zone_distribution(a.get("icu_zone_times") or [])

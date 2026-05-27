@@ -9,6 +9,19 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Placeholder for upcoming changes.
 
+## [0.3.4] - 2026-05-27
+
+### Added
+
+- New MCP tool `get_latest_activities(limit=10)` in `webservice/mcp_server.py` that returns a compact, latest-first activity list (`date`, `name`, `duration_hours`, `training_load`, `rpe`, `tags`) to reduce client-side truncation risk in long tool outputs.
+- Landing page method list (`/`) now includes `get_latest_activities` alongside `prepare_week_data` and `upload_week_plan`.
+
+### Changed
+
+- Schema/project version bumped to `0.3.4` (source of `schema_version` in consolidated coach input payloads).
+- Activity export order changed to newest-first in `scripts/prepare_activities_for_coach.py` so recent rides are visible first in truncated client responses.
+- Documentation updated in `README.md` and `webservice/README.md` to reflect the new MCP method and activity ordering behavior.
+
 ## [0.3.3] - 2026-05-25
 
 ### Added
