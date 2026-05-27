@@ -184,7 +184,7 @@ def main() -> None:
         activities = load_latest_activities()
         qualifying = [
             a for a in activities
-            if a.get("type") in ("Ride", "VirtualRide")
+                if a.get("type") in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide")
             and a.get("source") != "STRAVA"
             and a.get("icu_w_prime")
             and a.get("icu_ftp")

@@ -293,6 +293,7 @@ to upload the plan to intervals.icu
 ### `get_activities.py`
 
 Fetches cycling activities from intervals.icu (Monday of previous week → today) and saves them to `data/raw/`.
+Included activity types are `Ride`, `MountainBikeRide`, and `GravelRide` (plus `VirtualRide` for indoor/platform rides).
 
 ```bash
 python scripts/get_activities.py
