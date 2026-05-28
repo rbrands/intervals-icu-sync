@@ -5,3 +5,5 @@ matplotlib
 jupyter
 ipykernel
 mcp[cli]
+pre-commit
+nbstripout

@@ -177,6 +177,7 @@ intervals-icu-sync/
 ├── tests/
 │   └── test_upload_plan_regressions.py  # Regression tests for upload_plan.py and ZWO generation
 ├── .env.example
+├── .pre-commit-config.yaml       # Git hook config (strips Jupyter outputs before commit)
 ├── CHANGELOG.md                  # Project change history (Keep a Changelog format)
 ├── requirements.txt
 ├── VERSION                       # Current project version (SemVer)
@@ -199,6 +200,16 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 ```
+
+### 2b. Prevent Jupyter output-only commits (recommended)
+
+Enable the notebook output stripping hook:
+
+```bash
+pre-commit install
+```
+
+This project includes `.pre-commit-config.yaml` with `nbstripout`, so notebook output and execution-count-only changes are removed automatically at commit time.
 
 ### 3. Set your API key
 
