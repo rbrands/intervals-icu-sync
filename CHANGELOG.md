@@ -9,6 +9,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Placeholder for upcoming changes.
 - Expanded cycling activity type filters to include `MountainBikeRide` and `GravelRide` (in `get_activities.py`, `prepare_activities_for_coach.py`, `analyze_week.py`, and `wbal_analysis.py`) so tagged MTB/gravel sessions are no longer dropped.
+- Expanded `notebooks/week_summary.ipynb` with additional section explanations to improve readability and interpretation across key analysis blocks.
 
 ## [0.3.4] - 2026-05-27
 
