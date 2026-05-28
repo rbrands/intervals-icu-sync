@@ -117,6 +117,8 @@ The public MCP server at [https://intervals-mcp.training-architect.com](https://
 | `prepare_week_data` | Fetches and consolidates all training data from intervals.icu and returns it as JSON — no file needed |
 | `upload_week_plan` | Uploads a JSON training plan to your intervals.icu calendar as planned workout events |
 
+In Claude, you can call tools directly via slash commands, e.g. `/prepare_week_data`.
+
 ---
 
 ## One-time setup – Claude.ai
@@ -205,6 +207,16 @@ The more consistently you log these, the better the coaching output.
 ---
 
 ## Step 1 – Prepare the week and share with your coach
+
+**Claude shortcut (direct tool call)**
+
+Type this in Claude to run the data fetch immediately:
+
+```
+/prepare_week_data
+```
+
+Then ask for the interpretation/assessment in a second message.
 
 **Example prompt – weekly assessment via MCP**
 
