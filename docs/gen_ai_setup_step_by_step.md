@@ -110,14 +110,15 @@ Under **"Knowledge"**, upload all files from the `coach-logic/` directory. ([Dow
 
 *No local Python installation needed — Claude fetches your data and uploads the plan directly.*
 
-The public MCP server at [https://intervals-mcp.training-architect.com](https://intervals-mcp.training-architect.com) exposes the same two tools as the local setup:
+The public MCP server at [https://intervals-mcp.training-architect.com](https://intervals-mcp.training-architect.com) exposes the same tools as the local setup:
 
 | Tool | What it does |
 |------|--------------|
 | `prepare_week_data` | Fetches and consolidates all training data from intervals.icu and returns it as JSON — no file needed |
+| `get_latest_activities` | Returns a compact latest-first list of activities (useful when full outputs are too long/truncated) |
 | `upload_week_plan` | Uploads a JSON training plan to your intervals.icu calendar as planned workout events |
 
-In Claude, you can call tools directly via slash commands, e.g. `/prepare_week_data`.
+In Claude, you can call tools directly via slash commands, e.g. `/prepare_week_data` or `/get_latest_activities`.
 
 ---
 
@@ -217,6 +218,18 @@ Type this in Claude to run the data fetch immediately:
 ```
 
 Then ask for the interpretation/assessment in a second message.
+
+If you only want a quick latest-ride check (compact output):
+
+```
+/get_latest_activities
+```
+
+Optional with explicit limit (if supported by your client UI):
+
+```
+/get_latest_activities {"limit": 5}
+```
 
 **Example prompt – weekly assessment via MCP**
 
