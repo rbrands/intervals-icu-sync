@@ -7,7 +7,7 @@ MCP server for Azure App Service. Exposes three tools over SSE transport, with c
 | Tool | Description |
 |---|---|
 | `prepare_week_data` | Runs the full data pipeline (activities, metrics, training plan, fueling, week analysis) and returns the consolidated coach input as JSON. Nothing is stored on the server. |
-| `get_latest_activities` | Runs a slim pipeline and returns a compact, latest-first activity list (`date`, `name`, `duration_hours`, `training_load`, `rpe`, `tags`) to avoid client-side truncation on large payloads. |
+| `get_latest_activities` | Runs a slim pipeline and returns a compact, latest-first activity list (`date`, `name`, `duration_hours`, `training_load`, `avg_hr`, `max_hr`, `rpe`, `tags`) to avoid client-side truncation on large payloads. |
 | `upload_week_plan` | Uploads a JSON training plan to intervals.icu as planned workout events. Accepts `dry_run` and `clear` flags. |
 
 ## Authentication

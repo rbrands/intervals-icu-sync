@@ -8,6 +8,20 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 - Placeholder for upcoming changes.
+
+## [0.3.5] - 2026-06-01
+
+### Added
+
+- Per-interval HR data in `coach_input` export: each activity now contains an `interval_segments` list with `avg_hr`, `max_hr`, `avg_power`, `intensity_pct`, `zone`, `type` (WORK/RECOVERY), and timing fields, fetched from the intervals.icu `/activity/{id}/intervals` endpoint.
+- New local script `scripts/get_latest_activities.py`: reads the current `coach_input_{monday}.json` and prints a compact JSON summary (8 fields per activity) matching the output format of the webservice MCP tool `get_latest_activities`. Supports `--limit N` argument.
+- `interval_segments` added to `coach-logic/input_schema.md` with full field documentation.
+
+### Changed
+
+- `notebooks/week_summary.ipynb`: new cell added to display the full `interval_segments` table and a WORK-only filtered view per activity.
+- `README.md` and `coach-logic/input_schema.md` updated to reflect new fields and new script.
+- Schema/project version bumped to `0.3.5`.
 - Expanded cycling activity type filters to include `MountainBikeRide` and `GravelRide` (in `get_activities.py`, `prepare_activities_for_coach.py`, `analyze_week.py`, and `wbal_analysis.py`) so tagged MTB/gravel sessions are no longer dropped.
 - Expanded `notebooks/week_summary.ipynb` with additional section explanations to improve readability and interpretation across key analysis blocks.
 - Added repo-level pre-commit configuration (`.pre-commit-config.yaml`) with `nbstripout`, included tooling in `requirements.txt`, and documented setup in `README.md` to avoid notebook output-only diffs and commits.

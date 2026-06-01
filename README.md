@@ -143,6 +143,7 @@ intervals-icu-sync/
 │   ├── upload_plan.py              # Upload JSON training plan to intervals.icu
 │   ├── wbal_analysis.py            # Compute W'bal time series from power stream
 │   ├── prepare_week_for_coach.py   # Run all scripts in sequence
+│   ├── get_latest_activities.py    # Print compact activity list (mirrors MCP get_latest_activities)
 │   └── mcp_server.py               # FastMCP server exposing data as tools/resources
 ├── prompts/
 │   ├── system_prompt.md            # System prompt for the AI coach (LLM instructions)
@@ -347,7 +348,7 @@ Output: console + `data/processed/week_summary_{monday}.json`
 
 ### `prepare_activities_for_coach.py`
 
-Exports a simplified JSON of this week's rides for sharing with a coach or ChatGPT. Includes duration, training load, power, RPE, interval summary, decoupling, and carbohydrate intake.
+Exports a simplified JSON of this week's rides for sharing with a coach or ChatGPT. Includes duration, training load, power, HR (avg/max), RPE, interval summary, per-interval segments with average/max HR and average power (`interval_segments`), decoupling, and carbohydrate intake.
 Activities in the exported list are sorted by date/time with the newest ride first.
 
 ```bash
@@ -420,6 +421,21 @@ Aborts immediately if any script fails.
 ```bash
 python scripts/prepare_week_for_coach.py
 ```
+
+---
+
+### `get_latest_activities.py`
+
+Reads the most recent `coach_input_{monday}.json` (run `prepare_week_for_coach.py` first) and prints a compact JSON summary in the same format that the webservice MCP tool `get_latest_activities` returns. Useful for locally inspecting or testing the compact activity list without the full webservice stack.
+
+Returns 8 fields per activity: `date`, `name`, `duration_hours`, `training_load`, `avg_hr`, `max_hr`, `rpe`, `tags`.
+
+```bash
+python scripts/get_latest_activities.py            # last 10 activities (default)
+python scripts/get_latest_activities.py --limit 5  # last 5 activities
+```
+
+Output: JSON to stdout
 
 ---
 

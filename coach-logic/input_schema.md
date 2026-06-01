@@ -219,7 +219,22 @@ Notes:
       "min_wbal_at_second": number,
       "wbal_depletion_events": number,
       "wbal_recovery_ratio": number | null
-    } | null
+    } | null,
+
+    "interval_segments": [
+      {
+        "start_time": number,
+        "end_time": number,
+        "elapsed_time": number,
+        "type": "WORK" | "RECOVERY",
+        "label": string | null,
+        "avg_power": number,
+        "avg_hr": number,
+        "max_hr": number,
+        "intensity_pct": number,
+        "zone": number
+      }
+    ] | null
   }
 ]
 
@@ -262,6 +277,16 @@ Notes:
   - min_wbal_at_second: time index (seconds from start) of the W'bal minimum
   - wbal_depletion_events: number of discrete efforts where W'bal drops below 40 % and recovers above 50 %
   - wbal_recovery_ratio: average ratio of W' recovered vs. W' depleted per event (0–1); null if no complete events with recovery; 1.0 = full recovery between efforts
+- interval_segments: per-interval breakdown fetched from the intervals.icu `/activity/{id}/intervals` endpoint; null if no structured intervals are detected in the activity
+  - start_time / end_time: segment boundaries in seconds from activity start
+  - elapsed_time: segment duration in seconds
+  - type: "WORK" = effort interval, "RECOVERY" = rest/recovery interval
+  - label: optional custom label for the interval (e.g. "Rep 1"), null if not set
+  - avg_power: mean power during the segment in watts
+  - avg_hr: mean heart rate during the segment in bpm
+  - max_hr: peak heart rate during the segment in bpm
+  - intensity_pct: segment intensity as percentage of FTP (avg_power / FTP × 100)
+  - zone: power zone number (1–7) of the segment based on the athlete's zone configuration
 
 ---
 

@@ -271,6 +271,24 @@ def get_activity_streams(api_key: str, activity_id: str) -> list[dict]:
     return response.json()
 
 
+def get_activity_intervals(api_key: str, activity_id: str) -> dict:
+    """Fetch intervals/laps for a single activity.
+
+    Returns a dict with keys such as ``icu_intervals`` and ``icu_groups``.
+
+    Raises:
+        requests.HTTPError: If the response status code is not 2xx.
+    """
+    url = f"{BASE_URL}/activity/{activity_id}/intervals"
+    response = requests.get(
+        url,
+        auth=("API_KEY", api_key),
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def get_training_plan(api_key: str, athlete_id: str) -> dict:
     """Fetch the athlete's current training plan from intervals.icu.
 

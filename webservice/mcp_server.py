@@ -617,7 +617,8 @@ def get_latest_activities(limit: int = 10) -> str:
     """Return a compact, latest-first list of activities for the current week.
 
     This tool is intended for MCP clients that may truncate very large tool
-    outputs. It runs a slim pipeline and returns only core fields.
+    outputs. It runs a slim pipeline and returns only core fields, including
+    heart-rate summary values when available.
 
     Args:
         limit: Maximum number of activities to return (1-100, default 10).
@@ -690,6 +691,8 @@ def get_latest_activities(limit: int = 10) -> str:
                     "name": a.get("name"),
                     "duration_hours": a.get("duration_hours"),
                     "training_load": a.get("training_load"),
+                    "avg_hr": a.get("avg_hr"),
+                    "max_hr": a.get("max_hr"),
                     "rpe": a.get("rpe"),
                     "tags": a.get("tags") or [],
                 }

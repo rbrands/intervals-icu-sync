@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from intervals_icu.client import get_activity_streams, get_activity_power_curve
+from intervals_icu.client import get_activity_streams, get_activity_power_curve, get_activity_intervals
 from intervals_icu.config import API_KEY
 from intervals_icu.wbal import compute_wbal, summarize_wbal
 
@@ -114,6 +114,40 @@ def _fetch_wbal_summary(activity: dict) -> dict | None:
         return None
     wbal = compute_wbal(watts, float(w_prime), float(ftp))
     return summarize_wbal(wbal, float(w_prime))
+
+
+def _fetch_interval_segments(activity: dict) -> list[dict] | None:
+    """Fetch interval segments with per-interval avg HR and avg power."""
+    act_id = activity.get("id")
+    if not act_id:
+        return None
+    try:
+        payload = get_activity_intervals(API_KEY, act_id)
+    except Exception as exc:
+        print(f"  Interval fetch failed for {act_id}: {exc}")
+        return None
+
+    intervals = payload.get("icu_intervals") or []
+    if not intervals:
+        return None
+
+    segments: list[dict] = []
+    for itv in intervals:
+        segments.append(
+            {
+                "start_time": itv.get("start_time"),
+                "end_time": itv.get("end_time"),
+                "elapsed_time": itv.get("elapsed_time"),
+                "type": itv.get("type"),
+                "label": itv.get("label"),
+                "avg_power": itv.get("average_watts"),
+                "avg_hr": itv.get("average_heartrate"),
+                "max_hr": itv.get("max_heartrate"),
+                "intensity_pct": itv.get("intensity"),
+                "zone": itv.get("zone"),
+            }
+        )
+    return segments
 
 
 def load_data() -> list:
@@ -231,7 +265,36 @@ def _extract_weather(activity: dict) -> dict | None:
     }
 
 
-def extract_fields(activity: dict, wbal_summary: dict | None = None, power_curve: dict | None = None) -> dict:
+def _first_present(activity: dict, keys: tuple[str, ...]) -> int | float | None:
+    """Return the first non-null value from activity for the given keys."""
+    for key in keys:
+        value = activity.get(key)
+        if value is not None:
+            return value
+    return None
+
+
+def _extract_heart_rate(activity: dict) -> tuple[int | float | None, int | float | None]:
+    """Extract avg/max heart rate from possible API field variants."""
+    avg_hr = _first_present(
+        activity,
+        ("average_heartrate", "avg_heartrate", "avg_hr", "heartrate_avg", "average_hr"),
+    )
+    max_hr = _first_present(
+        activity,
+        ("max_heartrate", "max_hr", "heartrate_max", "maximum_heartrate", "maximum_hr"),
+    )
+    return avg_hr, max_hr
+
+
+def extract_fields(
+    activity: dict,
+    wbal_summary: dict | None = None,
+    power_curve: dict | None = None,
+    interval_segments: list[dict] | None = None,
+) -> dict:
+    avg_hr, max_hr = _extract_heart_rate(activity)
+    interval_summary = activity.get("interval_summary")
     zone_dist = _zone_distribution(activity.get("icu_zone_times") or [])
     ride_class = classify_ride(
         zone_dist["z1_z2_pct"], zone_dist["z3_z4_pct"], zone_dist["z5_plus_pct"]
@@ -243,15 +306,16 @@ def extract_fields(activity: dict, wbal_summary: dict | None = None, power_curve
         "training_load": activity.get("icu_training_load"),
         "avg_power": activity.get("icu_average_watts"),
         "norm_power": activity.get("icu_weighted_avg_watts"),
-        "avg_hr": activity.get("average_heartrate"),
-        "max_hr": activity.get("max_heartrate"),
+        "avg_hr": avg_hr,
+        "max_hr": max_hr,
         "polarization_index": activity.get("polarization_index"),
         "training_distribution": ride_class["label"] if ride_class else None,
         "training_distribution_reason": ride_class["reason"] if ride_class else None,
         "z1_z2_pct": zone_dist["z1_z2_pct"],
         "z3_z4_pct": zone_dist["z3_z4_pct"],
         "z5_plus_pct": zone_dist["z5_plus_pct"],
-        "interval_summary": activity.get("interval_summary"),
+        "interval_summary": interval_summary,
+        "interval_segments": interval_segments,
         "decoupling": activity.get("decoupling"),
         "decoupling_label": _classify_decoupling(float(activity["decoupling"])) if activity.get("decoupling") is not None else None,
         "rpe": activity.get("icu_rpe"),
@@ -293,7 +357,15 @@ def main() -> None:
             print(f"  Computing W'bal for {a.get('name', a.get('id'))} …")
             wbal_summary = _fetch_wbal_summary(a)
         power_curve = _fetch_power_curve(a)
-        output.append(extract_fields(a, wbal_summary=wbal_summary, power_curve=power_curve))
+        interval_segments = _fetch_interval_segments(a)
+        output.append(
+            extract_fields(
+                a,
+                wbal_summary=wbal_summary,
+                power_curve=power_curve,
+                interval_segments=interval_segments,
+            )
+        )
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_file.write_text(json.dumps(output, indent=2))
