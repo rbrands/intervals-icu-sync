@@ -27,6 +27,8 @@ sys.path.insert(0, str(SCRIPTS_DIR))  # allow direct import of scripts
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import TransportSecuritySettings
 import upload_plan as _upload_plan  # direct import – no subprocess overhead
+from intervals_icu.client import get_library_folders, get_library_workouts
+from intervals_icu.config import API_KEY, ATHLETE_ID, STANDARD_LIBRARY_ATHLETE_ID
 PROCESSED_DIR = _ROOT / "data" / "processed"
 PLANS_DIR = _ROOT / "data" / "plans"
 
@@ -84,6 +86,149 @@ def _run_script(script: str, timeout: int = 60) -> tuple[bool, str]:
         return False, f"Timeout after {timeout}s"
     output = result.stdout + (f"\nSTDERR: {result.stderr}" if result.stderr.strip() else "")
     return result.returncode == 0, output.strip()
+
+
+def _format_duration(seconds: int | float | None) -> str:
+    total_seconds = int(seconds or 0)
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes = remainder // 60
+    if hours:
+        return f"{hours}h {minutes:02d}m"
+    return f"{minutes}m"
+
+
+def _flatten_folders(nodes: list, parent_path: str = "") -> dict[int, str]:
+    folder_map: dict[int, str] = {}
+    for entry in nodes or []:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("type") not in {"FOLDER", "PLAN"}:
+            continue
+
+        name = entry.get("name") or f"Folder {entry.get('id')}"
+        path = f"{parent_path} / {name}" if parent_path else name
+        folder_id = entry.get("id")
+        if isinstance(folder_id, int):
+            folder_map[folder_id] = path
+
+        children = entry.get("children") or []
+        folder_map.update(_flatten_folders(children, path))
+    return folder_map
+
+
+def _normalize_library_workouts(workouts: list, folder_map: dict[int, str]) -> list[dict]:
+    rows = []
+    for workout in workouts or []:
+        if not isinstance(workout, dict):
+            continue
+        rows.append(
+            {
+                "folder": folder_map.get(workout.get("folder_id"), "-"),
+                "name": workout.get("name") or "(unnamed)",
+                "duration": _format_duration(workout.get("moving_time")),
+                "duration_seconds": int(workout.get("moving_time") or 0),
+                "tss": workout.get("icu_training_load") or 0,
+                "tags": workout.get("tags") or [],
+            }
+        )
+    rows.sort(key=lambda row: (row["folder"], row["name"].lower()))
+    return rows
+
+
+def _normalize_tag_prefixes(tag_prefixes: list[str] | str | None) -> list[str]:
+    if tag_prefixes is None:
+        return []
+    if isinstance(tag_prefixes, str):
+        values = [p.strip() for p in tag_prefixes.split(",")]
+    else:
+        values = [str(p).strip() for p in tag_prefixes]
+    return [v.lower() for v in values if v]
+
+
+def _apply_workout_filters(
+    rows: list[dict],
+    tag_prefixes: list[str] | str | None,
+    match_mode: str,
+    include_untagged: bool,
+    limit: int,
+) -> tuple[list[dict], list[str]]:
+    prefixes = _normalize_tag_prefixes(tag_prefixes)
+
+    if not prefixes:
+        filtered = rows[:]
+    else:
+        filtered = []
+        for row in rows:
+            tags = [str(t).lower() for t in (row.get("tags") or [])]
+            if not tags:
+                if include_untagged:
+                    filtered.append(row)
+                continue
+
+            if match_mode == "all":
+                matches = all(any(tag.startswith(prefix) for tag in tags) for prefix in prefixes)
+            else:
+                matches = any(any(tag.startswith(prefix) for tag in tags) for prefix in prefixes)
+
+            if matches:
+                filtered.append(row)
+
+    if limit > 0:
+        filtered = filtered[:limit]
+
+    return filtered, prefixes
+
+
+def _is_shared_outgoing_folder(folder: dict) -> bool:
+    visibility = (folder.get("visibility") or "").upper()
+    shared_with_count = int(folder.get("sharedWithCount") or 0)
+    has_share_token = bool(folder.get("shareToken"))
+    return visibility == "PUBLIC" or shared_with_count > 0 or has_share_token
+
+
+def _owner_label(folder: dict, fallback_athlete_id: str) -> str:
+    owner = folder.get("owner")
+    if isinstance(owner, dict):
+        return owner.get("name") or owner.get("id") or fallback_athlete_id
+    return fallback_athlete_id
+
+
+def _collect_shared_outgoing_workouts(nodes: list, athlete_id: str, parent_path: str = "", shared_context: dict | None = None) -> list[dict]:
+    results: list[dict] = []
+    for node in nodes or []:
+        if not isinstance(node, dict):
+            continue
+
+        node_type = node.get("type")
+        if node_type in {"FOLDER", "PLAN"}:
+            name = node.get("name") or f"Folder {node.get('id')}"
+            path = f"{parent_path} / {name}" if parent_path else name
+
+            current_shared = shared_context
+            if _is_shared_outgoing_folder(node):
+                current_shared = {
+                    "shared_from": _owner_label(node, athlete_id),
+                    "folder_path": path,
+                }
+
+            children = node.get("children") or []
+            results.extend(_collect_shared_outgoing_workouts(children, athlete_id, path, current_shared))
+            continue
+
+        if shared_context and node.get("id") is not None:
+            results.append(
+                {
+                    "shared_from": shared_context["shared_from"],
+                    "folder": shared_context["folder_path"],
+                    "name": node.get("name") or "(unnamed)",
+                    "duration": _format_duration(node.get("moving_time")),
+                    "duration_seconds": int(node.get("moving_time") or 0),
+                    "tss": node.get("icu_training_load") or 0,
+                    "tags": node.get("tags") or [],
+                }
+            )
+
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +393,119 @@ def get_latest_metrics() -> str:
             "error": "No metrics files found. Run the prepare_week_data tool first."
         }, ensure_ascii=False)
     return files[-1].read_text(encoding="utf-8")
+
+
+@mcp.tool()
+def list_library_workouts(
+    tag_prefixes: list[str] | str | None = None,
+    match_mode: str = "any",
+    include_untagged: bool = False,
+    limit: int = 500,
+) -> str:
+    """List own library workouts for the configured athlete (ATHLETE_ID).
+
+    Returns folder, name, duration, TSS and tags for each workout.
+
+    Args:
+        tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-treshold-", "lactate-treshold-"]).
+        match_mode: "any" (default) or "all" when multiple prefixes are provided.
+        include_untagged: Include workouts without tags when tag_prefixes is set.
+        limit: Maximum number of rows to return (1-5000).
+    """
+    if match_mode not in {"any", "all"}:
+        return json.dumps({"error": "match_mode must be 'any' or 'all'"}, ensure_ascii=False)
+    if limit < 1 or limit > 5000:
+        return json.dumps({"error": "limit must be between 1 and 5000"}, ensure_ascii=False)
+
+    folders = get_library_folders(API_KEY, ATHLETE_ID)
+    workouts = get_library_workouts(API_KEY, ATHLETE_ID)
+    folder_map = _flatten_folders(folders)
+    normalized = _normalize_library_workouts(workouts, folder_map)
+    filtered, normalized_prefixes = _apply_workout_filters(
+        normalized,
+        tag_prefixes,
+        match_mode,
+        include_untagged,
+        limit,
+    )
+
+    return json.dumps(
+        {
+            "schema_version": _SCHEMA_VERSION,
+            "athlete_id": ATHLETE_ID,
+            "total_workouts": len(normalized),
+            "returned": len(filtered),
+            "filters": {
+                "tag_prefixes": normalized_prefixes,
+                "match_mode": match_mode,
+                "include_untagged": include_untagged,
+                "limit": limit,
+            },
+            "workouts": filtered,
+        },
+        ensure_ascii=False,
+    )
+
+
+@mcp.tool()
+def list_standard_library_workouts(
+    tag_prefixes: list[str] | str | None = None,
+    match_mode: str = "any",
+    include_untagged: bool = False,
+    limit: int = 500,
+) -> str:
+    """List workouts shared by STANDARD_LIBRARY_ATHLETE_ID.
+
+    Uses the optional config value STANDARD_LIBRARY_ATHLETE_ID from .env.
+
+    Args:
+        tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-treshold-", "lactate-treshold-"]).
+        match_mode: "any" (default) or "all" when multiple prefixes are provided.
+        include_untagged: Include workouts without tags when tag_prefixes is set.
+        limit: Maximum number of rows to return (1-5000).
+    """
+    if match_mode not in {"any", "all"}:
+        return json.dumps({"error": "match_mode must be 'any' or 'all'"}, ensure_ascii=False)
+    if limit < 1 or limit > 5000:
+        return json.dumps({"error": "limit must be between 1 and 5000"}, ensure_ascii=False)
+
+    standard_athlete_id = STANDARD_LIBRARY_ATHLETE_ID.strip()
+    if not standard_athlete_id:
+        return json.dumps(
+            {
+                "error": "STANDARD_LIBRARY_ATHLETE_ID is not set in .env",
+                "hint": "Set STANDARD_LIBRARY_ATHLETE_ID to the athlete id whose shared library should be listed.",
+            },
+            ensure_ascii=False,
+        )
+
+    folders = get_library_folders(API_KEY, standard_athlete_id)
+    shared_rows = _collect_shared_outgoing_workouts(folders, standard_athlete_id)
+    shared_rows.sort(key=lambda row: (row["shared_from"], row["folder"], row["name"].lower()))
+    filtered, normalized_prefixes = _apply_workout_filters(
+        shared_rows,
+        tag_prefixes,
+        match_mode,
+        include_untagged,
+        limit,
+    )
+
+    return json.dumps(
+        {
+            "schema_version": _SCHEMA_VERSION,
+            "standard_library_athlete_id": standard_athlete_id,
+            "total_workouts": len(shared_rows),
+            "returned": len(filtered),
+            "filters": {
+                "tag_prefixes": normalized_prefixes,
+                "match_mode": match_mode,
+                "include_untagged": include_untagged,
+                "limit": limit,
+            },
+            "workouts": filtered,
+        },
+        ensure_ascii=False,
+    )
 
 
 @mcp.tool()

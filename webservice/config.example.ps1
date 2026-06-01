@@ -43,4 +43,8 @@ $config = @{
     # Store in Azure App Service Application Settings as OAUTH_TOKEN_SECRET.
     # If not set, an ephemeral key is generated at startup (tokens lost on restart).
     OAuthTokenSecret     = "__OAUTH_TOKEN_SECRET__"
+
+    # Athlete ID whose shared workout library should be exposed as
+    # "standard library" by MCP method list_standard_library_workouts.
+    StandardLibraryAthleteId = "__STANDARD_LIBRARY_ATHLETE_ID__"
 }

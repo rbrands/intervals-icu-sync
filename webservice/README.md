@@ -1,6 +1,6 @@
 # intervals-icu-coach – Webservice
 
-MCP server for Azure App Service. Exposes three tools over SSE transport, with credentials passed per-request via HTTP headers.
+MCP server for Azure App Service. Exposes tools over SSE transport, with credentials passed per-request via HTTP headers.
 
 ## Tools
 
@@ -8,6 +8,8 @@ MCP server for Azure App Service. Exposes three tools over SSE transport, with c
 |---|---|
 | `prepare_week_data` | Runs the full data pipeline (activities, metrics, training plan, fueling, week analysis) and returns the consolidated coach input as JSON. Nothing is stored on the server. |
 | `get_latest_activities` | Runs a slim pipeline and returns a compact, latest-first activity list (`date`, `name`, `duration_hours`, `training_load`, `avg_hr`, `max_hr`, `rpe`, `tags`) to avoid client-side truncation on large payloads. |
+| `list_library_workouts` | Lists the authenticated caller's own workout library with key fields (`folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
+| `list_standard_library_workouts` | Lists shared workouts of the configured standard library athlete (`STANDARD_LIBRARY_ATHLETE_ID`) with key fields (`shared_from`, `folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
 | `upload_week_plan` | Uploads a JSON training plan to intervals.icu as planned workout events. Accepts `dry_run` and `clear` flags. |
 
 ## Authentication
@@ -71,6 +73,7 @@ Environment variables:
 | `FASTMCP_HOST` | `0.0.0.0` | Bind address |
 | `FASTMCP_PORT` | `8000` | Port |
 | `FASTMCP_ALLOWED_HOST` | *(empty)* | Additional hostname for the `allowed_hosts` security check (e.g. the App Service hostname) |
+| `STANDARD_LIBRARY_ATHLETE_ID` | *(empty)* | Athlete ID used by MCP method `list_standard_library_workouts` to return shared standard-library workouts |
 | `OAUTH_TOKEN_SECRET` | *(empty)* | Fernet key for stateless OAuth tokens. Generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. If not set, an ephemeral key is generated at startup and tokens are lost on restart. |
 | `INTERVALS_DEV_MODE` | *(empty)* | Set to `true` for local development: falls back to `ATHLETE_ID` / `INTERVALS_API_KEY` from `.env` when no credentials are supplied. **Never enable in production.** |
 
@@ -146,6 +149,7 @@ Copy `config.example.ps1` to `config.ps1` and fill in all values.
 | `AppInsightsName` | `APP_INSIGHTS_NAME` | Existing Application Insights instance name |
 | `CustomDomain` | `APP_CUSTOM_DOMAIN` | Optional custom domain (e.g. `intervals-mcp.training-architect.com`). Leave empty to use only the `.azurewebsites.net` hostname. |
 | `OAuthTokenSecret` | `OAUTH_TOKEN_SECRET` | Fernet key for stateless OAuth tokens. Generate once and store permanently. See `OAUTH_TOKEN_SECRET` above. |
+| `StandardLibraryAthleteId` | `STANDARD_LIBRARY_ATHLETE_ID` | Athlete ID whose shared library is exposed by MCP method `list_standard_library_workouts` (e.g. `i57401`). |
 
 ```powershell
 cd webservice
@@ -232,6 +236,7 @@ Both transports share the same tools, middleware, and Application Insights instr
 | `FASTMCP_ALLOWED_HOST` | `<appName>.azurewebsites.net` (slot-sticky) |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Connection string of the existing Application Insights instance |
 | `OAUTH_TOKEN_SECRET` | Fernet key for stateless OAuth tokens (from GitHub Secret `OAUTH_TOKEN_SECRET`) |
+| `STANDARD_LIBRARY_ATHLETE_ID` | Athlete ID for MCP method `list_standard_library_workouts` (from GitHub Secret `STANDARD_LIBRARY_ATHLETE_ID`) |
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` |
 | `ENABLE_ORYX_BUILD` | `true` |
 

@@ -7,7 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- Placeholder for upcoming changes.
+### Added
+
+- New local script `scripts/list_workouts.py`: lists workout-library entries with key fields (`folder`, `name`, `duration`, `tss`, `tags`).
+- New local script `scripts/list_shared_workouts.py`: lists workouts shared by a selected athlete ID (`--athlete-id`) with key fields (`shared_from`, `folder`, `name`, `duration`, `tss`, `tags`).
+- New MCP methods `list_library_workouts` and `list_standard_library_workouts` in both `scripts/mcp_server.py` and `webservice/mcp_server.py`.
+- Optional workout-tag filtering arguments for both MCP methods: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, and `limit`.
+- New regression test `tests/test_workout_tag_conventions.py` to validate workout tag format, known prefixes, and required dose suffix coverage.
+
+### Changed
+
+- Root and webservice documentation updated for the new workout scripts and MCP methods, including filter arguments and landing-page method descriptions.
+- Webservice deployment wiring extended to propagate `STANDARD_LIBRARY_ATHLETE_ID` end-to-end (`webservice/config*.ps1`, `webservice/setup.ps1`, `webservice/infra/main.bicep`, `webservice/infra/modules/appservice.bicep`, `.github/workflows/infra.yml`).
+- `coach-logic/workouts.md` now includes a tag naming hint section to document stable tag prefixes and dose suffixes used by prefix-based workout filters.
 
 ## [0.3.5] - 2026-06-01
 

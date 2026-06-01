@@ -52,6 +52,9 @@ if ($GitHub -or $All) {
     if ($config.OAuthTokenSecret) {
         gh secret set OAUTH_TOKEN_SECRET   --body $config.OAuthTokenSecret
     }
+    if ($config.StandardLibraryAthleteId) {
+        gh secret set STANDARD_LIBRARY_ATHLETE_ID --body $config.StandardLibraryAthleteId
+    }
 
     Write-Host "GitHub Secrets set." -ForegroundColor Green
 }
@@ -73,6 +76,7 @@ param location           = '$($config.Location)'
 param appServicePlanName = '$($config.AppServicePlanName)'
 param appInsightsName    = '$($config.AppInsightsName)'
 param customDomain       = '$($config.CustomDomain)'
+param standardLibraryAthleteId = '$($config.StandardLibraryAthleteId)'
 "@
 
     $outputPath = Join-Path $PSScriptRoot "infra/main.local.bicepparam"

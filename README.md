@@ -144,6 +144,8 @@ intervals-icu-sync/
 │   ├── wbal_analysis.py            # Compute W'bal time series from power stream
 │   ├── prepare_week_for_coach.py   # Run all scripts in sequence
 │   ├── get_latest_activities.py    # Print compact activity list (mirrors MCP get_latest_activities)
+│   ├── list_workouts.py            # List workout library entries with duration, TSS and tags
+│   ├── list_shared_workouts.py     # List workouts shared by a selected athlete account
 │   └── mcp_server.py               # FastMCP server exposing data as tools/resources
 ├── prompts/
 │   ├── system_prompt.md            # System prompt for the AI coach (LLM instructions)
@@ -216,11 +218,12 @@ This project includes `.pre-commit-config.yaml` with `nbstripout`, so notebook o
 
 ```bash
 cp .env.example .env
-# Edit .env and set API_KEY and ATHLETE_ID
+# Edit .env and set INTERVALS_API_KEY and ATHLETE_ID
 ```
 
-- **API_KEY**: found in intervals.icu under **Settings → Developer Settings**
+- **INTERVALS_API_KEY**: found in intervals.icu under **Settings → Developer Settings**
 - **ATHLETE_ID**: your athlete ID, also under **Settings → Developer Settings**
+- **STANDARD_LIBRARY_ATHLETE_ID** (optional): athlete ID whose shared standard library should be exposed via MCP method `list_standard_library_workouts`.
 
 > **Only needed if you use the MCP server with a Cloudflare tunnel (or other reverse proxy):**
 >
@@ -436,6 +439,33 @@ python scripts/get_latest_activities.py --limit 5  # last 5 activities
 ```
 
 Output: JSON to stdout
+
+---
+
+### `list_workouts.py`
+
+Lists all workouts from the athlete's intervals.icu workout library and shows the key planning fields per workout: folder, duration, TSS, and tags. By default it prints a table to stdout; with `--json` it returns normalized JSON output.
+
+```bash
+python scripts/list_workouts.py
+python scripts/list_workouts.py --json
+```
+
+Output: table or JSON to stdout
+
+---
+
+### `list_shared_workouts.py`
+
+Lists workouts shared by the selected athlete account by traversing shared folders/plans in the intervals.icu library tree. A folder/plan is treated as shared when it is public or explicitly shared. Shows `shared_from`, folder path, duration, TSS, and tags per workout.
+
+```bash
+python scripts/list_shared_workouts.py
+python scripts/list_shared_workouts.py --json
+python scripts/list_shared_workouts.py --athlete-id i12345
+```
+
+Output: table or JSON to stdout
 
 ---
 

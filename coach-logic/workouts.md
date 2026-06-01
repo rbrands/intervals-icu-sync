@@ -73,6 +73,17 @@ Sub-ranges:
 - Interval descriptions, %FTP, and tags must be consistent
 - Do NOT mix conflicting intensity targets
 
+## Tag Naming Hint (Library Filters)
+
+- Workout tags are used by tooling for prefix-based filtering.
+- Keep these prefixes stable and exact:
+  - `vo2max-`
+  - `lactate-treshold-`
+  - `aerobic-treshold-`
+  - `race-specific-`
+- Keep dose suffixes consistent: `-high`, `-moderate`, `-low`.
+- If tags are renamed, update filter configuration and docs together to avoid missing workouts.
+
 ## 1. Aerobic Capacity (VO2max)
 
 **Goal:** Improve maximal aerobic power  

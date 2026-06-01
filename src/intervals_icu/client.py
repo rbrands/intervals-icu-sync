@@ -85,6 +85,38 @@ def get_events(api_key: str, athlete_id: str, oldest: str, newest: str) -> list:
     return response.json()
 
 
+def get_library_workouts(api_key: str, athlete_id: str) -> list:
+    """Fetch all workouts from the athlete's workout library.
+
+    Raises:
+        requests.HTTPError: If the response status code is not 2xx.
+    """
+    url = f"{BASE_URL}/athlete/{athlete_id}/workouts"
+    response = requests.get(
+        url,
+        auth=("API_KEY", api_key),
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def get_library_folders(api_key: str, athlete_id: str) -> list:
+    """Fetch all workout folders and plans from the athlete's library.
+
+    Raises:
+        requests.HTTPError: If the response status code is not 2xx.
+    """
+    url = f"{BASE_URL}/athlete/{athlete_id}/folders"
+    response = requests.get(
+        url,
+        auth=("API_KEY", api_key),
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def update_event(api_key: str, athlete_id: str, event_id: int, payload: dict) -> dict:
     """Update an existing event via PUT.
 

@@ -42,4 +42,5 @@ jobs:
                 appServicePlanName="${{ secrets.APP_SERVICE_PLAN_NAME }}" \
                 appInsightsName="${{ secrets.APP_INSIGHTS_NAME }}" \
                 customDomain="${{ secrets.APP_CUSTOM_DOMAIN }}" \
-                oauthTokenSecret="${{ secrets.OAUTH_TOKEN_SECRET }}"
+                oauthTokenSecret="${{ secrets.OAUTH_TOKEN_SECRET }}" \
+                standardLibraryAthleteId="${{ secrets.STANDARD_LIBRARY_ATHLETE_ID }}"

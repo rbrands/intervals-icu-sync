@@ -17,6 +17,9 @@ param customDomain string = ''
 @secure()
 param oauthTokenSecret string = ''
 
+@description('Athlete ID whose shared workout library is exposed as standard library. Leave empty to disable.')
+param standardLibraryAthleteId string = ''
+
 // Reference the existing App Service Plan – it is not modified.
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' existing = {
   name: appServicePlanName
@@ -46,6 +49,14 @@ var oauthTokenSettings = oauthTokenSecret != '' ? [
   {
     name: 'OAUTH_TOKEN_SECRET'
     value: oauthTokenSecret
+  }
+] : []
+
+// Standard library athlete setting (empty array when not configured).
+var standardLibrarySettings = standardLibraryAthleteId != '' ? [
+  {
+    name: 'STANDARD_LIBRARY_ATHLETE_ID'
+    value: standardLibraryAthleteId
   }
 ] : []
 
@@ -89,7 +100,7 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: true
       healthCheckPath: '/health'
-      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, standardLibrarySettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           // Comma-separated: azurewebsites.net hostname + optional custom domain.
@@ -164,7 +175,7 @@ resource stagingSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
       healthCheckPath: '/health'
-      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, standardLibrarySettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-staging.azurewebsites.net'
@@ -191,7 +202,7 @@ resource devSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
       healthCheckPath: '/health'
-      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, standardLibrarySettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-dev.azurewebsites.net'

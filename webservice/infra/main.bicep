@@ -19,6 +19,9 @@ param customDomain string = ''
 @secure()
 param oauthTokenSecret string = ''
 
+@description('Athlete ID whose shared workout library is exposed as standard library. Leave empty to disable.')
+param standardLibraryAthleteId string = ''
+
 module appservice 'modules/appservice.bicep' = {
   name: 'deploy-${appName}'
   params: {
@@ -28,6 +31,7 @@ module appservice 'modules/appservice.bicep' = {
     appInsightsName: appInsightsName
     customDomain: customDomain
     oauthTokenSecret: oauthTokenSecret
+    standardLibraryAthleteId: standardLibraryAthleteId
   }
 }
 
