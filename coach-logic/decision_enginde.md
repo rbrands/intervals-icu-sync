@@ -91,11 +91,13 @@ Determine:
 
 ### Step 5: Check Weekly Requirements
 
-Ensure the week includes:
+Ensure the week includes the key sessions needed for the current goal, type, limiter, and phase:
 
-- exactly 1 VO2max session (if Age Rule applies)
-- 1 threshold session
-- 1 long aerobic ride
+- use the athlete goal/type matrix to decide which sessions are mandatory vs secondary
+
+- exactly 1 VO2max session when the age rule applies or VO2max is the limiter
+- 1 threshold session when FTP or climbing is the limiter, or the build phase calls for it
+- 1 long aerobic ride when durability or base volume is the priority
 
 If missing:
 

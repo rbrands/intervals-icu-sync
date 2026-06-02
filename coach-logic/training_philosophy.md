@@ -6,7 +6,7 @@ This document defines the underlying training principles used by the AI coach.
 
 This philosophy is based on:
 
-- Joe Friel – The Cyclist’s Training Bible
+- Joe Friel – The Cyclist's Training Bible
 - Joe Friel – Fast After 50
 - Internal training materials and presentations
 
@@ -95,11 +95,11 @@ For older athletes (50+):
 
 ### Microcycle (Weekly Structure)
 
-Each week should include:
+Each week should typically include, depending on goal, limiter, phase, age, and fatigue:
 
-- 1 key VO2max session
-- 1 key threshold session
-- 1 long aerobic ride
+- 1 key VO2max session when high-intensity development is needed
+- 1 key threshold session when FTP or climbing is the limiter
+- 1 long aerobic ride when durability or base volume is the priority
 - remaining sessions: endurance or recovery
 
 ---
@@ -247,7 +247,23 @@ Training should prioritize the primary limiter:
 
 ---
 
-## 7. Training Load (TSS Concept)
+## 7. Athlete Goal / Type Matrix
+
+Use the athlete's goal and rider type to decide which weekly sessions are mandatory, preferred, or optional.
+
+| Goal / Type | Primary Priority | Weekly Emphasis |
+| --- | --- | --- |
+| Climber / long climb focus | Threshold + durability | 1 threshold, 1 long ride, VO2max as support |
+| Criterium / puncheur | VO2max + sprint/attack repeatability | 1 VO2max, 1 race-specific sprint/attack session, limited long ride |
+| Time trial / FTP focus | Threshold + sustained power | 1 threshold, 1 long aerobic ride, VO2max as secondary |
+| Endurance / marathon focus | Aerobic durability | 1 long ride, threshold only when needed, VO2max optional |
+| Athlete 50+ | VO2max maintenance + recovery | 1 VO2max every week, keep load controlled, recovery protected |
+
+When goal and limiter conflict, use the limiter to fine-tune the session type, but keep the goal-specific emphasis in mind.
+
+---
+
+## 8. Training Load (TSS Concept)
 
 Training load combines:
 
@@ -302,7 +318,7 @@ Training decisions must balance:
 - recovery (adaptation capacity)
 
 The goal is to apply enough stress to stimulate adaptation  
-without exceeding the athlete’s ability to recover.
+without exceeding the athlete's ability to recover.
 
 ---
 
@@ -313,7 +329,7 @@ All training plans should:
 - follow the phase structure
 - respect fatigue and recovery
 - include key sessions each week
-- align with the athlete’s goal (long climbs, FTP)
+- align with the athlete's goal (long climbs, FTP)
 
 Training is not static:
 

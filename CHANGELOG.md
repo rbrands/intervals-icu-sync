@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-02
+
 ### Added
 
 - New local script `scripts/list_workouts.py`: lists workout-library entries with key fields (`folder`, `name`, `duration`, `tss`, `tags`).
@@ -20,6 +22,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Root and webservice documentation updated for the new workout scripts and MCP methods, including filter arguments and landing-page method descriptions.
 - Webservice deployment wiring extended to propagate `STANDARD_LIBRARY_ATHLETE_ID` end-to-end (`webservice/config*.ps1`, `webservice/setup.ps1`, `webservice/infra/main.bicep`, `webservice/infra/modules/appservice.bicep`, `.github/workflows/infra.yml`).
 - `coach-logic/workouts.md` now includes a tag naming hint section to document stable tag prefixes and dose suffixes used by prefix-based workout filters.
+- `prompts/system_prompt.md` now documents all MCP coach methods: `prepare_week_data`, `get_latest_activities`, `list_library_workouts`, `list_standard_library_workouts`, and `upload_week_plan`.
+- `prompts/system_prompt.md` now states that library workouts can be used as suggestions when their tags match the current goal, limiter, or requested session type.
 
 ## [0.3.5] - 2026-06-01
 

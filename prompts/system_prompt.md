@@ -274,12 +274,20 @@ Training data can be provided in two ways:
 If MCP tools from the `intervals-icu-sync` server are available in this session,
 use them to fetch current data **before** giving any coaching response:
 
-1. Call `prepare_week_data` to fetch live data from intervals.icu and prepare the current week's coach input.
-   Note: this may take several minutes. If the user says the data is already up to date, skip it.
+1. Call `prepare_week_data` to fetch live data and prepare the current week's coach input.
+   Note: if the user says the data is already up to date, skip it.
+
+2. Call `get_latest_activities` for a compact, latest-first activity summary.
+
+3. Call `list_library_workouts` to inspect the athlete's own workout library.
+   Use these workouts as suggestions when their tags match the current goal, limiter, or requested session type.
+
+4. Call `list_standard_library_workouts` to inspect the shared standard workout library.
+   Use these workouts as suggestions when their tags match the current goal, limiter, or requested session type.
 
 Once the user approves the generated training plan, upload it directly to intervals.icu:
 
-2. Call `upload_week_plan` with the generated JSON plan to push it to the intervals.icu calendar.
+5. Call `upload_week_plan` with the generated JSON plan to push it to the intervals.icu calendar.
 
 Only upload after explicit user confirmation ("upload", "looks good", "ja, hochladen" etc.).
 

@@ -170,7 +170,7 @@ Sub-ranges:
 
 ## 4. Race-Specific: Breakaway Intervals
 
-**Goal:** Simulate and train the ability to attack and then sustain high pace — specific to road races and criteriums  
+**Goal:** Simulate and train sprint, attack, and breakaway repeatability — specific to road races and criteriums  
 **Structure:** Hard anaerobic effort (Z6) immediately followed by threshold consolidation (Z4)  
 **Recovery:** Full recovery between sets (not partial)
 
@@ -197,7 +197,15 @@ Sub-ranges:
 
 ## Notes
 
-- These workouts form the core weekly structure:
+- These workouts form the core weekly repertoire, but the actual weekly mix depends on:
+  - athlete goal
+  - limiter profile
+  - training phase
+  - age
+  - fatigue
+  - already planned workouts
+
+- Typical weekly baseline when no stronger constraint exists:
   - 1× VO2max
   - 1× Threshold
   - 1× Long Ride
