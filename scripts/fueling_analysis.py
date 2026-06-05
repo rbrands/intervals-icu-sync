@@ -88,7 +88,7 @@ def classify_ride(activity: dict) -> str:
     if isinstance(summary, list):
         summary = " ".join(summary)
     summary_lower = summary.lower()
-    tags = [t.lower() for t in (activity.get("tags") or [])]
+    tags = [t.lower().replace("treshold", "threshold") for t in (activity.get("tags") or [])]
 
     has_long_intervals = any(p in summary_lower for p in _LONG_INTERVAL_PATTERNS)
     has_vo2_intervals = any(p in summary_lower for p in _SHORT_INTERVAL_PATTERNS)
@@ -97,8 +97,7 @@ def classify_ride(activity: dict) -> str:
     # 0. Tag-based override — most explicit signal
     if any(t.startswith("vo2") for t in tags):
         return "vo2"
-    if any(t.startswith("lactate-threshold") or t.startswith("lactate_threshold")
-           or t.startswith("lactate-treshold") or t.startswith("lactate_treshold") for t in tags):
+    if any(t.startswith("lactate-threshold") or t.startswith("lactate_threshold") for t in tags):
         return "threshold"
 
     # 1. Long ride — highest priority

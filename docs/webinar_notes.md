@@ -182,7 +182,7 @@ Damit das System sinnvoll funktioniert:
 ### Optional
 
 - konsistente Tags  
-  (z. B. `vo2max-high`, `lactate-treshold-moderate`)  
+  (z. B. `vo2max-high`, `lactate-threshold-moderate`)  
 
 ---
 

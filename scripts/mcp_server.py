@@ -407,7 +407,7 @@ def list_library_workouts(
     Returns folder, name, duration, TSS and tags for each workout.
 
     Args:
-        tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-treshold-", "lactate-treshold-"]).
+        tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-threshold-", "lactate-threshold-"]).
         match_mode: "any" (default) or "all" when multiple prefixes are provided.
         include_untagged: Include workouts without tags when tag_prefixes is set.
         limit: Maximum number of rows to return (1-5000).
@@ -459,7 +459,7 @@ def list_standard_library_workouts(
     Uses the optional config value STANDARD_LIBRARY_ATHLETE_ID from .env.
 
     Args:
-        tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-treshold-", "lactate-treshold-"]).
+        tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-threshold-", "lactate-threshold-"]).
         match_mode: "any" (default) or "all" when multiple prefixes are provided.
         include_untagged: Include workouts without tags when tag_prefixes is set.
         limit: Maximum number of rows to return (1-5000).

@@ -8,8 +8,8 @@ WORKOUTS_FILE = REPO_ROOT / "coach-logic" / "workouts.md"
 
 EXPECTED_PREFIXES = {
     "vo2max",
-    "lactate-treshold",
-    "aerobic-treshold",
+    "lactate-threshold",
+    "aerobic-threshold",
     "race-specific",
 }
 EXPECTED_SUFFIXES = {"high", "moderate", "low"}

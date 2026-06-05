@@ -286,8 +286,8 @@ Format:
 
 - recovery
 - vo2max
-- lactate-treshold
-- aerobic-treshold
+- lactate-threshold
+- aerobic-threshold
 
 ### Levels
 
@@ -306,8 +306,8 @@ tags > interval detection > automatic classification
 ## Tag Mapping
 
 - vo2max-* → vo2
-- lactate-treshold-* → treshold
-- aerobic-treshold-*:
+- lactate-threshold-* → threshold
+- aerobic-threshold-*:
   - duration ≥ 2h → long_ride
   - else → endurance
 - recovery → recovery

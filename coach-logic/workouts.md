@@ -78,8 +78,8 @@ Sub-ranges:
 - Workout tags are used by tooling for prefix-based filtering.
 - Keep these prefixes stable and exact:
   - `vo2max-`
-  - `lactate-treshold-`
-  - `aerobic-treshold-`
+  - `lactate-threshold-`
+  - `aerobic-threshold-`
   - `race-specific-`
 - Keep dose suffixes consistent: `-high`, `-moderate`, `-low`.
 - If tags are renamed, update filter configuration and docs together to avoid missing workouts.
@@ -122,7 +122,7 @@ Sub-ranges:
 - 3 × 12 min (3:15 min recovery)
 - 2 × 20 min (5 min recovery)
 
-**Tag:** lactate-treshold-high
+**Tag:** lactate-threshold-high
 
 ---
 
@@ -130,7 +130,7 @@ Sub-ranges:
 - 3 × 8 min (2.5 min recovery)
 - 3 × 10 min (3 min recovery)
 
-**Tag:** lactate-treshold-moderate
+**Tag:** lactate-threshold-moderate
 
 ---
 
@@ -138,7 +138,7 @@ Sub-ranges:
 - 3 × 5 min (90 sec recovery)
 - 3 × 6 min (2 min recovery)
 
-**Tag:** lactate-treshold-low
+**Tag:** lactate-threshold-low
 
 ---
 
@@ -150,21 +150,21 @@ Sub-ranges:
 ### High Dose
 - 2–4 hours continuous riding
 
-**Tag:** aerobic-treshold-high
+**Tag:** aerobic-threshold-high
 
 ---
 
 ### Moderate Dose
 - 1–2 hours steady riding
 
-**Tag:** aerobic-treshold-moderate
+**Tag:** aerobic-threshold-moderate
 
 ---
 
 ### Low Dose
 - 30–60 minutes easy endurance
 
-**Tag:** aerobic-treshold-low
+**Tag:** aerobic-threshold-low
 
 ---
 

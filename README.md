@@ -36,7 +36,7 @@ For the analysis to work properly, the following conditions should be met:
 
 7. **Body weight maintained in intervals.icu**: Keep your weight up to date in intervals.icu so that calculated metrics like VO2Max are accurate.
 
-8. **Activity tags set in intervals.icu** *(recommended)*: Tag your completed activities in intervals.icu using the tag scheme described in the [Coaching Logic](#coaching-logic) section (e.g. `vo2max-high`, `lactate-treshold-moderate`). Tags take priority over automatic session classification and lead to more accurate coaching output.
+8. **Activity tags set in intervals.icu** *(recommended)*: Tag your completed activities in intervals.icu using the tag scheme described in the [Coaching Logic](#coaching-logic) section (e.g. `vo2max-high`, `lactate-threshold-moderate`). Tags take priority over automatic session classification and lead to more accurate coaching output.
 
 9. **Training plan created in intervals.icu using the Target Generator** *(recommended)*: Create a training plan in intervals.icu via the **Target Generator** (Plans → Target Generator). This places PLAN events (mesocycle blocks, e.g. Base / Build / Peak) and TARGET events (weekly TSS targets) in your calendar. `get_training_plan.py` reads these events and adds the current phase name and weekly load target — as well as the following week's target — to the coach input. Without a plan the training plan section will be empty.
 

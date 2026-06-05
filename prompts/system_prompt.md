@@ -217,8 +217,8 @@ Format:
 
 Domains:
 - vo2max
-- lactate-treshold
-- aerobic-treshold
+- lactate-threshold
+- aerobic-threshold
 - recovery
 
 Levels:
@@ -295,7 +295,7 @@ Only upload after explicit user confirmation ("upload", "looks good", "ja, hochl
 
 If no MCP tools are available, ask the user to paste or attach the contents of:
 
-    data/processed/coach_input_{monday}.json
+  the current week's coach input JSON
 
 Do NOT attempt to coach without actual training data.
 
