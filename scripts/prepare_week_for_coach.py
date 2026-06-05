@@ -27,9 +27,36 @@ def run(script: str) -> None:
         sys.exit(result.returncode)
 
 
+def _normalize_tag_value(value: str) -> str:
+    return value.replace("treshold", "threshold")
+
+
+def _normalize_tags(data: object) -> object:
+    """Normalize legacy tag spelling in loaded JSON payloads.
+
+    Only `tag` and `tags` fields are rewritten to avoid changing unrelated text.
+    """
+    if isinstance(data, dict):
+        normalized: dict = {}
+        for key, value in data.items():
+            if key == "tag" and isinstance(value, str):
+                normalized[key] = _normalize_tag_value(value)
+            elif key == "tags" and isinstance(value, list):
+                normalized[key] = [
+                    _normalize_tag_value(item) if isinstance(item, str) else item
+                    for item in value
+                ]
+            else:
+                normalized[key] = _normalize_tags(value)
+        return normalized
+    if isinstance(data, list):
+        return [_normalize_tags(item) for item in data]
+    return data
+
+
 def _load_json(path: Path) -> dict | list | None:
     if path.exists():
-        return json.loads(path.read_text())
+        return _normalize_tags(json.loads(path.read_text()))
     return None
 
 

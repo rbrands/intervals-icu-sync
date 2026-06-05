@@ -7,6 +7,20 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-05
+
+### Changed
+
+- `prompts/system_prompt.md` optimized for clearer MCP-first workflow and more robust coaching outputs.
+- Entire `coach-logic/` documentation set was refactored to remove redundancies and improve structure/clarity.
+- Coach-logic module naming was standardized and updated in documentation references (`README.md`, `docs/gen_ai_setup_step_by_step.md`) to the new file set:
+    - `coaching-principles.md`
+    - `interpretation-rules.md`
+    - `decision-process.md`
+    - `training-zones.md`
+    - `input-schema.md`
+    - `workout-library.md`
+
 ## [0.4.0] - 2026-06-02
 
 ### Added

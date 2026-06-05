@@ -44,15 +44,14 @@ Modular markdown files describing the coaching domain knowledge — share them w
 
 | File | Content |
 |------|---------|
-| `training_philosophy.md` | Underlying training principles based on Joe Friel |
-| `coach_logic.md` | Coaching logic, data interpretation and decision framework |
-| `decision_engine.md` | How the coach makes training decisions based on input data |
-| `fueling_rules.md` | Fueling evaluation rules and their coaching impact |
-| `training_zones.md` | Power, HR and RPE zone definitions used by the coach |
-| `input_schema.md` | Description of the JSON input schema passed to the coach |
-| `workouts.md` | Example workouts (VO2max, threshold, endurance) with dose levels and tags |
+| `coaching-principles.md` | Training philosophy and foundational coaching principles based on Joe Friel |
+| `interpretation-rules.md` | Data interpretation thresholds and classifier rules (form, fueling, limiter detection) |
+| `decision-process.md` | How interpreted data is turned into concrete weekly planning actions |
+| `training-zones.md` | Power, HR and RPE zone definitions used by the coach |
+| `input-schema.md` | Description of the JSON input schema passed to the coach |
+| `workout-library.md` | Workout catalog by domain and dose level, including canonical tags |
 
-> **Note:** Feel free to adapt the system prompt and the coach-logic files to your own training philosophy and preferences. However, `input_schema.md` and the section in `system_prompt.md` that defines the output format for the training plan must remain unchanged — they ensure the AI interprets the data correctly and produces a plan that `upload_plan.py` (and the MCP server's `upload_week_plan` tool) can parse and upload correctly.
+> **Note:** Feel free to adapt the system prompt and the coach-logic files to your own training philosophy and preferences. However, `input-schema.md` and the section in `system_prompt.md` that defines the output format for the training plan must remain unchanged — they ensure the AI interprets the data correctly and produces a plan that `upload_plan.py` (and the MCP server's `upload_week_plan` tool) can parse and upload correctly.
 
 > **Keep your files up to date:** Check the [CHANGELOG](https://github.com/rbrands/intervals-icu-sync/blob/main/CHANGELOG.md) periodically for updates to the prompt and coach-logic files, and replace your uploaded copies when relevant changes are listed.
 
@@ -139,7 +138,7 @@ The public MCP server at [https://intervals-mcp.training-architect.com](https://
 | `list_standard_library_workouts` | Lists workouts from the shared standard library to suggest proven sessions by tag/domain |
 | `upload_week_plan` | Uploads a JSON training plan to your intervals.icu calendar as planned workout events |
 
-> **Important:** Tag your workouts consistently in intervals.icu so library filtering and workout suggestions work reliably. Use the same tag scheme as in `coach-logic/workouts.md` (for example `vo2max-high`, `lactate-threshold-moderate`, `aerobic-threshold-low`).
+> **Important:** Tag your workouts consistently in intervals.icu so library filtering and workout suggestions work reliably. Use the same tag scheme as in `coach-logic/workout-library.md` (for example `vo2max-high`, `lactate-threshold-moderate`, `aerobic-threshold-low`).
 
 In MCP-capable chat tools, you can call tools directly (depending on client UX), e.g. `prepare_week_data` or `get_latest_activities`.
 

@@ -67,13 +67,12 @@ This keeps the base prompt stable while allowing the athlete profile to be swapp
 
 | File | Content |
 |---|---|
-| `training_philosophy.md` | Underlying training principles based on Joe Friel |
-| `coach_logic.md` | Coaching logic, data interpretation and decision framework |
-| `decision_enginde.md` | How the coach makes training decisions based on input data |
-| `fueling_rules.md` | Fueling evaluation rules and their coaching impact |
-| `training_zones.md` | Power, HR and RPE zone definitions used by the coach |
-| `input_schema.md` | Description of the JSON input schema passed to the coach |
-| `workouts.md` | Example workouts for key training domains (VO2max, threshold, endurance etc.) with dose levels and tags |
+| `coaching-principles.md` | Training philosophy and foundational coaching principles based on Joe Friel |
+| `interpretation-rules.md` | Data interpretation thresholds and classifier rules (form, fueling, limiter detection) |
+| `decision-process.md` | How interpreted data is turned into concrete weekly planning actions |
+| `training-zones.md` | Power, HR and RPE zone definitions used by the coach |
+| `input-schema.md` | Description of the JSON input schema passed to the coach |
+| `workout-library.md` | Workout catalog by domain and dose level, including canonical tags |
 
 The combination of:
 - structured data (intervals.icu)
@@ -154,13 +153,12 @@ intervals-icu-sync/
 │   ├── discipline_marathon.md      # Athlete profile block: mountain marathon / ultra-long endurance
 │   └── discipline_roadrace.md      # Athlete profile block: road race / durability focus
 ├── coach-logic/
-│   ├── training_philosophy.md      # Underlying training principles (Joe Friel)
-│   ├── coach_logic.md              # Coaching logic, interpretation & decision framework
-│   ├── decision_enginde.md         # Decision engine: how the coach makes training decisions
-│   ├── fueling_rules.md            # Fueling evaluation rules and their coaching impact
-│   ├── training_zones.md           # Power, HR and RPE zone definitions
-│   ├── input_schema.md             # JSON input schema description for the AI coach
-│   └── workouts.md                 # Example workouts by domain and dose level (with tags)
+│   ├── coaching-principles.md      # Underlying training philosophy and core principles (Joe Friel)
+│   ├── interpretation-rules.md     # Interpretation thresholds for fatigue, durability, fueling and limiters
+│   ├── decision-process.md         # Decision flow to turn interpretation into weekly training actions
+│   ├── training-zones.md           # Power, HR and RPE zone definitions
+│   ├── input-schema.md             # JSON input schema description for the AI coach
+│   └── workout-library.md          # Workout catalog by domain and dose level (with canonical tags)
 ├── docs/
 │   ├── 2026-05 Next Level intervals-icu.pdf           # Webinar slides (German)
 │   ├── 2026-05 Next Level intervals-icu Step by Step.pdf  # Step-by-step setup guide (English)
