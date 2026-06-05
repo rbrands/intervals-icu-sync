@@ -58,7 +58,7 @@ Modular markdown files describing the coaching domain knowledge — share them w
 
 ---
 
-## Where to put it – ChatGPT, Claude and Microsoft Copilot
+## Where to put it – ChatGPT, Claude, Mistral AI and Microsoft Copilot
 
 ### ChatGPT
 
@@ -86,6 +86,25 @@ Paste the contents of `system_prompt.md` (with the discipline block already inse
 **Project knowledge**
 Upload all files from `coach-logic/` here. ([Download as ZIP](https://download-directory.github.io/?url=https%3A%2F%2Fgithub.com%2Frbrands%2Fintervals-icu-sync%2Ftree%2Fmain%2Fcoach-logic))
 
+### Mistral AI
+
+**Open Mistral AI**
+
+Go to [https://chat.mistral.ai](https://chat.mistral.ai) and sign in.
+
+**Create a project**
+
+- Create a new project
+- Open the project settings
+
+**System prompt**
+
+Paste the contents of `system_prompt.md` (with the discipline block already inserted).
+
+**Project files / knowledge**
+
+Upload all files from `coach-logic/` to the project knowledge/files area. ([Download as ZIP](https://download-directory.github.io/?url=https%3A%2F%2Fgithub.com%2Frbrands%2Fintervals-icu-sync%2Ftree%2Fmain%2Fcoach-logic))
+
 ### Microsoft Copilot
 
 **Open Copilot Studio**
@@ -108,7 +127,7 @@ Under **"Knowledge"**, upload all files from the `coach-logic/` directory. ([Dow
 ---
 # Section 02 – Using the Managed MCP Server
 
-*No local Python installation needed — Claude fetches your data and uploads the plan directly.*
+*No local Python installation needed — your AI tool fetches your data and uploads the plan directly via MCP.*
 
 The public MCP server at [https://intervals-mcp.training-architect.com](https://intervals-mcp.training-architect.com) exposes the same tools as the local setup:
 
@@ -116,9 +135,13 @@ The public MCP server at [https://intervals-mcp.training-architect.com](https://
 |------|--------------|
 | `prepare_week_data` | Fetches and consolidates all training data from intervals.icu and returns it as JSON — no file needed |
 | `get_latest_activities` | Returns a compact latest-first list of activities (useful when full outputs are too long/truncated) |
+| `list_library_workouts` | Lists workouts from your own intervals.icu workout library (including tags/folders) to reuse matching sessions in the plan |
+| `list_standard_library_workouts` | Lists workouts from the shared standard library to suggest proven sessions by tag/domain |
 | `upload_week_plan` | Uploads a JSON training plan to your intervals.icu calendar as planned workout events |
 
-In Claude, you can call tools directly via slash commands, e.g. `/prepare_week_data` or `/get_latest_activities`.
+> **Important:** Tag your workouts consistently in intervals.icu so library filtering and workout suggestions work reliably. Use the same tag scheme as in `coach-logic/workouts.md` (for example `vo2max-high`, `lactate-threshold-moderate`, `aerobic-threshold-low`).
+
+In MCP-capable chat tools, you can call tools directly (depending on client UX), e.g. `prepare_week_data` or `get_latest_activities`.
 
 ---
 
@@ -162,6 +185,36 @@ Select **"Create App"**, then fill in the fields:
 **3 — Authenticate**
 
 ChatGPT opens the login form automatically. Enter your intervals.icu **Athlete ID** and **API Key** (found under *Settings → Developer Settings* in intervals.icu).
+
+---
+
+## One-time setup – Mistral AI
+
+**1 — Open the connector settings in your project**
+
+In your Mistral project, open:
+
+- **Context**
+- **Connectors**
+- **Add connector**
+
+**2 — Add the MCP connector**
+
+Configure the connector with this server URL:
+
+```
+https://intervals-mcp.training-architect.com/mcp
+```
+
+Use a recognizable name, e.g. `intervals-icu-sync`.
+
+**3 — Authenticate**
+
+When prompted, sign in with your intervals.icu **Athlete ID** and **API Key** (found under *Settings → Developer Settings* in intervals.icu).
+
+**Important for daily use**
+
+For each new chat inside the project, add the connector again via **+** before asking for tool calls.
 
 ---
 
