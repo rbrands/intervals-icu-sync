@@ -51,7 +51,7 @@ Modular markdown files describing the coaching domain knowledge — share them w
 | `input-schema.md` | Description of the JSON input schema passed to the coach |
 | `workout-library.md` | Workout catalog by domain and dose level, including canonical tags |
 
-> **Note:** Feel free to adapt the system prompt and the coach-logic files to your own training philosophy and preferences. However, `input-schema.md` and the section in `system_prompt.md` that defines the output format for the training plan must remain unchanged — they ensure the AI interprets the data correctly and produces a plan that `upload_plan.py` (and the MCP server's `upload_week_plan` tool) can parse and upload correctly.
+> **Note:** Feel free to adapt the system prompt and the coach-logic files to your own training philosophy and preferences. However, keep `input-schema.md` and the plan JSON output contract in `system_prompt.md` **compatible** with `upload_plan.py` / `upload_week_plan` (required per workout: `date`, `name`, `duration_minutes`; optional: `description`, `tag`/`tags`, `steps`).
 
 > **Keep your files up to date:** Check the [CHANGELOG](https://github.com/rbrands/intervals-icu-sync/blob/main/CHANGELOG.md) periodically for updates to the prompt and coach-logic files, and replace your uploaded copies when relevant changes are listed.
 
