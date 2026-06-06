@@ -56,7 +56,7 @@ def _normalize_tags(data: object) -> object:
 
 def _load_json(path: Path) -> dict | list | None:
     if path.exists():
-        return _normalize_tags(json.loads(path.read_text()))
+        return _normalize_tags(json.loads(path.read_text(encoding="utf-8")))
     return None
 
 
