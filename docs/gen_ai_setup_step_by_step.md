@@ -243,7 +243,43 @@ Select **Publish** to make the agent available.
 ---
 
 
-# Section 03 – Typical Workflow
+# Section 03 – Set Up Phase Planning in intervals.icu
+
+*Define season phases and weekly TSS targets so the coach can evaluate plan adherence correctly.*
+
+Before running weekly coaching via MCP, set up your phase plan in intervals.icu.
+This enables `prepare_week_data` to include the active phase and weekly load targets
+in the `training_plan` section of the coach input.
+
+## Why this matters
+
+- The coach can compare your completed week against a planned weekly TSS target.
+- Recommendations become phase-aware (Base vs Build vs Peak vs Transition).
+- Weekly guidance is more realistic when target load and availability are known.
+
+## Step-by-step in intervals.icu
+
+1. Open the **Activities** page and go to **Plan Builder** (Targets Generator).
+2. Set your A-event / season goal date.
+3. Click **Targets Generator**.
+4. Set your available **hours per week** in the generator.
+5. Keep **Target Types = Load** enabled so your weekly time budget is translated into weekly TSS targets.
+6. Create your phases (typically **Base**, **Build**, **Peak**, **Transition**).
+7. Review and adjust the generated weekly TSS targets per phase if needed.
+8. Place the generated targets on the calendar and save.
+
+## Minimum setup recommendation
+
+- At least one active phase for the current period.
+- Weekly TSS targets for the current week and next week.
+- Optional: set `week_type` (e.g. NORMAL / RECOVERY / RACE) if you use it.
+
+> **Tip:** Re-open Targets Generator whenever your availability or race goals change.
+> Keeping phase blocks and weekly targets up to date significantly improves coaching quality.
+
+---
+
+# Section 04 – Typical Workflow
 
 *How you use the tool every week/daily with your AI coach.*
 
