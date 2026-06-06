@@ -55,4 +55,6 @@ These are zone-level rules that apply across all sessions:
 - **Endurance rides:** Z2 dominant; occasional Z3 depending on fatigue.
 
 Ride-type → zone-band selection for specific workouts (e.g. which zone a
-VO2max session targets) is defined in decision-process.md.
+VO2max or threshold session targets) is defined with the workout library
+in decision-process.md. Discipline-specific pacing (e.g. long-climb
+strategy) is defined in the athlete/discipline block.
