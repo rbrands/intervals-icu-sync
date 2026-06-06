@@ -102,7 +102,6 @@ Rules:
 - Every workout: date, name, duration_minutes, description, ride_type,
   exactly ONE tag, non-empty steps.
 - Each step: duration_seconds (integer > 0), power_pct_ftp (integer).
-  Exception: a recovery day may contain a single step with 0.
 - Sum of step durations SHOULD approximately match duration_minutes.
 - Structure reflects warmup → main set → cooldown.
 - Tag format: "<domain>-<level>" — domain ∈ {vo2max, lactate-threshold,
