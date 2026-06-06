@@ -14,12 +14,13 @@ decision-process.md. Zone definitions live in training-zones.md.
 form_absolute = CTL - ATL
 form_pct      = (CTL - ATL) / CTL
 
-| form_pct      | form_zone    | meaning |
-| ------------- | ------------ | ------- |
-| > 0           | fresh        | recovered, capacity to add load |
-| -10% to 0     | transition   | normal training state |
-| -10% to -30%  | optimal      | productive training zone |
-| < -30%        | high_fatigue | overreaching risk |
+| form_pct      | form_zone   | meaning |
+| ------------- | ----------- | ------- |
+| > +20%        | transition  | very fresh (often taper/detraining) |
+| +5% to +20%   | fresh       | recovered, capacity to add load |
+| -10% to +5%   | grey_zone   | normal training state |
+| -30% to -10%  | optimal     | productive training zone |
+| < -30%        | high_risk   | overreaching risk |
 
 Always read form together with recovery indicators (HRV, resting HR,
 subjective fatigue) and recent intensity — never in isolation.
