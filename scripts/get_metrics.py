@@ -50,7 +50,10 @@ def fetch_wellness() -> dict:
     today_entry = next((e for e in reversed(entries) if e.get("id") == today.isoformat()), {})
     last_vo2max = next((e["vo2max"] for e in reversed(entries) if e.get("vo2max") is not None), None)
 
+    _SLEEP_QUALITY_LABELS = {1: "GREAT", 2: "GOOD", 3: "AVG", 4: "POOR"}
+
     sport_info = next((s for s in (today_entry.get("sportInfo") or []) if s.get("type") == "Ride"), {})
+    raw_sleep_quality = today_entry.get("sleepQuality")
     return {
         "ctl": today_entry.get("ctl"),
         "atl": today_entry.get("atl"),
@@ -59,7 +62,7 @@ def fetch_wellness() -> dict:
         "eftp": sport_info.get("eftp"),
         "w_prime_wellness": sport_info.get("wPrime"),
         "sleep_secs": today_entry.get("sleepSecs"),
-        "sleep_quality": today_entry.get("sleepQuality"),
+        "sleep_quality": _SLEEP_QUALITY_LABELS.get(raw_sleep_quality, raw_sleep_quality),
     }
 
 

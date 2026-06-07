@@ -42,7 +42,7 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   = aerobic/climber.
 - `vo2max`: estimated from p5min power and weight.
 - `sleep_secs`: SECONDS (÷3600 for hours).
-- `sleep_quality`: INVERSE scale 1–4 (1 = GREAT … 4 = POOR). Lower is better.
+- `sleep_quality`: one of `GREAT`, `GOOD`, `AVG`, `POOR` (mapped from intervals.icu scale 1–4; GREAT = best).
 - `lthr`: lactate threshold heart rate (bpm).
 
 ---

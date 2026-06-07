@@ -7,6 +7,13 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-07
+
+### Changed
+
+- `metrics.sleep_quality` is now exported as a label (`GREAT`, `GOOD`, `AVG`, `POOR`) instead of the raw intervals.icu scale `1–4`, to avoid misinterpretation by the coach (`scripts/get_metrics.py`).
+- `coach-logic/input-schema.md` updated to document the new `sleep_quality` label values.
+
 ## [0.5.0] - 2026-06-05
 
 ### Changed
