@@ -29,7 +29,8 @@ definition:
     The response language for this conversation is: `{{response_language}}`.
 
     Always answer in `{{response_language}}`.
-    If `{{response_language}}` is empty, use English.
+    If `{{response_language}}` is empty, use English. 
+    Field names, ride_type and tag values stay in English regardless of response_language.
 
     Apply ONLY the discipline profile below whose heading matches
     `{{discipline}}` (climber, criterium, marathon, or roadrace). Ignore the
