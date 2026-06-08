@@ -117,10 +117,12 @@ def _clear_vector_store_files(client, store_id: str) -> None:
     for entry in client.vector_stores.files.list(vector_store_id=store_id):
         client.vector_stores.files.delete(vector_store_id=store_id, file_id=entry.id)
         # Also remove the underlying uploaded file so old revisions don't pile up.
-        try:
-            client.files.delete(entry.id)
-        except APIError as exc:
-            print(f"  WARNING: could not delete file {entry.id}: {exc}")
+        file_id = getattr(entry, "file_id", None)
+        if file_id:
+            try:
+                client.files.delete(file_id)
+            except APIError as exc:
+                print(f"  WARNING: could not delete file {file_id}: {exc}")
 
 
 def _build_vector_store(client) -> str:
