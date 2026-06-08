@@ -1,0 +1,70 @@
+name: Deploy Foundry Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'What-if (preview) or apply (deploy)'
+        required: true
+        default: 'what-if'
+        type: choice
+        options:
+          - what-if
+          - apply
+
+permissions:
+  id-token: write   # required for OIDC
+  contents: read
+
+jobs:
+  foundry-infra:
+    name: ${{ github.event.inputs.mode }} Foundry Bicep
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Lint Bicep
+        run: |
+          az bicep install
+          az bicep lint --file foundry-agent/infra/main.bicep
+
+      - name: What-If
+        if: github.event.inputs.mode == 'what-if'
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment group what-if \
+              --resource-group "${{ secrets.FOUNDRY_RESOURCE_GROUP }}" \
+              --template-file foundry-agent/infra/main.bicep \
+              --parameters \
+                foundryAccountName="${{ secrets.FOUNDRY_ACCOUNT_NAME }}" \
+                foundryProjectName="${{ secrets.FOUNDRY_PROJECT_NAME }}" \
+                location="${{ secrets.FOUNDRY_LOCATION }}" \
+                modelVersion="${{ secrets.FOUNDRY_MODEL_VERSION }}" \
+                deployPrincipalId="${{ secrets.FOUNDRY_DEPLOY_PRINCIPAL_ID }}"
+
+      - name: Deploy
+        if: github.event.inputs.mode == 'apply'
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment group create \
+              --resource-group "${{ secrets.FOUNDRY_RESOURCE_GROUP }}" \
+              --template-file foundry-agent/infra/main.bicep \
+              --parameters \
+                foundryAccountName="${{ secrets.FOUNDRY_ACCOUNT_NAME }}" \
+                foundryProjectName="${{ secrets.FOUNDRY_PROJECT_NAME }}" \
+                location="${{ secrets.FOUNDRY_LOCATION }}" \
+                modelVersion="${{ secrets.FOUNDRY_MODEL_VERSION }}" \
+                deployPrincipalId="${{ secrets.FOUNDRY_DEPLOY_PRINCIPAL_ID }}"

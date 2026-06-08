@@ -159,6 +159,16 @@ intervals-icu-sync/
 │   ├── training-zones.md           # Power, HR and RPE zone definitions
 │   ├── input-schema.md             # JSON input schema description for the AI coach
 │   └── workout-library.md          # Workout catalog by domain and dose level (with canonical tags)
+├── foundry-agent/
+│   ├── agent.yaml                  # Microsoft Foundry prompt agent definition (MCP + coach-logic knowledge)
+│   ├── deploy_agent.py             # Deploy/update agent versions and refresh vector store
+│   ├── invoke_agent.py             # Invoke agent locally (single-turn and chat mode)
+│   ├── requirements.txt            # Foundry-agent specific Python dependencies
+│   ├── infra/
+│   │   ├── main.bicep              # Foundry control-plane IaC (account, project, model, RBAC)
+│   │   ├── main.bicepparam         # Parameter template for Foundry infra deployment
+│   │   └── main.local.bicepparam   # Local parameter file for Foundry infra deployment (git-ignored)
+│   └── README.md                   # Setup: structured inputs, vector store, MCP server, deployment
 ├── docs/
 │   ├── 2026-05 Next Level intervals-icu.pdf           # Webinar slides (German)
 │   ├── 2026-05 Next Level intervals-icu Step by Step.pdf  # Step-by-step setup guide (English)
@@ -183,7 +193,19 @@ intervals-icu-sync/
 ├── requirements.txt
 ├── VERSION                       # Current project version (SemVer)
 ├── start_mcp_server.ps1            # Start/stop the MCP server in SSE mode (Windows PowerShell)
+├── config.example.ps1              # Template for deployment/config values (copy to config.ps1)
+├── setup.ps1                       # Helper script: generate local params and optionally push GitHub secrets
 ├── webservice/                     # MCP server deployed as Azure App Service (see webservice/README.md)
+│   ├── mcp_server.py               # ASGI webservice host for FastMCP endpoints
+│   ├── oauth_provider.py           # OAuth 2.0 provider for hosted MCP authentication
+│   ├── context.py                  # Request context/auth helper utilities
+│   ├── Check-Deployment.ps1        # Post-deployment smoke checks for webservice endpoints
+│   ├── requirements.txt            # Webservice-specific Python dependencies
+│   ├── infra/
+│   │   ├── main.bicep              # App Service infrastructure as code for hosted MCP server
+│   │   ├── main.local.bicepparam   # Local parameter file for webservice infra deployment
+│   │   └── modules/                # Reusable Bicep modules used by webservice infra
+│   └── README.md                   # Webservice deployment and operations guide
 └── README.md
 ```
 

@@ -1,0 +1,7 @@
+# Foundry agent deployment dependencies
+azure-identity>=1.17
+azure-ai-projects>=1.0.0b7
+openai>=1.40
+pyyaml>=6.0
+requests>=2.31
+python-dotenv>=1.0

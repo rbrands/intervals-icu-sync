@@ -1,12 +1,17 @@
-# Copy this file to config.ps1 and fill in your values.
+# Copy this file to config.ps1 (in the repo root) and fill in your values.
 # NEVER commit config.ps1 to source control.
 #
-# Usage:
-#   .\setup.ps1 -Bicep      # generate infra/main.local.bicepparam for local deploys
+# This is the project-wide deployment config. It covers BOTH the MCP webservice
+# and the Foundry agent infrastructure.
+#
+# Usage (from the repo root):
+#   .\setup.ps1 -Bicep      # generate both infra/main.local.bicepparam files
 #   .\setup.ps1 -GitHub     # push all values as GitHub Actions secrets
 #   .\setup.ps1 -All        # both
 
 $config = @{
+    # --- Shared Azure / OIDC ------------------------------------------------
+
     # Azure subscription
     SubscriptionId       = "__SUBSCRIPTION_ID__"
 
@@ -18,6 +23,8 @@ $config = @{
     # Then add federated credentials (branch:main and pull_request) via the Azure portal
     # or az ad app federated-credential create.
     AzureClientId        = "__AZURE_CLIENT_ID__"
+
+    # --- MCP webservice (webservice/infra) ----------------------------------
 
     # Shared resource group (from brands-advisory-central-infra)
     ResourceGroup        = "__RESOURCE_GROUP__"
@@ -47,4 +54,22 @@ $config = @{
     # Athlete ID whose shared workout library should be exposed as
     # "standard library" by MCP method list_standard_library_workouts.
     StandardLibraryAthleteId = "__STANDARD_LIBRARY_ATHLETE_ID__"
+
+    # --- Foundry agent ------------------------------------------------------
+
+    # Foundry project endpoint used by the "Deploy Foundry Agent" workflow
+    # (foundry-agent/deploy_agent.py). Pushed as GitHub secret FOUNDRY_PROJECT_ENDPOINT.
+    # Example: https://<resource>.services.ai.azure.com/api/projects/<project>
+    FoundryProjectEndpoint   = "__FOUNDRY_PROJECT_ENDPOINT__"
+
+    # Foundry infrastructure (foundry-agent/infra) — deployed by the
+    # "Deploy Foundry Infrastructure" workflow. This uses its OWN resource group,
+    # separate from the MCP webservice resource group above.
+    FoundryResourceGroup     = "__FOUNDRY_RESOURCE_GROUP__"
+    FoundryAccountName       = "training-architect"
+    FoundryProjectName       = "training-architect"
+    FoundryLocation          = "swedencentral"
+    FoundryModelVersion      = "2025-04-14"
+    # Object id of the deployment service principal (NOT the client id).
+    FoundryDeployPrincipalId = "__FOUNDRY_DEPLOY_PRINCIPAL_ID__"
 }

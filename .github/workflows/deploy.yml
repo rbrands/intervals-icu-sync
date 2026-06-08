@@ -10,8 +10,6 @@ on:
       - 'src/**'
       - '!webservice/infra/**'
       - '!webservice/README.md'
-      - '!webservice/config*.ps1'
-      - '!webservice/setup.ps1'
       - '!webservice/Check-Deployment.ps1'
   pull_request:
     branches:

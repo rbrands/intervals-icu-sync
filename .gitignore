@@ -215,8 +215,12 @@ data/processed/*.json
 data/plans/*.json
 
 # Deployment configuration (contains secrets / subscription IDs)
-webservice/config.ps1
+config.ps1
 webservice/infra/main.local.bicepparam
+foundry-agent/infra/main.local.bicepparam
+
+# Foundry agent dry-run render output
+foundry-agent/.rendered/
 
 # VS Code workspace settings (user-specific)
 .vscode/

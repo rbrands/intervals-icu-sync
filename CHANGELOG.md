@@ -7,6 +7,27 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-08
+
+### Added
+
+- Added version-controlled Foundry agent package (`foundry-agent/`) including `agent.yaml`, deployment/invocation scripts, requirements, and dedicated documentation.
+- Added Foundry infrastructure-as-code (`foundry-agent/infra/main.bicep`, `foundry-agent/infra/main.bicepparam`) for account, project, model deployment, and role assignment setup.
+- Added GitHub Actions workflows for Foundry agent deployment and Foundry infrastructure deployment (`.github/workflows/deploy-agent.yml`, `.github/workflows/infra-agent.yml`).
+- Added runtime structured inputs for agent behavior and per-request auth forwarding: `discipline`, `response_language`, `intervals_athlete_id`, `intervals_api_key`.
+- Added root-level deployment helper scripts (`setup.ps1`, `config.example.ps1`) to centralize local parameter generation and GitHub secret setup.
+
+### Changed
+
+- Updated `foundry-agent/agent.yaml` prompt behavior for deterministic application flow: no proactive "what next" prompts; final statements unless required input is missing.
+- Updated MCP connector configuration in Foundry agent deployment to use the hosted Streamable HTTP endpoint and runtime header templating.
+- Updated project documentation (`README.md`, `foundry-agent/README.md`, `webservice/README.md`) to reflect new structure, Foundry workflow, and RBAC requirements.
+- Consolidated setup/config flow at repo root and removed legacy `webservice/setup.ps1`.
+
+### Fixed
+
+- Fixed workout-tag convention tests to align with renamed/updated workout library source (`coach-logic/workout-library.md`) and current table-based tag definitions.
+
 ## [0.5.1] - 2026-06-07
 
 ### Changed
