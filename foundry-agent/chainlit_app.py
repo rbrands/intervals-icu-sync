@@ -121,8 +121,9 @@ async def on_message(message: cl.Message) -> None:
 
     if content.startswith("/discipline "):
         new_value = content.split(" ", 1)[1].strip()
-        if not new_value:
-            await cl.Message(content="Usage: /discipline <value>").send()
+        allowed = {"climber", "criterium", "marathon", "roadrace"}
+        if new_value not in allowed:
+            await cl.Message(content=f"Usage: /discipline <{'|'.join(sorted(allowed))}>").send()
             return
         structured_inputs["discipline"] = new_value
         cl.user_session.set("structured_inputs", structured_inputs)
