@@ -4,22 +4,36 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-WORKOUTS_FILE = REPO_ROOT / "coach-logic" / "workouts.md"
+WORKOUTS_FILE = REPO_ROOT / "coach-logic" / "workout-library.md"
 
 EXPECTED_PREFIXES = {
     "vo2max",
     "lactate-threshold",
     "aerobic-threshold",
     "race-specific",
+    "recovery",
 }
 EXPECTED_SUFFIXES = {"high", "moderate", "low"}
+REQUIRED_SUFFIXES_BY_PREFIX = {
+    "vo2max": EXPECTED_SUFFIXES,
+    "lactate-threshold": EXPECTED_SUFFIXES,
+    "aerobic-threshold": EXPECTED_SUFFIXES,
+    "race-specific": EXPECTED_SUFFIXES,
+    "recovery": {"low"},
+}
 
 
 class WorkoutTagConventionTests(unittest.TestCase):
     def _read_tag_values(self) -> list[str]:
         content = WORKOUTS_FILE.read_text(encoding="utf-8")
-        tags = re.findall(r"\*\*Tag:\*\*\s+([a-z0-9-]+)", content)
-        self.assertGreater(len(tags), 0, "No workout tags found in workouts.md")
+        tags = [
+            f"{prefix}-{suffix}"
+            for prefix, suffix in re.findall(
+                r"\|\s*(vo2max|lactate-threshold|aerobic-threshold|race-specific|recovery)-(high|moderate|low)\s*\|",
+                content,
+            )
+        ]
+        self.assertGreater(len(tags), 0, "No workout tags found in workout-library.md")
         return tags
 
     def test_all_tags_use_expected_pattern(self):
@@ -48,10 +62,10 @@ class WorkoutTagConventionTests(unittest.TestCase):
         for prefix, found_suffixes in found_by_prefix.items():
             self.assertEqual(
                 found_suffixes,
-                EXPECTED_SUFFIXES,
+                REQUIRED_SUFFIXES_BY_PREFIX[prefix],
                 msg=(
                     f"Prefix '{prefix}' must define all dose levels "
-                    f"{sorted(EXPECTED_SUFFIXES)} but found {sorted(found_suffixes)}"
+                    f"{sorted(REQUIRED_SUFFIXES_BY_PREFIX[prefix])} but found {sorted(found_suffixes)}"
                 ),
             )
 
