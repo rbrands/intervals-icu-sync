@@ -324,7 +324,7 @@ python foundry-agent/deploy_agent.py --vector-store-only
 ```
 
 This reuses the existing `coach-logic` store (or creates it on first run),
-re-uploads the six knowledge files, and prints the vector store id. Because the
+re-uploads the four knowledge files, and prints the vector store id. Because the
 agent already references the store by id, no agent update is needed.
 
 ### Deploy only the skill
