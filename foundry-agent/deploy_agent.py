@@ -87,7 +87,12 @@ def _embed_discipline_profiles(instructions: str) -> str:
     for discipline in _DISCIPLINES:
         block_file = _PROMPTS_DIR / f"discipline_{discipline}.md"
         if not block_file.exists():
+            print(f"ERROR: discipline prompt missing: {block_file}")
+            sys.exit(1)
+        block = block_file.read_text(encoding="utf-8").strip()
         sections.append(f"### {discipline}\n\n{block}")
+
+    return instructions.replace(_PROFILES_PLACEHOLDER, "\n\n".join(sections))
 
 
 def _openai_client(endpoint: str, credential):
