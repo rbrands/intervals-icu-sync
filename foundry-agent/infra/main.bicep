@@ -53,6 +53,14 @@ param deployPrincipalId string = ''
 @description('Role definition id (GUID) to grant the deploy principal data-plane access. Default is the built-in "Foundry User" role.')
 param deployRoleDefinitionId string = '53ca6127-db72-4b80-b1b0-d745d6d5456d'
 
+@description('Tags applied to Foundry resources.')
+param tags object = {
+  project: 'intervals-icu-sync'
+  'managed-by': 'bicep'
+  tier: 'application'
+  environment: 'prod'
+}
+
 // ---------------------------------------------------------------------------
 // Foundry account (Azure AI Services, multi-service)
 // ---------------------------------------------------------------------------
@@ -60,6 +68,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: foundryAccountName
   location: location
   kind: 'AIServices'
+  tags: tags
   sku: {
     name: 'S0'
   }
@@ -81,6 +90,7 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
   parent: account
   name: foundryProjectName
   location: location
+  tags: tags
   identity: {
     type: 'SystemAssigned'
   }

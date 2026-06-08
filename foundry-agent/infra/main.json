@@ -1,0 +1,205 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.43.8.12551",
+      "templateHash": "1518749479851502816"
+    }
+  },
+  "parameters": {
+    "foundryAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Azure AI Services (Foundry) account."
+      }
+    },
+    "foundryProjectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Foundry project under the account."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "swedencentral",
+      "metadata": {
+        "description": "Azure region for the Foundry account and project. Pick a region with the chosen model available; do NOT derive from the resource group."
+      }
+    },
+    "customSubDomainName": {
+      "type": "string",
+      "defaultValue": "[parameters('foundryAccountName')]",
+      "metadata": {
+        "description": "Custom subdomain name for the account. Required for project management and agents. Defaults to the account name."
+      }
+    },
+    "modelDeploymentName": {
+      "type": "string",
+      "defaultValue": "gpt-4.1-mini",
+      "metadata": {
+        "description": "Model deployment name as referenced in agent.yaml (definition.model)."
+      }
+    },
+    "modelFormat": {
+      "type": "string",
+      "defaultValue": "OpenAI",
+      "metadata": {
+        "description": "Model format. Use OpenAI for GPT models."
+      }
+    },
+    "modelName": {
+      "type": "string",
+      "defaultValue": "gpt-4.1-mini",
+      "metadata": {
+        "description": "Model name in the catalog."
+      }
+    },
+    "modelVersion": {
+      "type": "string",
+      "metadata": {
+        "description": "Model version. Set to the version available in your region."
+      }
+    },
+    "modelSkuName": {
+      "type": "string",
+      "defaultValue": "GlobalStandard",
+      "metadata": {
+        "description": "Deployment SKU name, e.g. GlobalStandard or Standard."
+      }
+    },
+    "modelCapacity": {
+      "type": "int",
+      "defaultValue": 50,
+      "metadata": {
+        "description": "Deployment capacity (tokens-per-minute units, in thousands)."
+      }
+    },
+    "deployPrincipalId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Object (principal) id of the deployment service principal that runs deploy_agent.py. Leave empty to skip the role assignment."
+      }
+    },
+    "deployRoleDefinitionId": {
+      "type": "string",
+      "defaultValue": "53ca6127-db72-4b80-b1b0-d745d6d5456d",
+      "metadata": {
+        "description": "Role definition id (GUID) to grant the deploy principal data-plane access. Default is the built-in \"Foundry User\" role."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "project": "intervals-icu-sync",
+        "managed-by": "bicep",
+        "tier": "application",
+        "environment": "prod"
+      },
+      "metadata": {
+        "description": "Tags applied to Foundry resources."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[parameters('foundryAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "AIServices",
+      "tags": "[parameters('tags')]",
+      "sku": {
+        "name": "S0"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "allowProjectManagement": true,
+        "customSubDomainName": "[parameters('customSubDomainName')]",
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('foundryAccountName'), parameters('foundryProjectName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {},
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('foundryAccountName'), parameters('modelDeploymentName'))]",
+      "sku": {
+        "name": "[parameters('modelSkuName')]",
+        "capacity": "[parameters('modelCapacity')]"
+      },
+      "properties": {
+        "model": {
+          "format": "[parameters('modelFormat')]",
+          "name": "[parameters('modelName')]",
+          "version": "[parameters('modelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('deployPrincipalId')))]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), parameters('deployPrincipalId'), parameters('deployRoleDefinitionId'))]",
+      "properties": {
+        "principalId": "[parameters('deployPrincipalId')]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('deployRoleDefinitionId'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "accountId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource id of the Foundry account."
+      },
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]"
+    },
+    "projectId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource id of the Foundry project."
+      },
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('foundryAccountName'), parameters('foundryProjectName'))]"
+    },
+    "modelDeploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Model deployment name to use in agent.yaml."
+      },
+      "value": "[parameters('modelDeploymentName')]"
+    },
+    "projectEndpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "Foundry project endpoint for FOUNDRY_PROJECT_ENDPOINT (deploy_agent.py / invoke_agent.py)."
+      },
+      "value": "[format('https://{0}.services.ai.azure.com/api/projects/{1}', parameters('customSubDomainName'), parameters('foundryProjectName'))]"
+    }
+  }
+}

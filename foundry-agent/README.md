@@ -152,6 +152,21 @@ The script authenticates to Foundry with `DefaultAzureCredential` (`az login`)
 and passes `discipline`, `response_language`, `intervals_athlete_id`, and
 `intervals_api_key` as structured inputs — exactly as your application will.
 
+### Tracing (Application Insights)
+
+Agent tracing linkage to Application Insights is currently treated as a
+separate configuration step in Foundry.
+
+- It is **not** part of `agent.yaml`.
+- It is **not** set by `deploy_agent.py`.
+- It is **not** configured by `foundry-agent/infra/main.bicep`.
+
+Use the Foundry UI (`Ablaufverfolgungen` -> `Verbinden`) to connect the agent
+to an existing Application Insights resource.
+
+If you already use a central App Insights instance for the webservice, reuse the
+same instance for the agent traces to keep monitoring consolidated.
+
 ## CI/CD deployment
 
 `deploy_agent.py` publishes a new agent version and (re)builds the vector store

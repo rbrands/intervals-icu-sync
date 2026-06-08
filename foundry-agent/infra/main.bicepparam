@@ -17,6 +17,14 @@ param modelVersion = '2025-04-14'
 param modelSkuName = 'GlobalStandard'
 param modelCapacity = 50
 
+// Resource tags applied to Foundry account and project.
+param tags = {
+	project: 'intervals-icu-sync'
+	'managed-by': 'bicep'
+	tier: 'application'
+	environment: 'prod'
+}
+
 // Object id of the deployment service principal (the one that runs
 // deploy_agent.py in CI). Leave empty to skip the role assignment.
 param deployPrincipalId = '<DEPLOY_SP_OBJECT_ID>'
