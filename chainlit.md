@@ -6,7 +6,7 @@ Use this page to test the Foundry agent locally via Chainlit.
 
 - Ensure `.env` contains `FOUNDRY_PROJECT_ENDPOINT`, `ATHLETE_ID`, and `INTERVALS_API_KEY`.
 - Use the Python 3.12 Chainlit environment for local UI tests.
-- Recommended launcher on Windows: `./Start-Chainlit.ps1 -Port 8013 -Watch`.
+- Recommended launcher on Windows: `.\Start-Chainlit.ps1 -Port 8013 -Watch`.
 
 ## In-Chat Commands
 
