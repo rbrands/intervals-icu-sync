@@ -82,10 +82,12 @@ named `training-plan-generation` from:
 The deploy script creates a new skill version and promotes it to the default
 version on each run.
 
-To make the skill actively usable by the prompt agent, deployment also creates
-or updates a toolbox (`training-plan-toolbox`) that references this skill and
-binds the explicit `toolbox_search_preview` tool entry defined in `agent.yaml`
-(`name: <TOOLBOX_NAME>`) to the deployed toolbox name.
+Deployment also creates or updates a toolbox (`training-plan-toolbox`) that
+references this skill.
+
+Current limitation: the prompt-agent Responses API currently rejects tool type
+`toolbox_search_preview` for this agent endpoint, so the toolbox is not added
+to the prompt agent tool list at deploy time.
 
 The MCP server tool remains directly configured in `agent.yaml` (not moved into
 the toolbox), so live data access and credentials flow stay unchanged.
@@ -293,8 +295,7 @@ The script:
   the created toolbox version as default.
 4. Embeds all discipline profiles into the instructions placeholder.
 5. Sets the vector store id on the `file_search` tool.
-6. Ensures `toolbox_search_preview` is enabled on the agent definition.
-7. Upserts the agent version through the Azure AI Projects SDK.
+6. Upserts the agent version through the Azure AI Projects SDK.
 
 ### Dry run (preview without deploying)
 

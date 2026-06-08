@@ -59,7 +59,6 @@ _SKILL_DIR = _COACH_LOGIC_DIR / "skill"
 
 _PROFILES_PLACEHOLDER = "<<INSERT DISCIPLINE PROFILES HERE>>"
 _VECTOR_STORE_PLACEHOLDER = "<VECTOR_STORE_ID>"
-_TOOLBOX_PLACEHOLDER = "<TOOLBOX_NAME>"
 _DEFAULT_SKILL_NAME = "training-plan-generation"
 _DEFAULT_TOOLBOX_NAME = "training-plan-toolbox"
 
@@ -70,10 +69,10 @@ _DISCIPLINES = ["climber", "criterium", "marathon", "roadrace"]
 _KNOWLEDGE_FILES = [
     "coaching-principles.md",
     "interpretation-rules.md",
-# moved to skill:    "decision-process.md",
+    "decision-process.md",
     "training-zones.md",
     "input-schema.md",
-# moved to skill:   "workout-library.md",
+    "workout-library.md",
 ]
 
 _SKILL_REFERENCE_FILES = [
@@ -376,25 +375,6 @@ def _build_toolbox(project_client, skill_name: str, skill_version: str) -> tuple
     return toolbox_name, version, True
 
 
-def _ensure_toolbox_search_tool(inner_definition: dict, toolbox_name: str) -> None:
-    """Ensure prompt agent has toolbox_search_preview enabled and bound to toolbox_name."""
-    tools = inner_definition.setdefault("tools", [])
-    for tool in tools:
-        if tool.get("type") == "toolbox_search_preview":
-            tool["name"] = toolbox_name
-            if not tool.get("description"):
-                tool["description"] = "Search tools and capabilities from the training-plan toolbox."
-            return
-
-    tools.append(
-        {
-            "type": "toolbox_search_preview",
-            "name": toolbox_name,
-            "description": "Search tools and capabilities from the training-plan toolbox.",
-        }
-    )
-
-
 def _dry_run(definition: dict) -> None:
     """Render the assembled definition to disk without contacting Foundry."""
     inner = definition["definition"]
@@ -464,7 +444,6 @@ def main() -> None:
     vector_store_id = _build_vector_store(client)
     skill_name, skill_version, skill_changed = _build_skill(project_client)
     toolbox_name, toolbox_version, toolbox_changed = _build_toolbox(project_client, skill_name, skill_version)
-    _ensure_toolbox_search_tool(inner, toolbox_name)
 
     for tool in inner.get("tools", []):
         if tool.get("type") == "file_search":
@@ -472,8 +451,6 @@ def main() -> None:
 
     if _VECTOR_STORE_PLACEHOLDER in yaml.safe_dump(inner):
         print(f"WARNING: '{_VECTOR_STORE_PLACEHOLDER}' still present; no file_search tool updated.")
-    if _TOOLBOX_PLACEHOLDER in yaml.safe_dump(inner):
-        print(f"WARNING: '{_TOOLBOX_PLACEHOLDER}' still present; no toolbox_search_preview tool updated.")
 
     metadata = definition.get("metadata") or {}
     metadata["skill_name"] = skill_name
