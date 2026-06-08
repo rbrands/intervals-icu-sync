@@ -14,6 +14,10 @@ based on intervals.icu data (via MCP) and the `coach-logic/` knowledge base.
 called `discipline` (a Handlebars `{{discipline}}` placeholder). One agent
 version serves every discipline — no per-discipline versions needed.
 
+The response language is also runtime-controlled with `response_language`
+(`{{response_language}}` in the prompt), so the same agent version can answer
+in different languages per request.
+
 At deploy time, `deploy_agent.py` replaces the `<<INSERT DISCIPLINE PROFILES HERE>>`
 placeholder with the four discipline blocks:
 
@@ -25,8 +29,9 @@ placeholder with the four discipline blocks:
 | `roadrace` | `../prompts/discipline_roadrace.md` |
 
 The `structured_inputs.discipline` schema in `agent.yaml` defaults to `climber`,
-so the agent works without supplying a value. To select a discipline per
-request, pass it through the Responses API `structured_inputs`:
+and `response_language` defaults to `de`, so the agent works without supplying
+values. To select discipline and language per request, pass both via
+`structured_inputs`:
 
 ```python
 project_client = AIProjectClient(endpoint=project_endpoint, credential=credential, allow_preview=True)
@@ -35,7 +40,10 @@ openai_client = project_client.get_openai_client(agent_name="training-architect-
 response = openai_client.responses.create(
     input="Plan my next week",
     extra_body={
-        "structured_inputs": {"discipline": "marathon"},
+      "structured_inputs": {
+        "discipline": "marathon",
+        "response_language": "en",
+      },
     },
 )
 ```
@@ -92,6 +100,7 @@ response = openai_client.responses.create(
     extra_body={
         "structured_inputs": {
             "discipline": "marathon",
+          "response_language": "en",
             "intervals_athlete_id": athlete_id,  # entered by the user in your app
             "intervals_api_key": api_key,         # kept client-side; sent over TLS only
         },
@@ -124,6 +133,7 @@ INTERVALS_API_KEY=<your-api-key>
 ```powershell
 pip install -r foundry-agent/requirements.txt
 $env:DISCIPLINE = "marathon"   # optional, default climber
+$env:RESPONSE_LANGUAGE = "de"  # optional, default de
 python foundry-agent/invoke_agent.py
 ```
 
@@ -135,12 +145,12 @@ keeps context even when the Conversations endpoint is unavailable:
 python foundry-agent/invoke_agent.py --chat
 ```
 
-The structured inputs (`discipline`, `intervals_athlete_id`, `intervals_api_key`)
+The structured inputs (`discipline`, `response_language`, `intervals_athlete_id`, `intervals_api_key`)
 are sent on every turn — they are per-request.
 
 The script authenticates to Foundry with `DefaultAzureCredential` (`az login`)
-and passes `discipline`, `intervals_athlete_id`, and `intervals_api_key` as
-structured inputs — exactly as your application will.
+and passes `discipline`, `response_language`, `intervals_athlete_id`, and
+`intervals_api_key` as structured inputs — exactly as your application will.
 
 ## CI/CD deployment
 
@@ -213,8 +223,14 @@ Required GitHub secrets (the OIDC ones already exist for the webservice deploy):
 | `AZURE_SUBSCRIPTION_ID` | Subscription id |
 | `FOUNDRY_PROJECT_ENDPOINT` | Foundry project endpoint URL |
 
-The service principal needs a data-plane role on the Foundry project (e.g.
-`Foundry User`) to create vector stores and agent versions.
+The same OIDC service principal used by the webservice deployment is reused for
+Foundry workflows (`AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID`).
+That principal needs:
+
+- a data-plane role on the Foundry project (e.g. `Foundry User`) to create
+  vector stores and agent versions.
+- control-plane permissions on the Foundry resource group (at least
+  `Contributor`, or equivalent) to run the `infra-agent.yml` Bicep deployment.
 
 ## Infrastructure (Bicep)
 
@@ -262,6 +278,9 @@ Or use the manual workflow
 | `FOUNDRY_LOCATION` | Region (e.g. `swedencentral`) |
 | `FOUNDRY_MODEL_VERSION` | Model version for the deployment |
 | `FOUNDRY_DEPLOY_PRINCIPAL_ID` | Object id of the deploy service principal |
+
+`FOUNDRY_DEPLOY_PRINCIPAL_ID` should be the object id of that same deployment
+service principal, unless you intentionally use a different identity.
 
 > **Verify the role:** `deployRoleDefinitionId` defaults to the built-in
 > **Azure AI User** role. Confirm this GUID for your tenant, or override the

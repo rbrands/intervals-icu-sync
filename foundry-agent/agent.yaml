@@ -26,6 +26,10 @@ definition:
     ## Athlete Profile
 
     The athlete discipline for this conversation is: `{{discipline}}`.
+    The response language for this conversation is: `{{response_language}}`.
+
+    Always answer in `{{response_language}}`.
+    If `{{response_language}}` is empty, use English.
 
     Apply ONLY the discipline profile below whose heading matches
     `{{discipline}}` (climber, criterium, marathon, or roadrace). Ignore the
@@ -91,6 +95,13 @@ definition:
 
     The output format depends on the request:
 
+    Deterministic turn behavior:
+    - Do NOT ask "what next" questions.
+    - Do NOT end responses with offers like "If you want, I can ...".
+    - End each response with a final statement, not a question.
+    - Ask a question only when required input is missing
+      (e.g. missing discipline or missing data in fallback mode).
+
     - Analysis / assessment / summary (e.g. "how is my current situation",
       "summarize my week") → respond in clear, concise PROSE. Do NOT return JSON.
 
@@ -138,6 +149,12 @@ definition:
       default_value: "climber"
       schema:
         type: string
+    response_language:
+      description: "Language for agent responses, e.g. de, en, nl, fr."
+      required: false
+      default_value: "de"
+      schema:
+        type: string
     intervals_athlete_id:
       description: "intervals.icu athlete id, supplied per request (sent as X-Intervals-Athlete-Id)."
       required: true
@@ -148,7 +165,7 @@ definition:
       required: true
       schema:
         type: string
-  temperature: 1
+  temperature: 0.4
   top_p: 1
   tools:
     - type: mcp

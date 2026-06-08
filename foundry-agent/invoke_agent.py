@@ -18,6 +18,7 @@ Optional environment variables
 -------------------------------
 - ``AGENT_NAME`` — defaults to ``training-architect-agent``
 - ``DISCIPLINE`` — climber | criterium | marathon | roadrace (default ``climber``)
+- ``RESPONSE_LANGUAGE`` — response language like ``de`` / ``en`` (default ``de``)
 - ``MESSAGE`` — the user message to send (default: a short weekly assessment ask)
 
 Usage
@@ -87,17 +88,22 @@ def main() -> None:
 
     agent_name = os.environ.get("AGENT_NAME", "training-architect-agent")
     discipline = os.environ.get("DISCIPLINE", "climber")
+    response_language = os.environ.get("RESPONSE_LANGUAGE", "de")
     message = os.environ.get("MESSAGE", _DEFAULT_MESSAGE)
 
     # The same structured inputs are sent on every turn — they are per-request.
     structured_inputs = {
         "discipline": discipline,
+        "response_language": response_language,
         "intervals_athlete_id": athlete_id,
         "intervals_api_key": api_key,
     }
 
     client = _openai_client(endpoint, agent_name)
-    print(f"Agent: {agent_name} (discipline={discipline})")
+    print(
+        f"Agent: {agent_name} "
+        f"(discipline={discipline}, response_language={response_language})"
+    )
 
     if not interactive:
         # Single-turn mode: one question, one answer.
