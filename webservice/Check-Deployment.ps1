@@ -5,7 +5,7 @@
 .DESCRIPTION
     Runs az bicep lint + az deployment group what-if.
     With -Deploy, performs the actual deployment after a confirmation prompt.
-    Requires config.ps1 and infra/main.local.bicepparam (run setup.ps1 -Bicep first).
+    Requires config.ps1 (repo root) and infra/main.local.bicepparam (run setup.ps1 -Bicep first).
 
 .PARAMETER Deploy
     When specified, runs az deployment group create after the what-if preview.
@@ -18,9 +18,10 @@ param(
     [switch]$Deploy
 )
 
-$configPath = Join-Path $PSScriptRoot "config.ps1"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$configPath = Join-Path $repoRoot "config.ps1"
 if (-not (Test-Path $configPath)) {
-    Write-Host "config.ps1 not found." -ForegroundColor Red
+    Write-Host "config.ps1 not found in repo root." -ForegroundColor Red
     Write-Host "Copy config.example.ps1 to config.ps1 and fill in your values." -ForegroundColor Yellow
     exit 1
 }
@@ -28,7 +29,7 @@ if (-not (Test-Path $configPath)) {
 
 $paramFile = Join-Path $PSScriptRoot "infra/main.local.bicepparam"
 if (-not (Test-Path $paramFile)) {
-    Write-Host "infra/main.local.bicepparam not found. Run: .\setup.ps1 -Bicep" -ForegroundColor Red
+    Write-Host "infra/main.local.bicepparam not found. Run (from repo root): .\setup.ps1 -Bicep" -ForegroundColor Red
     exit 1
 }
 

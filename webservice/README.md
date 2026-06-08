@@ -134,8 +134,9 @@ After this step no client secret is stored anywhere. OIDC handles authentication
 
 ### 4. Local Configuration
 
-Copy `config.example.ps1` to `config.ps1` and fill in all values.
-`config.ps1` is excluded from source control via `.gitignore` and must **never** be committed.
+The deployment config is project-wide and lives in the **repo root**. Copy
+`config.example.ps1` to `config.ps1` (root) and fill in all values. `config.ps1`
+is excluded from source control via `.gitignore` and must **never** be committed.
 
 | Key in `config.ps1` | GitHub Secret | Description |
 |---|---|---|
@@ -150,17 +151,28 @@ Copy `config.example.ps1` to `config.ps1` and fill in all values.
 | `CustomDomain` | `APP_CUSTOM_DOMAIN` | Optional custom domain (e.g. `intervals-mcp.training-architect.com`). Leave empty to use only the `.azurewebsites.net` hostname. |
 | `OAuthTokenSecret` | `OAUTH_TOKEN_SECRET` | Fernet key for stateless OAuth tokens. Generate once and store permanently. See `OAUTH_TOKEN_SECRET` above. |
 | `StandardLibraryAthleteId` | `STANDARD_LIBRARY_ATHLETE_ID` | Athlete ID whose shared library is exposed by MCP method `list_standard_library_workouts` (e.g. `i57401`). |
+| `FoundryProjectEndpoint` | `FOUNDRY_PROJECT_ENDPOINT` | Foundry project endpoint used by the "Deploy Foundry Agent" workflow (`foundry-agent/deploy_agent.py`), e.g. `https://<resource>.services.ai.azure.com/api/projects/<project>`. |
+| `FoundryResourceGroup` | `FOUNDRY_RESOURCE_GROUP` | Resource group for the Foundry infrastructure (separate from the webservice RG). Used by the "Deploy Foundry Infrastructure" workflow. |
+| `FoundryAccountName` | `FOUNDRY_ACCOUNT_NAME` | Foundry (AI Services) account name (e.g. `training-architect`). |
+| `FoundryProjectName` | `FOUNDRY_PROJECT_NAME` | Foundry project name (e.g. `training-architect`). |
+| `FoundryLocation` | `FOUNDRY_LOCATION` | Region for the Foundry resources (e.g. `swedencentral`). |
+| `FoundryModelVersion` | `FOUNDRY_MODEL_VERSION` | Model version for the `gpt-4.1-mini` deployment. |
+| `FoundryDeployPrincipalId` | `FOUNDRY_DEPLOY_PRINCIPAL_ID` | Object id of the deployment service principal granted data-plane access. |
 
 ```powershell
-cd webservice
+# From the repo root
 Copy-Item config.example.ps1 config.ps1
 # Edit config.ps1 with your actual values
-.\setup.ps1 -All    # generates infra/main.local.bicepparam + pushes GitHub Secrets
+.\setup.ps1 -All    # generates both infra/main.local.bicepparam files + pushes GitHub Secrets
 ```
 
 ### 5. Preview and deploy infrastructure
 
+`Check-Deployment.ps1` stays in `webservice/` and reads `config.ps1` from the
+repo root. Run `setup.ps1 -Bicep` (from root) first, then:
+
 ```powershell
+cd webservice
 .\Check-Deployment.ps1           # lint + what-if only
 .\Check-Deployment.ps1 -Deploy   # lint + what-if + deploy (with confirmation prompt)
 ```

@@ -159,6 +159,9 @@ intervals-icu-sync/
 │   ├── training-zones.md           # Power, HR and RPE zone definitions
 │   ├── input-schema.md             # JSON input schema description for the AI coach
 │   └── workout-library.md          # Workout catalog by domain and dose level (with canonical tags)
+├── foundry-agent/
+│   ├── agent.yaml                  # Microsoft Foundry prompt agent definition (MCP + coach-logic knowledge)
+│   └── README.md                   # Setup: discipline block, vector store, MCP server
 ├── docs/
 │   ├── 2026-05 Next Level intervals-icu.pdf           # Webinar slides (German)
 │   ├── 2026-05 Next Level intervals-icu Step by Step.pdf  # Step-by-step setup guide (English)
