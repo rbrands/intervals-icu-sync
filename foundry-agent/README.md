@@ -285,7 +285,7 @@ python foundry-agent/deploy_agent.py
 The script:
 
 1. Reuses the vector store named `coach-logic` (or creates it on first run),
-   refreshing its files from the six knowledge files each time.
+   refreshing its files from the four knowledge files each time.
 2. Builds the `training-plan-generation` skill from `coach-logic/skill/SKILL.md`
   with references to `decision-process.md` and `workout-library.md`, then
   promotes the created version as default.
