@@ -158,7 +158,9 @@ intervals-icu-sync/
 │   ├── decision-process.md         # Decision flow to turn interpretation into weekly training actions
 │   ├── training-zones.md           # Power, HR and RPE zone definitions
 │   ├── input-schema.md             # JSON input schema description for the AI coach
-│   └── workout-library.md          # Workout catalog by domain and dose level (with canonical tags)
+│   ├── workout-library.md          # Workout catalog by domain and dose level (with canonical tags)
+│   └── skill/
+│       └── SKILL.md                # Foundry skill manifest used by foundry-agent/deploy_agent.py
 ├── foundry-agent/
 │   ├── agent.yaml                  # Microsoft Foundry prompt agent definition (MCP + coach-logic knowledge)
 │   ├── deploy_agent.py             # Deploy/update agent versions and refresh vector store
@@ -192,6 +194,8 @@ intervals-icu-sync/
 ├── CHANGELOG.md                  # Project change history (Keep a Changelog format)
 ├── requirements.txt
 ├── VERSION                       # Current project version (SemVer)
+├── Run-ProjectPython.ps1         # Run any Python command with .venv (Python 3.14)
+├── Start-Chainlit.ps1            # Start Chainlit with .venv312 (Python 3.12)
 ├── start_mcp_server.ps1            # Start/stop the MCP server in SSE mode (Windows PowerShell)
 ├── config.example.ps1              # Template for deployment/config values (copy to config.ps1)
 ├── setup.ps1                       # Helper script: generate local params and optionally push GitHub secrets
@@ -233,6 +237,26 @@ pre-commit install
 ```
 
 This project includes `.pre-commit-config.yaml` with `nbstripout`, so notebook output and execution-count-only changes are removed automatically at commit time.
+
+### 2c. Windows launcher scripts (parallel Python versions)
+
+This repository includes two helper scripts so you can keep Python 3.14 for the
+main project and Python 3.12 for Chainlit in parallel:
+
+```powershell
+# Run project scripts/tools with .venv (Python 3.14)
+.\Run-ProjectPython.ps1 scripts\prepare_week_for_coach.py
+
+# Start Chainlit with .venv312 (Python 3.12)
+.\Start-Chainlit.ps1 -Port 8013 -Watch
+```
+
+If `.venv312` does not exist yet:
+
+```powershell
+py -3.12 -m venv .venv312
+.\.venv312\Scripts\python.exe -m pip install -r foundry-agent/requirements.txt
+```
 
 ### 3. Set your API key
 

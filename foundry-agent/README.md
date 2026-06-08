@@ -72,6 +72,30 @@ Upload these files to a vector store in your Foundry project and put the
 resulting ID into `agent.yaml` under `vector_store_ids` (replace
 `<VECTOR_STORE_ID>`). Re-upload whenever the knowledge files change.
 
+In addition to the vector store, deployment now also publishes a Foundry skill
+named `training-plan-generation` from:
+
+- `coach-logic/skill/SKILL.md`
+- `coach-logic/decision-process.md`
+- `coach-logic/workout-library.md`
+
+The deploy script creates a new skill version and promotes it to the default
+version on each run.
+
+To make the skill actively usable by the prompt agent, deployment also creates
+or updates a toolbox (`training-plan-toolbox`) that references this skill and
+binds the explicit `toolbox_search_preview` tool entry defined in `agent.yaml`
+(`name: <TOOLBOX_NAME>`) to the deployed toolbox name.
+
+The MCP server tool remains directly configured in `agent.yaml` (not moved into
+the toolbox), so live data access and credentials flow stay unchanged.
+
+To avoid version churn, `deploy_agent.py` compares the local skill content
+(`SKILL.md` + references) with the currently deployed default skill version.
+If content is unchanged, it reuses the existing default skill version instead
+of creating a new one. The same reuse logic is applied to the toolbox when it
+already points to the same skill version.
+
 ## MCP server
 
 The agent connects to the managed MCP server, defined under `definition.tools`
@@ -150,12 +174,83 @@ keeps context even when the Conversations endpoint is unavailable:
 python foundry-agent/invoke_agent.py --chat
 ```
 
+### Optional: Chainlit web frontend for testing
+
+For browser-based local testing, you can run the optional Chainlit app:
+
+```powershell
+pip install -r foundry-agent/requirements.txt
+python -m chainlit run foundry-agent/chainlit_app.py -w
+```
+
+If the browser page stays blank and the backend logs show an AnyIO event loop
+error (`NoEventLoopError` / `NoCurrentAsyncBackend`), use a Python 3.12 or
+3.13 virtual environment for Chainlit.
+
+Quick setup on Windows with Python 3.12:
+
+```powershell
+py -3.12 -m venv .venv312
+.\.venv312\Scripts\Activate.ps1
+python -m pip install -r foundry-agent/requirements.txt
+python -m chainlit run foundry-agent/chainlit_app.py -w
+```
+
+`foundry-agent/requirements.txt` installs Chainlit only for Python versions
+below 3.14 to avoid this runtime issue.
+
+For easier daily usage on Windows, use the repository launcher scripts:
+
+```powershell
+# Start Chainlit with the dedicated Python 3.12 environment
+.\Start-Chainlit.ps1 -Port 8013 -Watch
+
+# Run project scripts with the default .venv (Python 3.14)
+.\Run-ProjectPython.ps1 scripts\prepare_week_for_coach.py
+```
+
+It uses the same `.env` values as `invoke_agent.py` and keeps multi-turn
+context with `previous_response_id`.
+
+Useful chat commands in the UI:
+
+- `/settings` — show active runtime settings
+- `/discipline <value>` — update discipline for the current session
+- `/language <value>` — update response language for the current session
+
 The structured inputs (`discipline`, `response_language`, `intervals_athlete_id`, `intervals_api_key`)
 are sent on every turn — they are per-request.
 
 The script authenticates to Foundry with `DefaultAzureCredential` (`az login`)
 and passes `discipline`, `response_language`, `intervals_athlete_id`, and
 `intervals_api_key` as structured inputs — exactly as your application will.
+
+#### Request flow (Chainlit -> Responses API -> Agent)
+
+```mermaid
+flowchart LR
+  U[User in Browser]
+  C[Chainlit App\nfoundry-agent/chainlit_app.py]
+  R[Azure OpenAI Responses API\nagent endpoint]
+  A[Foundry Agent\ntraining-architect-agent]
+  M[MCP Server\nintervals-mcp.training-architect.com]
+  I[intervals.icu API]
+
+  U -->|chat message| C
+  C -->|responses.create\ninput + structured_inputs\nprevious_response_id| R
+  R --> A
+  A -->|tool calls| M
+  M --> I
+  I --> M
+  M --> A
+  A --> R
+  R -->|assistant response| C
+  C -->|render reply| U
+```
+
+The Chainlit UI sends each user message through the Responses API to the
+agent endpoint. The agent can call MCP tools as needed and returns a single
+assistant response back to Chainlit.
 
 ### Tracing (Application Insights)
 
@@ -174,8 +269,8 @@ same instance for the agent traces to keep monitoring consolidated.
 
 ## CI/CD deployment
 
-`deploy_agent.py` publishes a new agent version and (re)builds the vector store
-from the `coach-logic/` files in one run. It authenticates with
+`deploy_agent.py` publishes a new agent version, (re)builds the vector store,
+and deploys the training-plan skill in one run. It authenticates with
 `DefaultAzureCredential`, so it works locally (`az login`) and in GitHub Actions
 via OIDC.
 
@@ -190,10 +285,16 @@ python foundry-agent/deploy_agent.py
 The script:
 
 1. Reuses the vector store named `coach-logic` (or creates it on first run),
-   refreshing its files from the six knowledge files each time.
-2. Embeds all discipline profiles into the instructions placeholder.
-3. Sets the vector store id on the `file_search` tool.
-4. Upserts the agent version through the Azure AI Projects SDK.
+   refreshing its files from the four knowledge files each time.
+2. Builds the `training-plan-generation` skill from `coach-logic/skill/SKILL.md`
+  with references to `decision-process.md` and `workout-library.md`, then
+  promotes the created version as default.
+3. Builds/updates `training-plan-toolbox` with a skill reference and promotes
+  the created toolbox version as default.
+4. Embeds all discipline profiles into the instructions placeholder.
+5. Sets the vector store id on the `file_search` tool.
+6. Ensures `toolbox_search_preview` is enabled on the agent definition.
+7. Upserts the agent version through the Azure AI Projects SDK.
 
 ### Dry run (preview without deploying)
 
@@ -223,8 +324,17 @@ python foundry-agent/deploy_agent.py --vector-store-only
 ```
 
 This reuses the existing `coach-logic` store (or creates it on first run),
-re-uploads the six knowledge files, and prints the vector store id. Because the
+re-uploads the four knowledge files, and prints the vector store id. Because the
 agent already references the store by id, no agent update is needed.
+
+### Deploy only the skill
+
+To publish a new `training-plan-generation` skill version without rebuilding the
+vector store or creating a new agent version:
+
+```powershell
+python foundry-agent/deploy_agent.py --skill-only
+```
 
 ### GitHub Actions
 
