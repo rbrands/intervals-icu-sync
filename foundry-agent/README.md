@@ -3,6 +3,11 @@
 Version-controlled definition of the Microsoft Foundry prompt agent that coaches
 based on intervals.icu data (via MCP) and the `coach-logic/` knowledge base.
 
+This agent is intended to be used by an application layer (for example the
+upcoming `training-architect` app), not as a standalone end-user product.
+The app provides the user flow, runtime inputs, and orchestration around the
+agent's analysis and planning capabilities.
+
 ## Files
 
 - `agent.yaml` — declarative agent definition (model, instructions, tools).
