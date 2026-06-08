@@ -17,7 +17,7 @@ persist_user_env = false
 
 # Whether to mask user environment variables (API keys) in the UI with password type
 # Set to true to show API keys as ***, false to show them as plain text
-mask_user_env = false
+mask_user_env = true
 
 # Authorized origins
 allow_origins = ["http://localhost:8013", "http://127.0.0.1:8013"]
