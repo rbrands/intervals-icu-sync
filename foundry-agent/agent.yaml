@@ -191,3 +191,8 @@ definition:
       # Replace with the vector store ID created in your Foundry project.
       vector_store_ids:
         - <VECTOR_STORE_ID>
+    - type: toolbox_search_preview
+      # Toolbox carrying skill references (e.g. training-plan-generation).
+      # deploy_agent.py resolves this placeholder to TOOLBOX_NAME/default.
+      name: <TOOLBOX_NAME>
+      description: Search tools and capabilities from the training-plan toolbox.

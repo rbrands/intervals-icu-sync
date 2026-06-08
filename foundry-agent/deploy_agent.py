@@ -1,13 +1,17 @@
 """Deploy the Foundry prompt agent and (re)build its coach-logic vector store.
 
 This script is the CI/CD entry point for publishing a new version of the
-``training-architect-agent`` Foundry prompt agent. It performs three steps:
+``training-architect-agent`` Foundry prompt agent. It performs five steps:
 
 1. Build (or refresh) a vector store from the ``coach-logic/`` knowledge files.
-2. Assemble the final agent definition from ``agent.yaml`` — embedding all
+2. Build a new version of the ``training-plan-generation`` skill from
+    ``coach-logic/skill/SKILL.md`` and selected reference files.
+3. Build/update ``training-plan-toolbox`` with a skill reference to the
+    deployed skill version.
+4. Assemble the final agent definition from ``agent.yaml`` — embedding all
    discipline profiles and the freshly created vector store id. The discipline
    is selected at runtime via the ``{{discipline}}`` structured input.
-3. Upsert a new agent version via the Foundry agents data-plane REST API.
+5. Upsert a new agent version via the Foundry agents data-plane REST API.
 
 Authentication uses ``DefaultAzureCredential`` so it works both locally
 (``az login``) and in GitHub Actions (OIDC federated credential).
@@ -18,6 +22,8 @@ Flags
   without contacting Foundry or building a vector store.
 - ``--vector-store-only`` — only build/refresh the ``coach-logic`` vector store
   and print its id; do not create a new agent version.
+- ``--skill-only`` — only build/refresh the ``training-plan-generation`` skill
+    and print the deployed version; do not update the agent.
 
 Required environment variables
 ------------------------------
@@ -28,24 +34,34 @@ Optional environment variables
 - ``AGENT_NAME`` — defaults to the ``name`` field in ``agent.yaml``
 - ``MODEL`` — overrides ``definition.model`` from ``agent.yaml``
 - ``VECTOR_STORE_NAME`` — defaults to ``coach-logic``
+- ``SKILL_NAME`` — defaults to ``training-plan-generation``
+- ``TOOLBOX_NAME`` — defaults to ``training-plan-toolbox``
 """
 
 from __future__ import annotations
 
+import io
 import json
+import hashlib
 import os
 import sys
+import zipfile
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _AGENT_FILE = _REPO_ROOT / "foundry-agent" / "agent.yaml"
 _COACH_LOGIC_DIR = _REPO_ROOT / "coach-logic"
 _PROMPTS_DIR = _REPO_ROOT / "prompts"
+_SKILL_DIR = _COACH_LOGIC_DIR / "skill"
 
 _PROFILES_PLACEHOLDER = "<<INSERT DISCIPLINE PROFILES HERE>>"
 _VECTOR_STORE_PLACEHOLDER = "<VECTOR_STORE_ID>"
+_TOOLBOX_PLACEHOLDER = "<TOOLBOX_NAME>"
+_DEFAULT_SKILL_NAME = "training-plan-generation"
+_DEFAULT_TOOLBOX_NAME = "training-plan-toolbox"
 
 # Discipline blocks embedded into the instructions; selected at runtime via the
 # {{discipline}} structured input.
@@ -54,11 +70,71 @@ _DISCIPLINES = ["climber", "criterium", "marathon", "roadrace"]
 _KNOWLEDGE_FILES = [
     "coaching-principles.md",
     "interpretation-rules.md",
-    "decision-process.md",
+# moved to skill:    "decision-process.md",
     "training-zones.md",
     "input-schema.md",
+# moved to skill:   "workout-library.md",
+]
+
+_SKILL_REFERENCE_FILES = [
+    "decision-process.md",
     "workout-library.md",
 ]
+
+
+def _read_skill_source_files() -> dict[str, bytes]:
+    """Return skill source files keyed by archive path."""
+    skill_manifest = _SKILL_DIR / "SKILL.md"
+    if not skill_manifest.exists():
+        print(f"ERROR: skill manifest missing: {skill_manifest}")
+        sys.exit(1)
+
+    files: dict[str, bytes] = {
+        "SKILL.md": skill_manifest.read_bytes(),
+    }
+    for filename in _SKILL_REFERENCE_FILES:
+        path = _COACH_LOGIC_DIR / filename
+        if not path.exists():
+            print(f"ERROR: skill reference file missing: {path}")
+            sys.exit(1)
+        files[f"references/{filename}"] = path.read_bytes()
+    return files
+
+
+def _hash_skill_file_map(files: dict[str, bytes]) -> str:
+    """Hash skill payload deterministically by path and content."""
+    digest = hashlib.sha256()
+    for rel_path in sorted(files):
+        digest.update(rel_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(files[rel_path])
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _hash_skill_zip_content(zip_bytes: bytes) -> str:
+    """Hash a downloaded skill ZIP by logical file content, ignoring ZIP metadata."""
+    with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
+        files: dict[str, bytes] = {}
+        for name in zf.namelist():
+            normalized = name.replace("\\", "/").strip("/")
+            if normalized.endswith("/"):
+                continue
+            files[normalized] = zf.read(name)
+    return _hash_skill_file_map(files)
+
+
+def _download_skill_version_zip(project_client, skill_name: str, skill_version: str) -> bytes:
+    """Download a skill version archive as raw bytes."""
+    chunks = project_client.beta.skills.download_version(name=skill_name, version=skill_version)
+    return b"".join(chunks)
+
+
+def _load_env() -> None:
+    """Load environment variables from .env if present."""
+    env_file = _REPO_ROOT / ".env"
+    if env_file.exists():
+        load_dotenv(env_file, override=False)
 
 
 def _require_env(name: str) -> str:
@@ -171,6 +247,7 @@ def _upsert_agent(project_client, definition: dict) -> None:
             agent_name=agent_name,
             definition=definition["definition"],
             description=definition.get("description", ""),
+            metadata=definition.get("metadata"),
         )
     except HttpResponseError as exc:
         print(f"ERROR: agent upsert failed: {exc}")
@@ -179,6 +256,143 @@ def _upsert_agent(project_client, definition: dict) -> None:
     deployed_name = getattr(result, "name", agent_name)
     deployed_version = getattr(result, "version", "?")
     print(f"Agent deployed: {deployed_name} version {deployed_version}")
+
+
+def _zip_skill() -> bytes:
+    """Pack SKILL.md and selected reference files into an in-memory ZIP."""
+    files = _read_skill_source_files()
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for rel_path, content in files.items():
+            zf.writestr(rel_path, content)
+
+    return buf.getvalue()
+
+
+def _build_skill(project_client) -> tuple[str, str, bool]:
+    """Create/update skill only when content changed. Returns (name, version, changed)."""
+    from azure.core.exceptions import HttpResponseError
+
+    if not hasattr(project_client, "beta") or not hasattr(project_client.beta, "skills"):
+        print("ERROR: this azure-ai-projects version does not expose beta.skills operations.")
+        print("       Upgrade foundry-agent dependencies and try again.")
+        sys.exit(1)
+
+    skill_name = os.environ.get("SKILL_NAME", _DEFAULT_SKILL_NAME)
+    desired_files = _read_skill_source_files()
+    desired_hash = _hash_skill_file_map(desired_files)
+
+    try:
+        details = project_client.beta.skills.get(name=skill_name)
+        current_default = getattr(details, "default_version", None)
+    except HttpResponseError:
+        current_default = None
+
+    if current_default:
+        current_zip = _download_skill_version_zip(project_client, skill_name, current_default)
+        current_hash = _hash_skill_zip_content(current_zip)
+        if current_hash == desired_hash:
+            print(f"Skill '{skill_name}' unchanged; reusing default version {current_default}.")
+            return skill_name, current_default, False
+
+    skill_zip = _zip_skill()
+    zip_stream = io.BytesIO(skill_zip)
+    zip_stream.name = f"{skill_name}.zip"
+
+    print(f"Building skill '{skill_name}' ...")
+    version = project_client.beta.skills.create_from_files(
+        name=skill_name,
+        content={
+            "files": [(zip_stream.name, zip_stream, "application/zip")],
+            "default": True,
+        },
+    )
+    skill_version = getattr(version, "version", None)
+    if not skill_version:
+        print("ERROR: skill version creation returned no version.")
+        sys.exit(1)
+
+    # Keep this explicit promotion step for deterministic behavior across SDK versions.
+    project_client.beta.skills.update(name=skill_name, default_version=skill_version)
+    print(f"Skill deployed: {skill_name} version {skill_version} (default)")
+    return skill_name, skill_version, True
+
+
+def _toolbox_version_uses_skill(project_client, toolbox_name: str, toolbox_version: str, skill_name: str, skill_version: str) -> bool:
+    """Check whether a toolbox version already references the target skill version."""
+    version_obj = project_client.beta.toolboxes.get_version(name=toolbox_name, version=toolbox_version)
+    for skill in getattr(version_obj, "skills", []) or []:
+        if getattr(skill, "name", None) == skill_name and getattr(skill, "version", None) == skill_version:
+            return True
+        if isinstance(skill, dict) and skill.get("name") == skill_name and skill.get("version") == skill_version:
+            return True
+    return False
+
+
+def _build_toolbox(project_client, skill_name: str, skill_version: str) -> tuple[str, str, bool]:
+    """Create/update toolbox only when skill reference differs. Returns (name, version, changed)."""
+    from azure.core.exceptions import HttpResponseError
+
+    if not hasattr(project_client, "beta") or not hasattr(project_client.beta, "toolboxes"):
+        print("ERROR: this azure-ai-projects version does not expose beta.toolboxes operations.")
+        print("       Upgrade foundry-agent dependencies and try again.")
+        sys.exit(1)
+
+    toolbox_name = os.environ.get("TOOLBOX_NAME", _DEFAULT_TOOLBOX_NAME)
+
+    try:
+        toolbox_details = project_client.beta.toolboxes.get(name=toolbox_name)
+        current_default = getattr(toolbox_details, "default_version", None)
+    except HttpResponseError:
+        current_default = None
+
+    if current_default:
+        if _toolbox_version_uses_skill(project_client, toolbox_name, current_default, skill_name, skill_version):
+            print(f"Toolbox '{toolbox_name}' unchanged; reusing default version {current_default}.")
+            return toolbox_name, current_default, False
+
+    print(f"Building toolbox '{toolbox_name}' with skill '{skill_name}:{skill_version}' ...")
+
+    toolbox_version = project_client.beta.toolboxes.create_version(
+        name=toolbox_name,
+        tools=[],
+        skills=[
+            {
+                "type": "skill_reference",
+                "name": skill_name,
+                "version": skill_version,
+            }
+        ],
+        description="Toolbox for training plan generation skill",
+    )
+
+    version = getattr(toolbox_version, "version", None)
+    if not version:
+        print("ERROR: toolbox version creation returned no version.")
+        sys.exit(1)
+
+    project_client.beta.toolboxes.update(name=toolbox_name, default_version=version)
+    print(f"Toolbox deployed: {toolbox_name} version {version} (default)")
+    return toolbox_name, version, True
+
+
+def _ensure_toolbox_search_tool(inner_definition: dict, toolbox_name: str) -> None:
+    """Ensure prompt agent has toolbox_search_preview enabled and bound to toolbox_name."""
+    tools = inner_definition.setdefault("tools", [])
+    for tool in tools:
+        if tool.get("type") == "toolbox_search_preview":
+            tool["name"] = toolbox_name
+            if not tool.get("description"):
+                tool["description"] = "Search tools and capabilities from the training-plan toolbox."
+            return
+
+    tools.append(
+        {
+            "type": "toolbox_search_preview",
+            "name": toolbox_name,
+            "description": "Search tools and capabilities from the training-plan toolbox.",
+        }
+    )
 
 
 def _dry_run(definition: dict) -> None:
@@ -207,8 +421,11 @@ def _dry_run(definition: dict) -> None:
 
 
 def main() -> None:
+    _load_env()
+
     dry_run = "--dry-run" in sys.argv
     vector_store_only = "--vector-store-only" in sys.argv
+    skill_only = "--skill-only" in sys.argv
 
     definition = _load_agent_definition()
 
@@ -220,6 +437,15 @@ def main() -> None:
     from azure.identity import DefaultAzureCredential
 
     credential = DefaultAzureCredential()
+    from azure.ai.projects import AIProjectClient
+
+    project_client = AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True)
+
+    if skill_only:
+        skill_name, skill_version, skill_changed = _build_skill(project_client)
+        status = "updated" if skill_changed else "unchanged"
+        print(f"Skill only — agent NOT updated. Skill: {skill_name} version {skill_version} ({status})")
+        return
 
     if vector_store_only:
         client = _openai_client(endpoint, credential)
@@ -236,6 +462,9 @@ def main() -> None:
 
     client = _openai_client(endpoint, credential)
     vector_store_id = _build_vector_store(client)
+    skill_name, skill_version, skill_changed = _build_skill(project_client)
+    toolbox_name, toolbox_version, toolbox_changed = _build_toolbox(project_client, skill_name, skill_version)
+    _ensure_toolbox_search_tool(inner, toolbox_name)
 
     for tool in inner.get("tools", []):
         if tool.get("type") == "file_search":
@@ -243,10 +472,18 @@ def main() -> None:
 
     if _VECTOR_STORE_PLACEHOLDER in yaml.safe_dump(inner):
         print(f"WARNING: '{_VECTOR_STORE_PLACEHOLDER}' still present; no file_search tool updated.")
+    if _TOOLBOX_PLACEHOLDER in yaml.safe_dump(inner):
+        print(f"WARNING: '{_TOOLBOX_PLACEHOLDER}' still present; no toolbox_search_preview tool updated.")
 
-    from azure.ai.projects import AIProjectClient
+    metadata = definition.get("metadata") or {}
+    metadata["skill_name"] = skill_name
+    metadata["skill_version"] = skill_version
+    metadata["skill_changed"] = str(skill_changed).lower()
+    metadata["toolbox_name"] = toolbox_name
+    metadata["toolbox_version"] = toolbox_version
+    metadata["toolbox_changed"] = str(toolbox_changed).lower()
+    definition["metadata"] = metadata
 
-    project_client = AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True)
     _upsert_agent(project_client, definition)
 
 

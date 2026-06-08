@@ -5,3 +5,4 @@ openai>=1.40
 pyyaml>=6.0
 requests>=2.31
 python-dotenv>=1.0
+chainlit>=2.0; python_version < "3.14"
