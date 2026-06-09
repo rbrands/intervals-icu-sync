@@ -16,6 +16,16 @@ _DEFAULT_RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 DATA_DIR = Path(os.environ.get("INTERVALS_RAW_DIR", str(_DEFAULT_RAW_DIR)))
 
 
+def _as_float(value: object, default: float = 0.0) -> float:
+    """Convert API values to float safely (None/invalid -> default)."""
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def main() -> None:
     if not API_KEY:
         print("Error: INTERVALS_API_KEY is not set. Copy .env.example to .env and fill in your key.")
@@ -40,7 +50,7 @@ def main() -> None:
         a for a in activities
         if a.get("type") in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide")
         and a.get("source") != "STRAVA"
-        and (a.get("icu_training_load", 0) > 20 or bool(a.get("tags")))
+        and (_as_float(a.get("icu_training_load")) > 20 or bool(a.get("tags")))
     ]
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
