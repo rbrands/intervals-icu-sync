@@ -233,6 +233,11 @@ Slot URLs follow the pattern `https://<appName>-<slot>.azurewebsites.net`.
 
 Both transports share the same tools, middleware, and Application Insights instrumentation:
 
+On script/tool failures, the MCP server now emits structured error log entries
+with event marker `mcp_tool_error` (including `tool`, `error_type`, `script`,
+`return_code`, `host`, and `slot`) so failures are visible in Application
+Insights even when callers only see a generic error.
+
 | Endpoint | Protocol | Use case |
 |---|---|---|
 | `/sse` + `/messages` | SSE | MCP Inspector, older clients |

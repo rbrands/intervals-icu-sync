@@ -36,6 +36,7 @@ App Service startup command:
 """
 
 import json
+import logging
 import os
 import re
 import subprocess
@@ -121,6 +122,32 @@ _SCHEMA_VERSION = (
     if _VERSION_FILE.exists()
     else "unknown"
 )
+
+_logger = logging.getLogger("intervals_icu_mcp")
+
+
+def _slot_name() -> str:
+    return os.environ.get("WEBSITE_SLOT_NAME", "production")
+
+
+def _emit_tool_error(
+    tool_name: str,
+    error_type: str,
+    message: str,
+    **context,
+) -> None:
+    """Emit structured error logs that are easy to query in Application Insights."""
+    payload = {
+        "event": "mcp_tool_error",
+        "tool": tool_name,
+        "error_type": error_type,
+        "message": message,
+        "schema_version": _SCHEMA_VERSION,
+        "host": os.environ.get("WEBSITE_HOSTNAME", "local"),
+        "slot": _slot_name(),
+    }
+    payload.update(context)
+    _logger.error(json.dumps(payload, ensure_ascii=False))
 
 # allowed_hosts: always include localhost variants (with and without port) plus
 # any hostnames listed in FASTMCP_ALLOWED_HOST (comma-separated, e.g.
@@ -414,7 +441,7 @@ def _run_script(
     script: str,
     timeout: int = 120,
     extra_env: dict[str, str] | None = None,
-) -> tuple[bool, str]:
+) -> tuple[bool, str, int | None]:
     """Run a script from SCRIPTS_DIR, injecting credentials as env vars."""
     athlete_id, api_key = _get_credentials()
     env = os.environ.copy()
@@ -433,11 +460,11 @@ def _run_script(
             check=False,
         )
     except subprocess.TimeoutExpired:
-        return False, f"Timeout after {timeout}s"
+        return False, f"Timeout after {timeout}s", None
     output = result.stdout + (
         f"\nSTDERR: {result.stderr}" if result.stderr.strip() else ""
     )
-    return result.returncode == 0, output.strip()
+    return result.returncode == 0, output.strip(), result.returncode
 
 
 def _load_json_file(path: Path) -> dict | list | None:
@@ -694,12 +721,20 @@ def prepare_week_data() -> str:
 
             log_lines: list[str] = []
             for script in pipeline:
-                ok, output = _run_script(script, extra_env=extra_env)
+                ok, output, return_code = _run_script(script, extra_env=extra_env)
                 status = "OK" if ok else "FAILED"
                 log_lines.append(f"[{status}] {script}")
                 if output:
                     log_lines.append(f"       {output[:300]}")
                 if not ok:
+                    _emit_tool_error(
+                        "prepare_week_data",
+                        "pipeline_step_failed",
+                        f"Pipeline failed at {script}",
+                        script=script,
+                        return_code=return_code,
+                        details=output[:2000],
+                    )
                     span.set_status(_ERROR, f"pipeline failed at {script}")
                     return json.dumps(
                         {
@@ -803,8 +838,16 @@ def get_latest_activities(limit: int = 10) -> str:
             }
 
             for script in pipeline:
-                ok, output = _run_script(script, extra_env=extra_env)
+                ok, output, return_code = _run_script(script, extra_env=extra_env)
                 if not ok:
+                    _emit_tool_error(
+                        "get_latest_activities",
+                        "pipeline_step_failed",
+                        f"Pipeline failed at {script}",
+                        script=script,
+                        return_code=return_code,
+                        details=output[:2000],
+                    )
                     span.set_status(_ERROR, f"pipeline failed at {script}")
                     return json.dumps(
                         {
@@ -823,6 +866,11 @@ def get_latest_activities(limit: int = 10) -> str:
             )
 
             if not isinstance(activities, list):
+                _emit_tool_error(
+                    "get_latest_activities",
+                    "no_activities_generated",
+                    "No activities generated for current week.",
+                )
                 span.set_status(_ERROR, "no activities")
                 return json.dumps(
                     {"error": "No activities generated for current week."},
@@ -1048,6 +1096,11 @@ def upload_week_plan(
         try:
             json.loads(plan_json)
         except json.JSONDecodeError as exc:
+            _emit_tool_error(
+                "upload_week_plan",
+                "invalid_json",
+                f"Invalid JSON: {exc}",
+            )
             span.set_status(_ERROR, f"invalid plan JSON: {exc}")
             return json.dumps({"error": f"Invalid JSON: {exc}"}, ensure_ascii=False)
 
@@ -1088,14 +1141,33 @@ def upload_week_plan(
             )
             if not output.strip():
                 msg = "Done." if result.returncode == 0 else "Upload failed with no output."
+                if result.returncode != 0:
+                    _emit_tool_error(
+                        "upload_week_plan",
+                        "upload_failed_no_output",
+                        msg,
+                        return_code=result.returncode,
+                    )
                 span.set_status(_OK if result.returncode == 0 else _ERROR, msg)
                 return msg
             if result.returncode != 0:
+                _emit_tool_error(
+                    "upload_week_plan",
+                    "upload_script_failed",
+                    "upload_plan.py returned non-zero",
+                    return_code=result.returncode,
+                    details=output[:2000],
+                )
                 span.set_status(_ERROR, "upload script failed")
             else:
                 span.set_status(_OK)
             return output.strip()
         except subprocess.TimeoutExpired:
+            _emit_tool_error(
+                "upload_week_plan",
+                "upload_timeout",
+                "Upload timed out after 120s",
+            )
             span.set_status(_ERROR, "upload timed out")
             return json.dumps({"error": "Upload timed out after 120s"}, ensure_ascii=False)
         finally:
