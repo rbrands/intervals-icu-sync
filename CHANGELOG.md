@@ -16,6 +16,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Added GitHub Actions workflows for Foundry agent deployment and Foundry infrastructure deployment (`.github/workflows/deploy-agent.yml`, `.github/workflows/infra-agent.yml`).
 - Added runtime structured inputs for agent behavior and per-request auth forwarding: `discipline`, `response_language`, `intervals_athlete_id`, `intervals_api_key`.
 - Added root-level deployment helper scripts (`setup.ps1`, `config.example.ps1`) to centralize local parameter generation and GitHub secret setup.
+- Added Chainlit web app for testing the Foundry agent via simple chat application.
 
 ### Changed
 
