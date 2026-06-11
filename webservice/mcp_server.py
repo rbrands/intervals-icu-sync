@@ -373,7 +373,14 @@ class AuthHeaderMiddleware:
                 return
 
             # Capture JSON-RPC metadata for Streamable HTTP MCP calls.
-            if path.startswith("/mcp"):
+            # Also supports URL-embedded credentials:
+            #   /{athlete_id}/{api_key}/mcp
+            trace_path = path
+            url_trace_match = _URL_AUTH_RE.match(path)
+            if url_trace_match:
+                trace_path = url_trace_match.group(3)
+
+            if trace_path.startswith("/mcp"):
                 captured: list[bytes] = []
                 captured_size = 0
                 parsed = False
@@ -394,7 +401,7 @@ class AuthHeaderMiddleware:
 
                         if not message.get("more_body", False) and not parsed:
                             parsed = True
-                            _trace_mcp_request(path, b"".join(captured))
+                            _trace_mcp_request(trace_path, b"".join(captured))
                     return message
 
                 traced_receive = _receive_with_mcp_trace
@@ -416,7 +423,7 @@ class AuthHeaderMiddleware:
 
                         if not message.get("more_body", False) and not response_parsed:
                             response_parsed = True
-                            _trace_mcp_response(path, response_status_code, b"".join(response_captured))
+                            _trace_mcp_response(trace_path, response_status_code, b"".join(response_captured))
 
                     await send(message)
 
