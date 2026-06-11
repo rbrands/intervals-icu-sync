@@ -20,6 +20,12 @@ param oauthTokenSecret string = ''
 @description('Athlete ID whose shared workout library is exposed as standard library. Leave empty to disable.')
 param standardLibraryAthleteId string = ''
 
+@description('Enable MCP response JSON preview tracing. Keep false in normal production operation.')
+param mcpTraceResponseJson string = 'false'
+
+@description('Max UTF-8 bytes captured as MCP response preview when response JSON tracing is enabled.')
+param mcpTraceResponsePreviewLimit string = '4096'
+
 // Reference the existing App Service Plan – it is not modified.
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' existing = {
   name: appServicePlanName
@@ -81,6 +87,14 @@ var commonAppSettings = [
   {
     name: 'ENABLE_ORYX_BUILD'
     value: 'true'
+  }
+  {
+    name: 'MCP_TRACE_RESPONSE_JSON'
+    value: mcpTraceResponseJson
+  }
+  {
+    name: 'MCP_TRACE_RESPONSE_PREVIEW_LIMIT'
+    value: mcpTraceResponsePreviewLimit
   }
 ]
 

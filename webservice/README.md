@@ -76,6 +76,8 @@ Environment variables:
 | `STANDARD_LIBRARY_ATHLETE_ID` | *(empty)* | Athlete ID used by MCP method `list_standard_library_workouts` to return shared standard-library workouts |
 | `OAUTH_TOKEN_SECRET` | *(empty)* | Fernet key for stateless OAuth tokens. Generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. If not set, an ephemeral key is generated at startup and tokens are lost on restart. |
 | `INTERVALS_DEV_MODE` | *(empty)* | Set to `true` for local development: falls back to `ATHLETE_ID` / `INTERVALS_API_KEY` from `.env` when no credentials are supplied. **Never enable in production.** |
+| `MCP_TRACE_RESPONSE_JSON` | *(empty)* | Optional: set to `true` to include a truncated JSON response preview in traces/logs for `POST /mcp` responses. Default is off. |
+| `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | `4096` | Maximum UTF-8 bytes captured as response preview when `MCP_TRACE_RESPONSE_JSON=true`. |
 
 ### Testing with MCP Inspector
 
@@ -151,6 +153,8 @@ is excluded from source control via `.gitignore` and must **never** be committed
 | `CustomDomain` | `APP_CUSTOM_DOMAIN` | Optional custom domain (e.g. `intervals-mcp.training-architect.com`). Leave empty to use only the `.azurewebsites.net` hostname. |
 | `OAuthTokenSecret` | `OAUTH_TOKEN_SECRET` | Fernet key for stateless OAuth tokens. Generate once and store permanently. See `OAUTH_TOKEN_SECRET` above. |
 | `StandardLibraryAthleteId` | `STANDARD_LIBRARY_ATHLETE_ID` | Athlete ID whose shared library is exposed by MCP method `list_standard_library_workouts` (e.g. `i57401`). |
+| `McpTraceResponseJson` | `MCP_TRACE_RESPONSE_JSON` | Controls MCP response preview tracing (`true`/`false`). Recommended: `false` in normal production operation. |
+| `McpTraceResponsePreviewLimit` | `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | Max UTF-8 bytes captured as response preview when tracing is enabled (e.g. `4096`). |
 | `FoundryProjectEndpoint` | `FOUNDRY_PROJECT_ENDPOINT` | Foundry project endpoint used by the "Deploy Foundry Agent" workflow (`foundry-agent/deploy_agent.py`), e.g. `https://<resource>.services.ai.azure.com/api/projects/<project>`. |
 | `FoundryResourceGroup` | `FOUNDRY_RESOURCE_GROUP` | Resource group for the Foundry infrastructure (separate from the webservice RG). Used by the "Deploy Foundry Infrastructure" workflow. |
 | `FoundryAccountName` | `FOUNDRY_ACCOUNT_NAME` | Foundry (AI Services) account name (e.g. `training-architect`). |
@@ -238,6 +242,22 @@ with event marker `mcp_tool_error` (including `tool`, `error_type`, `script`,
 `return_code`, `host`, and `slot`) so failures are visible in Application
 Insights even when callers only see a generic error.
 
+For `POST /mcp` requests, the server also extracts JSON-RPC metadata and writes
+it into traces so you can see what was called inside a generic MCP endpoint:
+
+- request-span attributes: `mcp.rpc.method`, `mcp.tool.name` (for `tools/call`), `mcp.request.id`
+- internal span name: `mcp.rpc/<method>`
+- structured trace event: `mcp_rpc_request`
+
+For `POST /mcp` responses, the server writes response metadata to traces/logs:
+
+- always: `mcp.response.status_code`, `mcp.response.body_size`, `mcp.response.sha256`
+- optional (feature flag): `mcp.response.preview` and structured event `mcp_rpc_response.response_preview`
+
+Recommendation: keep `MCP_TRACE_RESPONSE_JSON` disabled in production unless you
+actively debug a payload issue, because response previews can contain sensitive
+athlete data and increase telemetry volume.
+
 | Endpoint | Protocol | Use case |
 |---|---|---|
 | `/sse` + `/messages` | SSE | MCP Inspector, older clients |
@@ -254,6 +274,8 @@ Insights even when callers only see a generic error.
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Connection string of the existing Application Insights instance |
 | `OAUTH_TOKEN_SECRET` | Fernet key for stateless OAuth tokens (from GitHub Secret `OAUTH_TOKEN_SECRET`) |
 | `STANDARD_LIBRARY_ATHLETE_ID` | Athlete ID for MCP method `list_standard_library_workouts` (from GitHub Secret `STANDARD_LIBRARY_ATHLETE_ID`) |
+| `MCP_TRACE_RESPONSE_JSON` | `false` (recommended) or `true` for temporary payload debugging |
+| `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | `4096` |
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` |
 | `ENABLE_ORYX_BUILD` | `true` |
 

@@ -55,6 +55,14 @@ $config = @{
     # "standard library" by MCP method list_standard_library_workouts.
     StandardLibraryAthleteId = "__STANDARD_LIBRARY_ATHLETE_ID__"
 
+    # Optional MCP response preview tracing in Application Insights.
+    # Keep disabled in normal production operation to reduce telemetry volume.
+    # Allowed values: true/false
+    McpTraceResponseJson      = "false"
+
+    # Max UTF-8 bytes captured as response preview when McpTraceResponseJson=true.
+    McpTraceResponsePreviewLimit = "4096"
+
     # --- Foundry agent ------------------------------------------------------
 
     # Foundry project endpoint used by the "Deploy Foundry Agent" workflow

@@ -22,6 +22,12 @@ param oauthTokenSecret string = ''
 @description('Athlete ID whose shared workout library is exposed as standard library. Leave empty to disable.')
 param standardLibraryAthleteId string = ''
 
+@description('Enable MCP response JSON preview tracing. Keep false in normal production operation.')
+param mcpTraceResponseJson string = 'false'
+
+@description('Max UTF-8 bytes captured as MCP response preview when response JSON tracing is enabled.')
+param mcpTraceResponsePreviewLimit string = '4096'
+
 module appservice 'modules/appservice.bicep' = {
   name: 'deploy-${appName}'
   params: {
@@ -32,6 +38,8 @@ module appservice 'modules/appservice.bicep' = {
     customDomain: customDomain
     oauthTokenSecret: oauthTokenSecret
     standardLibraryAthleteId: standardLibraryAthleteId
+    mcpTraceResponseJson: mcpTraceResponseJson
+    mcpTraceResponsePreviewLimit: mcpTraceResponsePreviewLimit
   }
 }
 

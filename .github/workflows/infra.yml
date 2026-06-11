@@ -43,4 +43,6 @@ jobs:
                 appInsightsName="${{ secrets.APP_INSIGHTS_NAME }}" \
                 customDomain="${{ secrets.APP_CUSTOM_DOMAIN }}" \
                 oauthTokenSecret="${{ secrets.OAUTH_TOKEN_SECRET }}" \
-                standardLibraryAthleteId="${{ secrets.STANDARD_LIBRARY_ATHLETE_ID }}"
+                standardLibraryAthleteId="${{ secrets.STANDARD_LIBRARY_ATHLETE_ID }}" \
+                mcpTraceResponseJson="${{ secrets.MCP_TRACE_RESPONSE_JSON }}" \
+                mcpTraceResponsePreviewLimit="${{ secrets.MCP_TRACE_RESPONSE_PREVIEW_LIMIT }}"

@@ -39,6 +39,7 @@ import json
 import logging
 import os
 import re
+import hashlib
 import subprocess
 import sys
 import contextlib
@@ -85,6 +86,7 @@ try:
     _OK = _otel_trace.StatusCode.OK
     _ERROR = _otel_trace.StatusCode.ERROR
 except ImportError:
+    _otel_trace = None
     _tracer = None
     _OK = None
     _ERROR = None
@@ -124,6 +126,16 @@ _SCHEMA_VERSION = (
 )
 
 _logger = logging.getLogger("intervals_icu_mcp")
+_MCP_TRACE_BODY_LIMIT = 64 * 1024
+_MCP_TRACE_RESPONSE_ENABLED = os.environ.get("MCP_TRACE_RESPONSE_JSON", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+_MCP_TRACE_RESPONSE_PREVIEW_LIMIT = int(
+    os.environ.get("MCP_TRACE_RESPONSE_PREVIEW_LIMIT", "4096")
+)
 
 
 def _slot_name() -> str:
@@ -148,6 +160,121 @@ def _emit_tool_error(
     }
     payload.update(context)
     _logger.error(json.dumps(payload, ensure_ascii=False))
+
+
+def _extract_mcp_rpc_metadata(body: bytes) -> tuple[str, str | None, str | None]:
+    """Return (jsonrpc_method, tool_name, request_id) from a POST /mcp body."""
+    if not body:
+        return "unknown", None, None
+
+    try:
+        decoded = body.decode("utf-8", errors="replace")
+        payload = json.loads(decoded)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return "invalid-json", None, None
+
+    request_obj = payload[0] if isinstance(payload, list) and payload else payload
+    if not isinstance(request_obj, dict):
+        return "unknown", None, None
+
+    method = str(request_obj.get("method") or "unknown")
+    params = request_obj.get("params")
+    tool_name = None
+    if method == "tools/call" and isinstance(params, dict):
+        name = params.get("name")
+        if isinstance(name, str) and name:
+            tool_name = name
+
+    request_id = request_obj.get("id")
+    request_id_str = str(request_id) if request_id is not None else None
+    return method, tool_name, request_id_str
+
+
+def _trace_mcp_request(path: str, body: bytes) -> None:
+    """Attach MCP RPC metadata to the current request span and emit an internal span."""
+    method, tool_name, request_id = _extract_mcp_rpc_metadata(body)
+
+    if _otel_trace is not None:
+        current_span = _otel_trace.get_current_span()
+        if current_span is not None:
+            current_span.set_attribute("mcp.rpc.method", method)
+            if tool_name:
+                current_span.set_attribute("mcp.tool.name", tool_name)
+            if request_id:
+                current_span.set_attribute("mcp.request.id", request_id)
+
+    span_name = f"mcp.rpc/{method}"
+    with _tool_span(span_name) as span:
+        span.set_attribute("mcp.path", path)
+        span.set_attribute("mcp.rpc.method", method)
+        if tool_name:
+            span.set_attribute("mcp.tool.name", tool_name)
+        if request_id:
+            span.set_attribute("mcp.request.id", request_id)
+        span.set_status(_OK)
+
+    _logger.info(
+        json.dumps(
+            {
+                "event": "mcp_rpc_request",
+                "path": path,
+                "rpc_method": method,
+                "tool": tool_name,
+                "request_id": request_id,
+                "schema_version": _SCHEMA_VERSION,
+                "host": os.environ.get("WEBSITE_HOSTNAME", "local"),
+                "slot": _slot_name(),
+            },
+            ensure_ascii=False,
+        )
+    )
+
+
+def _trace_mcp_response(path: str, status_code: int | None, body: bytes) -> None:
+    """Attach MCP response metadata and optional JSON preview to traces/logs."""
+    body_size = len(body)
+    body_sha256 = hashlib.sha256(body).hexdigest() if body else None
+    preview_bytes = body[: max(0, _MCP_TRACE_RESPONSE_PREVIEW_LIMIT)]
+    preview_text = preview_bytes.decode("utf-8", errors="replace") if preview_bytes else ""
+
+    if _otel_trace is not None:
+        current_span = _otel_trace.get_current_span()
+        if current_span is not None:
+            if status_code is not None:
+                current_span.set_attribute("mcp.response.status_code", status_code)
+            current_span.set_attribute("mcp.response.body_size", body_size)
+            if body_sha256:
+                current_span.set_attribute("mcp.response.sha256", body_sha256)
+            if _MCP_TRACE_RESPONSE_ENABLED and preview_text:
+                current_span.set_attribute("mcp.response.preview", preview_text)
+
+    span_name = "mcp.rpc/response"
+    with _tool_span(span_name) as span:
+        span.set_attribute("mcp.path", path)
+        if status_code is not None:
+            span.set_attribute("mcp.response.status_code", status_code)
+        span.set_attribute("mcp.response.body_size", body_size)
+        if body_sha256:
+            span.set_attribute("mcp.response.sha256", body_sha256)
+        if _MCP_TRACE_RESPONSE_ENABLED and preview_text:
+            span.set_attribute("mcp.response.preview", preview_text)
+        span.set_status(_OK)
+
+    payload = {
+        "event": "mcp_rpc_response",
+        "path": path,
+        "status_code": status_code,
+        "response_size": body_size,
+        "response_sha256": body_sha256,
+        "response_preview_truncated": body_size > len(preview_bytes),
+        "schema_version": _SCHEMA_VERSION,
+        "host": os.environ.get("WEBSITE_HOSTNAME", "local"),
+        "slot": _slot_name(),
+    }
+    if _MCP_TRACE_RESPONSE_ENABLED and preview_text:
+        payload["response_preview"] = preview_text
+
+    _logger.info(json.dumps(payload, ensure_ascii=False))
 
 # allowed_hosts: always include localhost variants (with and without port) plus
 # any hostnames listed in FASTMCP_ALLOWED_HOST (comma-separated, e.g.
@@ -226,6 +353,9 @@ class AuthHeaderMiddleware:
         self._asgi_app = asgi_app
 
     async def __call__(self, scope, receive, send) -> None:
+        traced_receive = receive
+        traced_send = send
+
         if scope["type"] == "http":
             path = scope.get("path", "")
             # Root path – serve a landing page for humans; Azure App Service
@@ -241,6 +371,56 @@ class AuthHeaderMiddleware:
             if path == "/sse/config":
                 await self._handle_sse_config(scope, receive, send)
                 return
+
+            # Capture JSON-RPC metadata for Streamable HTTP MCP calls.
+            if path.startswith("/mcp"):
+                captured: list[bytes] = []
+                captured_size = 0
+                parsed = False
+                response_captured: list[bytes] = []
+                response_size = 0
+                response_status_code: int | None = None
+                response_parsed = False
+
+                async def _receive_with_mcp_trace():
+                    nonlocal captured_size, parsed
+                    message = await receive()
+                    if message.get("type") == "http.request":
+                        chunk = message.get("body", b"")
+                        if isinstance(chunk, bytes) and chunk and captured_size < _MCP_TRACE_BODY_LIMIT:
+                            remaining = _MCP_TRACE_BODY_LIMIT - captured_size
+                            captured.append(chunk[:remaining])
+                            captured_size += min(len(chunk), remaining)
+
+                        if not message.get("more_body", False) and not parsed:
+                            parsed = True
+                            _trace_mcp_request(path, b"".join(captured))
+                    return message
+
+                traced_receive = _receive_with_mcp_trace
+
+                async def _send_with_mcp_trace(message):
+                    nonlocal response_size, response_status_code, response_parsed
+
+                    if message.get("type") == "http.response.start":
+                        status = message.get("status")
+                        if isinstance(status, int):
+                            response_status_code = status
+
+                    if message.get("type") == "http.response.body":
+                        chunk = message.get("body", b"")
+                        if isinstance(chunk, bytes) and chunk and response_size < _MCP_TRACE_BODY_LIMIT:
+                            remaining = _MCP_TRACE_BODY_LIMIT - response_size
+                            response_captured.append(chunk[:remaining])
+                            response_size += min(len(chunk), remaining)
+
+                        if not message.get("more_body", False) and not response_parsed:
+                            response_parsed = True
+                            _trace_mcp_response(path, response_status_code, b"".join(response_captured))
+
+                    await send(message)
+
+                traced_send = _send_with_mcp_trace
 
         if scope["type"] in ("http", "websocket"):
             header_dict = {k.lower(): v for k, v in scope.get("headers", [])}
@@ -292,12 +472,12 @@ class AuthHeaderMiddleware:
             token_a = athlete_id_var.set(athlete_id)
             token_k = api_key_var.set(api_key)
             try:
-                await self._asgi_app(scope, receive, send)
+                await self._asgi_app(scope, traced_receive, traced_send)
             finally:
                 athlete_id_var.reset(token_a)
                 api_key_var.reset(token_k)
         else:
-            await self._asgi_app(scope, receive, send)
+            await self._asgi_app(scope, traced_receive, traced_send)
 
     @staticmethod
     async def _handle_401(scope, receive, send, header_dict: dict) -> None:  # noqa: ARG004

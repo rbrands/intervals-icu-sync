@@ -58,6 +58,12 @@ if ($GitHub -or $All) {
     if ($config.StandardLibraryAthleteId) {
         gh secret set STANDARD_LIBRARY_ATHLETE_ID --body $config.StandardLibraryAthleteId
     }
+    if ($config.McpTraceResponseJson) {
+        gh secret set MCP_TRACE_RESPONSE_JSON --body $config.McpTraceResponseJson
+    }
+    if ($config.McpTraceResponsePreviewLimit) {
+        gh secret set MCP_TRACE_RESPONSE_PREVIEW_LIMIT --body $config.McpTraceResponsePreviewLimit
+    }
 
     # Foundry agent
     if ($config.FoundryProjectEndpoint) {
@@ -104,6 +110,8 @@ param appServicePlanName = '$($config.AppServicePlanName)'
 param appInsightsName    = '$($config.AppInsightsName)'
 param customDomain       = '$($config.CustomDomain)'
 param standardLibraryAthleteId = '$($config.StandardLibraryAthleteId)'
+param mcpTraceResponseJson = '$($config.McpTraceResponseJson)'
+param mcpTraceResponsePreviewLimit = '$($config.McpTraceResponsePreviewLimit)'
 "@
 
     $webOut = Join-Path $PSScriptRoot "webservice/infra/main.local.bicepparam"
