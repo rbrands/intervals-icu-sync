@@ -127,6 +127,7 @@ _SCHEMA_VERSION = (
 
 _logger = logging.getLogger("intervals_icu_mcp")
 _MCP_TRACE_BODY_LIMIT = 64 * 1024
+_MCP_RPC_EVENT_LOG_LEVEL = os.environ.get("MCP_RPC_EVENT_LOG_LEVEL", "INFO").strip().upper()
 _MCP_TRACE_RESPONSE_ENABLED = os.environ.get("MCP_TRACE_RESPONSE_JSON", "").strip().lower() in {
     "1",
     "true",
@@ -136,6 +137,18 @@ _MCP_TRACE_RESPONSE_ENABLED = os.environ.get("MCP_TRACE_RESPONSE_JSON", "").stri
 _MCP_TRACE_RESPONSE_PREVIEW_LIMIT = int(
     os.environ.get("MCP_TRACE_RESPONSE_PREVIEW_LIMIT", "4096")
 )
+
+
+def _log_mcp_rpc_event(payload: dict) -> None:
+    """Log MCP RPC structured events with configurable severity (default INFO)."""
+    level = _MCP_RPC_EVENT_LOG_LEVEL
+    if level == "WARNING":
+        _logger.warning(json.dumps(payload, ensure_ascii=False))
+        return
+    if level == "ERROR":
+        _logger.error(json.dumps(payload, ensure_ascii=False))
+        return
+    _logger.info(json.dumps(payload, ensure_ascii=False))
 
 
 def _slot_name() -> str:
@@ -213,20 +226,17 @@ def _trace_mcp_request(path: str, body: bytes) -> None:
             span.set_attribute("mcp.request.id", request_id)
         span.set_status(_OK)
 
-    _logger.info(
-        json.dumps(
-            {
-                "event": "mcp_rpc_request",
-                "path": path,
-                "rpc_method": method,
-                "tool": tool_name,
-                "request_id": request_id,
-                "schema_version": _SCHEMA_VERSION,
-                "host": os.environ.get("WEBSITE_HOSTNAME", "local"),
-                "slot": _slot_name(),
-            },
-            ensure_ascii=False,
-        )
+    _log_mcp_rpc_event(
+        {
+            "event": "mcp_rpc_request",
+            "path": path,
+            "rpc_method": method,
+            "tool": tool_name,
+            "request_id": request_id,
+            "schema_version": _SCHEMA_VERSION,
+            "host": os.environ.get("WEBSITE_HOSTNAME", "local"),
+            "slot": _slot_name(),
+        }
     )
 
 
@@ -274,7 +284,7 @@ def _trace_mcp_response(path: str, status_code: int | None, body: bytes) -> None
     if _MCP_TRACE_RESPONSE_ENABLED and preview_text:
         payload["response_preview"] = preview_text
 
-    _logger.info(json.dumps(payload, ensure_ascii=False))
+    _log_mcp_rpc_event(payload)
 
 # allowed_hosts: always include localhost variants (with and without port) plus
 # any hostnames listed in FASTMCP_ALLOWED_HOST (comma-separated, e.g.

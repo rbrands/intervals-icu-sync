@@ -64,6 +64,9 @@ if ($GitHub -or $All) {
     if ($config.McpTraceResponsePreviewLimit) {
         gh secret set MCP_TRACE_RESPONSE_PREVIEW_LIMIT --body $config.McpTraceResponsePreviewLimit
     }
+    if ($config.McpRpcEventLogLevel) {
+        gh secret set MCP_RPC_EVENT_LOG_LEVEL --body $config.McpRpcEventLogLevel
+    }
 
     # Foundry agent
     if ($config.FoundryProjectEndpoint) {
@@ -112,6 +115,7 @@ param customDomain       = '$($config.CustomDomain)'
 param standardLibraryAthleteId = '$($config.StandardLibraryAthleteId)'
 param mcpTraceResponseJson = '$($config.McpTraceResponseJson)'
 param mcpTraceResponsePreviewLimit = '$($config.McpTraceResponsePreviewLimit)'
+param mcpRpcEventLogLevel = '$($config.McpRpcEventLogLevel)'
 "@
 
     $webOut = Join-Path $PSScriptRoot "webservice/infra/main.local.bicepparam"

@@ -63,6 +63,10 @@ $config = @{
     # Max UTF-8 bytes captured as response preview when McpTraceResponseJson=true.
     McpTraceResponsePreviewLimit = "4096"
 
+    # Log level for structured MCP RPC events in App Insights traces.
+    # Allowed values: INFO, WARNING, ERROR
+    McpRpcEventLogLevel = "INFO"
+
     # --- Foundry agent ------------------------------------------------------
 
     # Foundry project endpoint used by the "Deploy Foundry Agent" workflow

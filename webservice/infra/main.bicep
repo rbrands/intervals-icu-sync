@@ -28,6 +28,9 @@ param mcpTraceResponseJson string = 'false'
 @description('Max UTF-8 bytes captured as MCP response preview when response JSON tracing is enabled.')
 param mcpTraceResponsePreviewLimit string = '4096'
 
+@description('Log level for structured MCP RPC events (INFO, WARNING, ERROR).')
+param mcpRpcEventLogLevel string = 'INFO'
+
 module appservice 'modules/appservice.bicep' = {
   name: 'deploy-${appName}'
   params: {
@@ -40,6 +43,7 @@ module appservice 'modules/appservice.bicep' = {
     standardLibraryAthleteId: standardLibraryAthleteId
     mcpTraceResponseJson: mcpTraceResponseJson
     mcpTraceResponsePreviewLimit: mcpTraceResponsePreviewLimit
+    mcpRpcEventLogLevel: mcpRpcEventLogLevel
   }
 }
 

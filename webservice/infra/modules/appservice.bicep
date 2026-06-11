@@ -26,6 +26,9 @@ param mcpTraceResponseJson string = 'false'
 @description('Max UTF-8 bytes captured as MCP response preview when response JSON tracing is enabled.')
 param mcpTraceResponsePreviewLimit string = '4096'
 
+@description('Log level for structured MCP RPC events (INFO, WARNING, ERROR).')
+param mcpRpcEventLogLevel string = 'INFO'
+
 // Reference the existing App Service Plan – it is not modified.
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' existing = {
   name: appServicePlanName
@@ -95,6 +98,10 @@ var commonAppSettings = [
   {
     name: 'MCP_TRACE_RESPONSE_PREVIEW_LIMIT'
     value: mcpTraceResponsePreviewLimit
+  }
+  {
+    name: 'MCP_RPC_EVENT_LOG_LEVEL'
+    value: mcpRpcEventLogLevel
   }
 ]
 
