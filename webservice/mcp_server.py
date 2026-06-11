@@ -426,12 +426,20 @@ class AuthHeaderMiddleware:
 
                     if message.get("type") == "http.response.body":
                         chunk = message.get("body", b"")
+                        was_empty = response_size == 0
                         if isinstance(chunk, bytes) and chunk and response_size < _MCP_TRACE_BODY_LIMIT:
                             remaining = _MCP_TRACE_BODY_LIMIT - response_size
                             response_captured.append(chunk[:remaining])
                             response_size += min(len(chunk), remaining)
 
-                        if not message.get("more_body", False) and not response_parsed:
+                        # MCP Streamable HTTP keeps the SSE stream open after sending the
+                        # tool result, so more_body=False never arrives during normal operation.
+                        # Trace on the first data chunk (SSE event with the result) as well as
+                        # on stream end (plain JSON responses or graceful close).
+                        if not response_parsed and (
+                            not message.get("more_body", False)
+                            or (was_empty and response_size > 0)
+                        ):
                             response_parsed = True
                             _trace_mcp_response(trace_path, response_status_code, b"".join(response_captured))
 
