@@ -174,7 +174,8 @@ intervals-icu-sync/
 ├── docs/
 │   ├── 2026-05 Next Level intervals-icu.pdf           # Webinar slides (German)
 │   ├── 2026-05 Next Level intervals-icu Step by Step.pdf  # Step-by-step setup guide (English)
-│   └── webinar_notes.md            # Webinar companion guide (German)
+│   ├── webinar_notes.md            # Webinar companion guide (German)
+│   └── prompt_library.md           # Copy-paste prompts for ChatGPT / Claude (DE + EN)
 ├── notebooks/
 │   └── week_summary.ipynb          # Interactive weekly training overview
 ├── src/
@@ -648,6 +649,25 @@ Step-by-step setup guide accompanying the webinar. Walks through the full instal
 Webinar companion guide for *„Next Level intervals.icu – Vom Datenchaos zur Coaching-Entscheidung"*.
 
 Covers the core workflow: fetching data from intervals.icu, enriching it with the AI coach logic, generating a weekly training plan, and uploading it back to the calendar. Intended as a readable walkthrough for participants who want to understand or reproduce the setup without a live demo.
+
+---
+
+### `docs/prompt_library.md`
+
+> **Languages:** German (Deutsch) + English
+
+A curated collection of copy-paste prompts for use with ChatGPT, Claude, or any other AI assistant. Each prompt is provided in both German and English.
+
+Covers four use cases:
+
+| Prompt | Purpose |
+|---|---|
+| **Einzel-Workout-Analyse** | Deep-dive analysis of the most recent session (quality, fueling, W' usage, recovery) |
+| **Wochen-Analyse** | Full weekly review: metrics, load balance, training quality, fueling, and limiter |
+| **Trainingsplan-Generierung** | Generate a structured training plan for the coming week |
+| **Fueling-Analyse** | Dedicated fueling strategy review with pattern detection and recommendations |
+
+All prompts assume the MCP server connection or a manually pasted `coach_input_{monday}.json` as data source.
 
 ---
 
