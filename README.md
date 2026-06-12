@@ -662,10 +662,10 @@ Covers four use cases:
 
 | Prompt | Purpose |
 |---|---|
-| **Einzel-Workout-Analyse** | Deep-dive analysis of the most recent session (quality, fueling, W' usage, recovery) |
-| **Wochen-Analyse** | Full weekly review: metrics, load balance, training quality, fueling, and limiter |
-| **Trainingsplan-Generierung** | Generate a structured training plan for the coming week |
-| **Fueling-Analyse** | Dedicated fueling strategy review with pattern detection and recommendations |
+| **Single Workout Analysis** | Deep-dive analysis of the most recent session (quality, fueling, W' usage, recovery) |
+| **Weekly Analysis** | Full weekly review: metrics, load balance, training quality, fueling, and limiter |
+| **Training Plan Generation** | Generate a structured training plan for the coming week |
+| **Fueling Analysis** | Dedicated fueling strategy review with pattern detection and recommendations |
 
 All prompts assume the MCP server connection or a manually pasted `coach_input_{monday}.json` as data source.
 
