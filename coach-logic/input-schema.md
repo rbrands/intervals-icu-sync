@@ -44,7 +44,7 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `sleep_secs`: SECONDS (÷3600 for hours).
 - `sleep_quality`: one of `GREAT`, `GOOD`, `AVG`, `POOR` (mapped from intervals.icu scale 1–4; GREAT = best).
 - `lthr`: lactate threshold heart rate (bpm).
-- `wellness_trends`: fixed order `weight`, `resting_hr`, `hrv`, each with:
+- `wellness_trends`: keys `weight`, `resting_hr`, `hrv`, each with:
   - `current`: latest available value.
   - `avg_7d`: mean of the last 7 days.
   - `avg_prev_7d`: mean of days 8–14 before the latest point.
