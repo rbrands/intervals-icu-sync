@@ -278,7 +278,7 @@ Keep the summary compact and action-oriented.
 ### Deutsch
 
 - **Mit MCP-Integration:** Die Prompts gehen davon aus, dass der MCP-Server eingerichtet ist und darüber die Daten gelesen werden können.
-- **Ohne MCP:** JSON-Daten aus `prepare_week_for_coach.py` zuerst einfügen, dann den gewünschten Prompt darunter kopieren.
+- **Ohne MCP:** JSON-Daten aus `scripts/prepare_week_for_coach.py` zuerst erzeugen und einfügen (z. B. `data/processed/coach_input_{monday}.json`), dann den gewünschten Prompt darunter kopieren.
 - **System-Prompt:** Für optimale Ergebnisse den vollständigen System-Prompt aus `prompts/system_prompt.md` mit dem passenden Disziplin-Block vorab setzen.
 
 ### English
