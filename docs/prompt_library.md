@@ -284,5 +284,5 @@ Keep the summary compact and action-oriented.
 ### English
 
 - **With MCP integration:** The prompts assume that the MCP server is set up and data can be fetched through it.
-- **Without MCP:** Paste JSON data from `prepare_week_for_coach.py` first, then copy the desired prompt below it.
+- **Without MCP:** First generate and paste JSON data via `scripts/prepare_week_for_coach.py` (e.g. `data/processed/coach_input_{monday}.json`), then copy the desired prompt below it.
 - **System prompt:** For best results, set the full system prompt from `prompts/system_prompt.md` with the matching discipline block beforehand.
