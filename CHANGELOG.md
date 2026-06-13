@@ -7,6 +7,15 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-06-13
+
+### Changed
+
+- Simplified wellness trend export in `scripts/get_metrics.py` to `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d` for weight, resting HR, and HRV.
+- Updated `notebooks/week_summary.ipynb` to display the simplified wellness trends in the athlete metrics section.
+- Updated `coach-logic/input-schema.md` and `README.md` to document the simplified wellness trend fields.
+- Added `docs/prompt_library.md` as a curated prompt library with copy-paste example prompts in German and English.
+
 ## [0.6.0] - 2026-06-08
 
 ### Added

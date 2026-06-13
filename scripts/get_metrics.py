@@ -34,6 +34,108 @@ def fetch_athlete_info() -> dict:
     return result
 
 
+def _to_float(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _entry_date(entry: dict) -> date | None:
+    raw_id = entry.get("id")
+    if not isinstance(raw_id, str):
+        return None
+    try:
+        return date.fromisoformat(raw_id[:10])
+    except ValueError:
+        return None
+
+
+def _window_values(
+    series: list[tuple[date, float]],
+    end_date: date,
+    days: int,
+    offset_days: int = 0,
+) -> list[float]:
+    window_end = end_date - timedelta(days=offset_days)
+    window_start = window_end - timedelta(days=days - 1)
+    return [value for point_date, value in series if window_start <= point_date <= window_end]
+
+
+def _trend_label(delta: float | None, stable_threshold: float) -> str | None:
+    if delta is None:
+        return None
+    if abs(delta) < stable_threshold:
+        return "stable"
+    return "up" if delta > 0 else "down"
+
+
+def _build_metric_trend(entries: list[dict], source_key: str, stable_threshold: float) -> dict | None:
+    today = date.today()
+
+    daily_values: dict[date, float] = {}
+    for entry in entries:
+        point_date = _entry_date(entry)
+        if point_date is None or point_date > today:
+            continue
+        value = _to_float(entry.get(source_key))
+        if value is not None:
+            daily_values[point_date] = value
+
+    if not daily_values:
+        return None
+
+    series = sorted(daily_values.items())
+    latest_date, current = series[-1]
+
+    values_7d = _window_values(series, latest_date, 7)
+    prev_7d = _window_values(series, latest_date, 7, offset_days=7)
+
+    avg_7d = round(sum(values_7d) / len(values_7d), 2) if values_7d else None
+    prev_7d_avg = round(sum(prev_7d) / len(prev_7d), 2) if prev_7d else None
+    delta_vs_prev_7d = (
+        round(avg_7d - prev_7d_avg, 2)
+        if avg_7d is not None and prev_7d_avg is not None
+        else None
+    )
+
+    return {
+        "current": round(current, 2),
+        "avg_7d": avg_7d,
+        "avg_prev_7d": prev_7d_avg,
+        "trend_7d": _trend_label(delta_vs_prev_7d, stable_threshold),
+    }
+
+
+def _empty_metric_trend() -> dict:
+    return {
+        "current": None,
+        "avg_7d": None,
+        "avg_prev_7d": None,
+        "trend_7d": None,
+    }
+
+
+def _build_wellness_trends(entries: list[dict]) -> dict:
+    metric_specs: list[tuple[str, str, float]] = [
+        ("weight", "weight", 0.2),
+        ("resting_hr", "restingHR", 1.0),
+        ("hrv", "hrv", 2.0),
+    ]
+
+    trends: dict = {}
+    for metric_name, source_key, stable_threshold in metric_specs:
+        trend = _build_metric_trend(
+            entries,
+            source_key=source_key,
+            stable_threshold=stable_threshold,
+        )
+        trends[metric_name] = trend if trend is not None else _empty_metric_trend()
+    return trends
+
+
 def fetch_wellness() -> dict:
     today = date.today()
     # Fetch last 30 days to find most recent values that may not be set today
@@ -46,9 +148,9 @@ def fetch_wellness() -> dict:
     r.raise_for_status()
     entries = r.json()
 
-    # Use today's entry for CTL/ATL/HRV, but fall back to last known value for vo2max
+    # Use today's entry for day-specific readiness metrics and derive trends
+    # from the full 30-day wellness history.
     today_entry = next((e for e in reversed(entries) if e.get("id") == today.isoformat()), {})
-    last_vo2max = next((e["vo2max"] for e in reversed(entries) if e.get("vo2max") is not None), None)
 
     _SLEEP_QUALITY_LABELS = {1: "GREAT", 2: "GOOD", 3: "AVG", 4: "POOR"}
 
@@ -63,6 +165,7 @@ def fetch_wellness() -> dict:
         "w_prime_wellness": sport_info.get("wPrime"),
         "sleep_secs": today_entry.get("sleepSecs"),
         "sleep_quality": _SLEEP_QUALITY_LABELS.get(raw_sleep_quality, raw_sleep_quality),
+        "wellness_trends": _build_wellness_trends(entries),
     }
 
 

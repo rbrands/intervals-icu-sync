@@ -367,6 +367,7 @@ Output: `data/raw/activities_{date}.json`
 ### `get_metrics.py`
 
 Fetches athlete performance metrics: FTP, eFTP, W', weight, CTL, ATL, resting HR, HRV, best 5-minute power, and calculated VO2Max.
+Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 
 ```bash
 python scripts/get_metrics.py
@@ -658,7 +659,7 @@ Covers the core workflow: fetching data from intervals.icu, enriching it with th
 
 A curated collection of copy-paste prompts for use with ChatGPT, Claude, or any other AI assistant. Each prompt is provided in both German and English.
 
-Covers four use cases:
+Covers five use cases:
 
 | Prompt | Purpose |
 |---|---|
@@ -666,6 +667,7 @@ Covers four use cases:
 | **Weekly Analysis** | Full weekly review: metrics, load balance, training quality, fueling, and limiter |
 | **Training Plan Generation** | Generate a structured training plan for the coming week |
 | **Fueling Analysis** | Dedicated fueling strategy review with pattern detection and recommendations |
+| **Metrics & Wellness Summary** | Compact overview of current performance metrics, HRV, sleep, and form state with load recommendation |
 
 All prompts assume the MCP server connection or a manually pasted `coach_input_{monday}.json` as data source.
 

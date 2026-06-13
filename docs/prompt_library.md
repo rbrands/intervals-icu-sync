@@ -219,6 +219,60 @@ Keep the analysis precise and action-oriented.
 
 ---
 
+## 5. Metriken & Wellness / Metrics & Wellness Summary
+
+### Deutsch
+
+```
+Lies die aktuellen Daten aus intervals über prepare_week_data und fasse die aktuellen Metriken und Wellnessdaten zusammen.
+
+**Leistungsmetriken**
+- FTP und eFTP (aktuell und Trend)
+- VO2max (aktuell und Trend)
+- W' (anaerobe Kapazität)
+- CTL (Fitness), ATL (Ermüdung), Form (TSB) – absolut und in %
+
+**Wellness**
+- HRV: aktueller Wert und Trend (letzte 7 Tage)
+- Ruhepuls: aktueller Wert und Trend
+- Schlaf: Qualität und Dauer (sofern vorhanden)
+- Gewicht: aktuell und Trend
+
+**Bewertung**
+- Wie ist der aktuelle Formzustand (fresh / transition / optimal / high risk)?
+- Gibt es Auffälligkeiten in den Wellness-Daten, die auf Überbelastung oder mangelnde Erholung hindeuten?
+- Empfehlung: Kann die Belastung in der kommenden Woche gesteigert werden, oder ist Erholung prioritär?
+
+Halte die Zusammenfassung kompakt und handlungsorientiert.
+```
+
+### English
+
+```
+Fetch the current data from intervals via prepare_week_data and summarize the current metrics and wellness data.
+
+**Performance Metrics**
+- FTP and eFTP (current value and trend)
+- VO2max (current value and trend)
+- W' (anaerobic capacity)
+- CTL (fitness), ATL (fatigue), form (TSB) — absolute and as %
+
+**Wellness**
+- HRV: current value and trend (last 7 days)
+- Resting heart rate: current value and trend
+- Sleep: quality and duration (if available)
+- Weight: current value and trend
+
+**Assessment**
+- What is the current form state (fresh / transition / optimal / high risk)?
+- Are there any anomalies in the wellness data indicating overload or insufficient recovery?
+- Recommendation: Can training load be increased next week, or is recovery the priority?
+
+Keep the summary compact and action-oriented.
+```
+
+---
+
 ## Hinweise zur Verwendung / Usage Notes
 
 ### Deutsch
