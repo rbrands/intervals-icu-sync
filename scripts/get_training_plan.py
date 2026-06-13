@@ -26,6 +26,21 @@ OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESS
 LOOKAHEAD_WEEKS = 6
 LOOKBACK_WEEKS = 16  # How far back to search for PLAN events that started before today
 
+_DAY_CONSTRAINT_KEYWORDS: list[tuple[str, tuple[str, ...], bool | None]] = [
+    ("SICK", ("sick", "krank", "ill", "illness", "injury", "injured", "fever", "grippe"), False),
+    ("TRAVEL", ("travel", "trip", "reise", "urlaub", "vacation", "dienstreise"), False),
+    ("UNAVAILABLE", ("unavailable", "not available", "no training", "cannot train"), False),
+    ("LIMITED", ("limited", "reduced", "wenig zeit", "busy", "work"), True),
+]
+
+_AVAILABILITY_TO_CONSTRAINT: dict[str, tuple[str, bool]] = {
+    "LIMITED": ("LIMITED", True),
+    "UNAVAILABLE": ("UNAVAILABLE", False),
+    "NOT_AVAILABLE": ("UNAVAILABLE", False),
+    "NO_TRAINING": ("UNAVAILABLE", False),
+    "NONE": ("UNAVAILABLE", False),
+}
+
 
 def fetch_all_events(start: str, end: str) -> list:
     url = f"{BASE_URL}/athlete/{ATHLETE_ID}/events.json"
@@ -81,10 +96,9 @@ def find_week_note(events: list, monday: date) -> str | None:
 def find_weekly_load_targets(events: list, monday: date) -> list:
     """Return all load targets for the ISO week starting on monday (one per sport type).
 
-    Each entry: {load_target, sport_type, week_type, training_availability, week_note}
+    Each entry: {load_target, sport_type, week_type, week_note}
     week_type is derived from a NOTE event name (e.g. 'Recovery Week' → 'RECOVERY'),
-    falling back to 'NORMAL'. training_availability is the athlete's time availability
-    for the week as set on the TARGET event (NORMAL | LIMITED | etc.).
+    falling back to 'NORMAL'.
     """
     week_note = find_week_note(events, monday)
     # Map known note names to canonical week_type values
@@ -108,12 +122,88 @@ def find_weekly_load_targets(events: list, monday: date) -> list:
                     "load_target": load_target,
                     "sport_type": ev.get("type"),
                     "week_type": note_week_type or "NORMAL",
-                    "training_availability": ev.get("training_availability", "NORMAL"),
                 }
                 if week_note:
                     entry["week_note"] = week_note
                 result.append(entry)
     return result
+
+
+def _classify_note_constraint(note_name: str | None) -> tuple[str, bool | None] | None:
+    if not note_name:
+        return None
+    text = note_name.lower()
+    for constraint_type, keywords, training_allowed in _DAY_CONSTRAINT_KEYWORDS:
+        if any(keyword in text for keyword in keywords):
+            return constraint_type, training_allowed
+    return None
+
+
+def find_day_constraints(events: list, monday: date) -> list[dict]:
+    """Return day-level constraints for one ISO week.
+
+    Captures NOTE labels such as Sick/Travel and non-NORMAL training availability
+    values from TARGET events.
+    """
+    week_start = monday.isoformat()
+    week_end = (monday + timedelta(days=6)).isoformat()
+
+    constraints_by_key: dict[tuple[str, str, str], dict] = {}
+
+    for ev in events:
+        ev_date = ev.get("start_date_local", "")[:10]
+        if not ev_date or not (week_start <= ev_date <= week_end):
+            continue
+
+        category = ev.get("category")
+        name = ev.get("name")
+
+        if category == "NOTE":
+            classified = _classify_note_constraint(name)
+            if not classified:
+                continue
+            constraint_type, training_allowed = classified
+            key = (ev_date, constraint_type, category)
+            constraints_by_key[key] = {
+                "date": ev_date,
+                "type": constraint_type,
+                "training_allowed": training_allowed,
+                "source_category": category,
+                "source_name": name,
+            }
+            continue
+
+        availability_raw = (ev.get("training_availability") or "").strip().upper()
+        if availability_raw in {"", "NORMAL"}:
+            continue
+        mapped = _AVAILABILITY_TO_CONSTRAINT.get(availability_raw)
+        if not mapped:
+            continue
+        constraint_type, training_allowed = mapped
+        key = (ev_date, constraint_type, category or "UNKNOWN")
+        constraints_by_key[key] = {
+            "date": ev_date,
+            "type": constraint_type,
+            "training_allowed": training_allowed,
+            "source_category": category,
+            "source_name": name,
+        }
+
+    constraints = list(constraints_by_key.values())
+    constraints.sort(key=lambda c: (c["date"], c["type"], c.get("source_category") or ""))
+    return constraints
+
+
+def _remove_key_recursive(payload: object, key_to_remove: str) -> object:
+    if isinstance(payload, dict):
+        return {
+            key: _remove_key_recursive(value, key_to_remove)
+            for key, value in payload.items()
+            if key != key_to_remove
+        }
+    if isinstance(payload, list):
+        return [_remove_key_recursive(item, key_to_remove) for item in payload]
+    return payload
 
 
 def main() -> None:
@@ -129,6 +219,8 @@ def main() -> None:
     next_week_active_phases = find_active_phases(phase_events, next_monday)
     load_targets = find_weekly_load_targets(phase_events, monday)
     next_week_load_targets = find_weekly_load_targets(phase_events, next_monday)
+    day_constraints = find_day_constraints(phase_events, monday)
+    next_week_day_constraints = find_day_constraints(phase_events, next_monday)
 
     # Build a lookup: sport_type → (load_target, week_type) for easy merging
     load_by_type = {lt["sport_type"]: lt["load_target"] for lt in load_targets}
@@ -174,12 +266,16 @@ def main() -> None:
         "next_week_active_phases": next_week_active_phases,
         "weekly_load_targets": load_targets,
         "next_week_load_targets": next_week_load_targets,
+        "weekly_day_constraints": day_constraints,
+        "next_week_day_constraints": next_week_day_constraints,
         "range_start": today.isoformat(),
         "range_end": end_date.isoformat(),
         "workouts": workouts,
     }
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output = _remove_key_recursive(output, "training_availability")
+
     output_path = OUTPUT_DIR / f"training_plan_{today.isoformat()}.json"
     output_path.write_text(json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"\nSaved -> {output_path}")

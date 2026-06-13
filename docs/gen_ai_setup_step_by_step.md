@@ -267,11 +267,13 @@ in the `training_plan` section of the coach input.
 6. Create your phases (typically **Base**, **Build**, **Peak**, **Transition**).
 7. Review and adjust the generated weekly TSS targets per phase if needed.
 8. Place the generated targets on the calendar and save.
+9. In the calendar, mark days with **absence** or **limited availability** explicitly (for example sickness, travel, or no-training days) so the coach can treat them as day-level constraints.
 
 ## Minimum setup recommendation
 
 - At least one active phase for the current period.
 - Weekly TSS targets for the current week and next week.
+- Day-level calendar markers for absence/limited availability (e.g. sick, travel, unavailable) when relevant.
 - Optional: set `week_type` (e.g. NORMAL / RECOVERY / RACE) if you use it.
 
 > **Tip:** Re-open Targets Generator whenever your availability or race goals change.
@@ -318,6 +320,8 @@ Optional with explicit limit (if supported by your client UI):
 ```
 /get_latest_activities {"limit": 5}
 ```
+
+Need more ready-to-use variants? See the prompt library in `docs/prompt_library.md`.
 
 **Example prompt – weekly assessment via MCP**
 

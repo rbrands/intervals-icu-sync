@@ -44,6 +44,11 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `sleep_secs`: SECONDS (÷3600 for hours).
 - `sleep_quality`: one of `GREAT`, `GOOD`, `AVG`, `POOR` (mapped from intervals.icu scale 1–4; GREAT = best).
 - `lthr`: lactate threshold heart rate (bpm).
+- `wellness_trends`: keys `weight`, `resting_hr`, `hrv`, each with:
+  - `current`: latest available value.
+  - `avg_7d`: mean of the last 7 days.
+  - `avg_prev_7d`: mean of days 8–14 before the latest point.
+  - `trend_7d`: `up`, `down`, or `stable` based on `avg_7d` vs `avg_prev_7d`.
 
 ---
 
@@ -53,8 +58,10 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   label (thresholds in interpretation-rules.md).
 - `training_plan[].week_type`: from an intervals.icu NOTE event
   (NORMAL | RECOVERY | RACE); defaults to NORMAL.
-- `training_plan[].training_availability`: from the weekly TARGET event
-  (NORMAL = full, LIMITED = reduced time, e.g. travel/work).
+- `training_plan[].day_constraints`: day-level constraints extracted from NOTE
+  and non-NORMAL availability events in the calendar (e.g. Sick/Travel/
+  Unavailable). Each entry includes `date`, `type`, `training_allowed`,
+  `source_category` and `source_name`.
 
 ---
 

@@ -292,12 +292,18 @@ def prepare_week_data() -> str:
         phases = [p for p in (plan_data.get("active_phases") or []) if p.get("sport_type") == "Ride"]
         next_phases = [p for p in (plan_data.get("next_week_active_phases") or []) if p.get("sport_type") == "Ride"]
         ride_plan: list[dict] = []
-        for targets_key, week_monday, phase_list in [
-            ("weekly_load_targets", monday, phases),
-            ("next_week_load_targets", monday + timedelta(weeks=1), next_phases or phases),
+        for targets_key, constraints_key, week_monday, phase_list in [
+            ("weekly_load_targets", "weekly_day_constraints", monday, phases),
+            (
+                "next_week_load_targets",
+                "next_week_day_constraints",
+                monday + timedelta(weeks=1),
+                next_phases or phases,
+            ),
         ]:
             targets = [t for t in (plan_data.get(targets_key) or []) if t.get("sport_type") == "Ride"]
-            if not phase_list and not targets:
+            week_constraints = plan_data.get(constraints_key) or []
+            if not phase_list and not targets and not week_constraints:
                 continue
             entry: dict = {"week": week_monday.isoformat()}
             if phase_list:
@@ -307,9 +313,10 @@ def prepare_week_data() -> str:
                 t = targets[0]
                 entry["weekly_load_target"] = t.get("load_target")
                 entry["week_type"] = t.get("week_type", "NORMAL")
-                entry["training_availability"] = t.get("training_availability", "NORMAL")
                 if t.get("week_note"):
                     entry["week_note"] = t["week_note"]
+            if week_constraints:
+                entry["day_constraints"] = week_constraints
             ride_plan.append(entry)
         if ride_plan:
             if not isinstance(week_data, dict):

@@ -38,7 +38,7 @@ For the analysis to work properly, the following conditions should be met:
 
 8. **Activity tags set in intervals.icu** *(recommended)*: Tag your completed activities in intervals.icu using the tag scheme described in the [Coaching Logic](#coaching-logic) section (e.g. `vo2max-high`, `lactate-threshold-moderate`). Tags take priority over automatic session classification and lead to more accurate coaching output.
 
-9. **Training plan created in intervals.icu using the Target Generator** *(recommended)*: Create a training plan in intervals.icu via the **Target Generator** (Plans → Target Generator). This places PLAN events (mesocycle blocks, e.g. Base / Build / Peak) and TARGET events (weekly TSS targets) in your calendar. `get_training_plan.py` reads these events and adds the current phase name and weekly load target — as well as the following week's target — to the coach input. Without a plan the training plan section will be empty.
+9. **Training plan created in intervals.icu using the Target Generator** *(recommended)*: Create a training plan in intervals.icu via the **Target Generator** (Plans → Target Generator). This places PLAN events (mesocycle blocks, e.g. Base / Build / Peak) and TARGET events (weekly TSS targets) in your calendar. `get_training_plan.py` reads these events and adds the current phase name and weekly load target — as well as the following week's target — to the coach input. It also propagates day-level constraints (for example Sick/Travel days) when available. Without a plan the training plan section will be empty.
 
 ## Coaching Logic
 
@@ -174,7 +174,8 @@ intervals-icu-sync/
 ├── docs/
 │   ├── 2026-05 Next Level intervals-icu.pdf           # Webinar slides (German)
 │   ├── 2026-05 Next Level intervals-icu Step by Step.pdf  # Step-by-step setup guide (English)
-│   └── webinar_notes.md            # Webinar companion guide (German)
+│   ├── webinar_notes.md            # Webinar companion guide (German)
+│   └── prompt_library.md           # Copy-paste prompts for ChatGPT / Claude (DE + EN)
 ├── notebooks/
 │   └── week_summary.ipynb          # Interactive weekly training overview
 ├── src/
@@ -366,6 +367,7 @@ Output: `data/raw/activities_{date}.json`
 ### `get_metrics.py`
 
 Fetches athlete performance metrics: FTP, eFTP, W', weight, CTL, ATL, resting HR, HRV, best 5-minute power, and calculated VO2Max.
+Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 
 ```bash
 python scripts/get_metrics.py
@@ -516,7 +518,7 @@ Output: table or JSON to stdout
 
 ### `get_training_plan.py`
 
-Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Prints a short summary (plan name, start date, duration, number of workouts) and saves the raw API response.
+Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Exports active phase(s), current and next-week load targets, and day-level constraints (e.g. Sick/Travel/Unavailable) derived from calendar NOTE and availability markers.
 
 ```bash
 python scripts/get_training_plan.py
@@ -648,6 +650,26 @@ Step-by-step setup guide accompanying the webinar. Walks through the full instal
 Webinar companion guide for *„Next Level intervals.icu – Vom Datenchaos zur Coaching-Entscheidung"*.
 
 Covers the core workflow: fetching data from intervals.icu, enriching it with the AI coach logic, generating a weekly training plan, and uploading it back to the calendar. Intended as a readable walkthrough for participants who want to understand or reproduce the setup without a live demo.
+
+---
+
+### `docs/prompt_library.md`
+
+> **Languages:** German (Deutsch) + English
+
+A curated collection of copy-paste prompts for use with ChatGPT, Claude, or any other AI assistant. Each prompt is provided in both German and English.
+
+Covers five use cases:
+
+| Prompt | Purpose |
+|---|---|
+| **Single Workout Analysis** | Deep-dive analysis of the most recent session (quality, fueling, W' usage, recovery) |
+| **Weekly Analysis** | Full weekly review: metrics, load balance, training quality, fueling, and limiter |
+| **Training Plan Generation** | Generate a structured training plan for the coming week |
+| **Fueling Analysis** | Dedicated fueling strategy review with pattern detection and recommendations |
+| **Metrics & Wellness Summary** | Compact overview of current performance metrics, HRV, sleep, and form state with load recommendation |
+
+All prompts assume the MCP server connection or a manually pasted `coach_input_{monday}.json` as data source.
 
 ---
 
