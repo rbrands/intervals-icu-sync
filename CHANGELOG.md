@@ -15,8 +15,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Updated `notebooks/week_summary.ipynb` to display the simplified wellness trends in the athlete metrics section.
 - Updated `coach-logic/input-schema.md` and `README.md` to document the simplified wellness trend fields.
 - Added `docs/prompt_library.md` as a curated prompt library with copy-paste example prompts in German and English.
-- `get_training_plan.py` now exports day-level training constraints (e.g. Sick/Travel/Unavailable), and the weekly plan view in `week_summary.ipynb` now shows constraint-day details.
-- Removed `training_availability` from coach-facing weekly plan payloads; planning now uses `week_type` + `day_constraints`.
+- Removed `training_availability` from coach-facing weekly plan payloads produced by the webservice MCP server and the file-based consolidation; planning now uses `week_type` + `day_constraints` (ensure the local `scripts/mcp_server.py` consolidation matches this schema as well).
 
 ## [0.6.0] - 2026-06-08
 
