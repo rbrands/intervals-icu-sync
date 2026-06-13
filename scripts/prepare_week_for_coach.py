@@ -74,12 +74,13 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
         if p.get("sport_type") == "Ride"
     ]
 
-    def _build_entry(targets_key: str, week_monday: date, phase_list: list) -> dict | None:
+    def _build_entry(targets_key: str, constraints_key: str, week_monday: date, phase_list: list) -> dict | None:
         targets = [
             t for t in (plan_data.get(targets_key) or [])
             if t.get("sport_type") == "Ride"
         ]
-        if not phase_list and not targets:
+        week_constraints = plan_data.get(constraints_key) or []
+        if not phase_list and not targets and not week_constraints:
             return None
         entry: dict = {"week": week_monday.isoformat()}
         if phase_list:
@@ -91,16 +92,22 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
         if targets:
             entry["weekly_load_target"] = targets[0].get("load_target")
             entry["week_type"] = targets[0].get("week_type", "NORMAL")
-            entry["training_availability"] = targets[0].get("training_availability", "NORMAL")
             if targets[0].get("week_note"):
                 entry["week_note"] = targets[0]["week_note"]
+        if week_constraints:
+            entry["day_constraints"] = week_constraints
         return entry
 
     result: list[dict] = []
-    current = _build_entry("weekly_load_targets", monday, phases)
+    current = _build_entry("weekly_load_targets", "weekly_day_constraints", monday, phases)
     if current:
         result.append(current)
-    next_week = _build_entry("next_week_load_targets", monday + timedelta(weeks=1), next_week_phases or phases)
+    next_week = _build_entry(
+        "next_week_load_targets",
+        "next_week_day_constraints",
+        monday + timedelta(weeks=1),
+        next_week_phases or phases,
+    )
     if next_week:
         result.append(next_week)
     return result

@@ -58,8 +58,10 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   label (thresholds in interpretation-rules.md).
 - `training_plan[].week_type`: from an intervals.icu NOTE event
   (NORMAL | RECOVERY | RACE); defaults to NORMAL.
-- `training_plan[].training_availability`: from the weekly TARGET event
-  (NORMAL = full, LIMITED = reduced time, e.g. travel/work).
+- `training_plan[].day_constraints`: day-level constraints extracted from NOTE
+  and non-NORMAL availability events in the calendar (e.g. Sick/Travel/
+  Unavailable). Each entry includes `date`, `type`, `training_allowed`,
+  `source_category` and `source_name`.
 
 ---
 

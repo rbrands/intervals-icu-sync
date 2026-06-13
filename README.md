@@ -38,7 +38,7 @@ For the analysis to work properly, the following conditions should be met:
 
 8. **Activity tags set in intervals.icu** *(recommended)*: Tag your completed activities in intervals.icu using the tag scheme described in the [Coaching Logic](#coaching-logic) section (e.g. `vo2max-high`, `lactate-threshold-moderate`). Tags take priority over automatic session classification and lead to more accurate coaching output.
 
-9. **Training plan created in intervals.icu using the Target Generator** *(recommended)*: Create a training plan in intervals.icu via the **Target Generator** (Plans → Target Generator). This places PLAN events (mesocycle blocks, e.g. Base / Build / Peak) and TARGET events (weekly TSS targets) in your calendar. `get_training_plan.py` reads these events and adds the current phase name and weekly load target — as well as the following week's target — to the coach input. Without a plan the training plan section will be empty.
+9. **Training plan created in intervals.icu using the Target Generator** *(recommended)*: Create a training plan in intervals.icu via the **Target Generator** (Plans → Target Generator). This places PLAN events (mesocycle blocks, e.g. Base / Build / Peak) and TARGET events (weekly TSS targets) in your calendar. `get_training_plan.py` reads these events and adds the current phase name and weekly load target — as well as the following week's target — to the coach input. It also propagates day-level constraints (for example Sick/Travel days) when available. Without a plan the training plan section will be empty.
 
 ## Coaching Logic
 
@@ -518,7 +518,7 @@ Output: table or JSON to stdout
 
 ### `get_training_plan.py`
 
-Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Prints a short summary (plan name, start date, duration, number of workouts) and saves the raw API response.
+Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Exports active phase(s), current and next-week load targets, and day-level constraints (e.g. Sick/Travel/Unavailable) derived from calendar NOTE and availability markers.
 
 ```bash
 python scripts/get_training_plan.py
