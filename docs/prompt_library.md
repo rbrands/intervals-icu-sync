@@ -10,7 +10,7 @@ A collection of copy-paste prompts for use with ChatGPT, Claude & Co.
 ### Deutsch
 
 ```
-Analysiere die aktuellste Trainingseinheit und lese dazu von intervals.icu per perpare_week_data.
+Analysiere die aktuellste Trainingseinheit und lese dazu von intervals.icu per prepare_week_data.
 
 Beantworte folgende Fragen:
 1. Welche Trainingsqualität hatte diese Einheit (VO2max-Reiz, Schwellenreiz, Grundlage)?
@@ -118,7 +118,7 @@ Provide a clear summary with actionable recommendations.
 ### Deutsch
 
 ```
-Erstelle mir basierend auf der Wochen-Analyse einen Trainingsplan für die kommende Woche.
+Hole die aktuellen Daten von intervals.icu per prepare_week_data. Erstelle mir basierend auf der Wochen-Analyse einen Trainingsplan für die kommende Woche.
 
 Rahmenbedingungen:
 - Berücksichtige aktuelle Form (TSB) und Ermüdung (ATL)
@@ -139,7 +139,7 @@ Format: Tageweise mit Einheit, Dauer, Intensität (Zone), Ziel der Einheit und F
 ### English
 
 ```
-Based on the weekly analysis, create a training plan for the coming week.
+Fetch the current data from intervals.icu via prepare_week_data. Based on the weekly analysis, create a training plan for the coming week.
 
 Constraints:
 - Consider current form (TSB) and fatigue (ATL)
@@ -164,7 +164,7 @@ Format: Day-by-day with session type, duration, intensity (zone), session goal, 
 ### Deutsch
 
 ```
-Analysiere meine Fueling-Strategie anhand der vorliegenden Trainingsdaten.
+Hole die aktuellen Daten von intervals.icu per prepare_week_data. Analysiere meine Fueling-Strategie anhand der vorliegenden Trainingsdaten.
 
 Fokus der Analyse:
 
@@ -192,7 +192,7 @@ Halte die Analyse präzise und handlungsorientiert.
 ### English
 
 ```
-Analyze my fueling strategy based on the provided training data.
+Fetch the current data from intervals.icu via prepare_week_data. Analyze my fueling strategy based on the retrieved training data.
 
 Analysis focus:
 
