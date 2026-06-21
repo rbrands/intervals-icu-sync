@@ -64,6 +64,22 @@ def _steps_to_zwo(name: str, description: str, steps: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _raise_for_status_with_context(response: requests.Response, operation: str) -> None:
+    """Raise HTTPError enriched with API status and response preview."""
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        request_url = response.request.url if response.request is not None else response.url
+        body_preview = (response.text or "").strip().replace("\n", " ")[:400]
+        message = (
+            f"{operation} failed with HTTP {response.status_code} {response.reason} "
+            f"for {request_url}"
+        )
+        if body_preview:
+            message = f"{message}; response body: {body_preview}"
+        raise requests.HTTPError(message, response=response, request=response.request) from exc
+
+
 def get_events(api_key: str, athlete_id: str, oldest: str, newest: str) -> list:
     """Fetch WORKOUT events for the given date range.
 
@@ -81,7 +97,7 @@ def get_events(api_key: str, athlete_id: str, oldest: str, newest: str) -> list:
         params={"oldest": oldest, "newest": newest, "category": "WORKOUT"},
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "get_events")
     return response.json()
 
 
@@ -97,7 +113,7 @@ def get_library_workouts(api_key: str, athlete_id: str) -> list:
         auth=("API_KEY", api_key),
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "get_library_workouts")
     return response.json()
 
 
@@ -113,7 +129,7 @@ def get_library_folders(api_key: str, athlete_id: str) -> list:
         auth=("API_KEY", api_key),
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "get_library_folders")
     return response.json()
 
 
@@ -131,7 +147,7 @@ def update_event(api_key: str, athlete_id: str, event_id: int, payload: dict) ->
         headers={"Content-Type": "application/json; charset=utf-8"},
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "update_event")
     return response.json()
 
 
@@ -154,7 +170,7 @@ def delete_events_range(api_key: str, athlete_id: str, oldest: str, newest: str)
         params={"oldest": oldest, "newest": newest, "category": "WORKOUT"},
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "delete_events_range")
 
 
 def get_activities(api_key: str, athlete_id: str, start_date: str, end_date: str) -> list:
@@ -174,14 +190,14 @@ def get_activities(api_key: str, athlete_id: str, start_date: str, end_date: str
     """
     url = f"{BASE_URL}/athlete/{athlete_id}/activities"
 
-    
     response = requests.get(
         url,
         auth=("API_KEY", api_key),
         params={"oldest": start_date, "newest": end_date},
+        timeout=30,
     )
-  
-    response.raise_for_status()
+
+    _raise_for_status_with_context(response, "get_activities")
 
     return response.json()
 
@@ -249,7 +265,7 @@ def create_activity(
         params={"upsertOnUid": "true" if uid is not None else "false"},
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "create_activity")
 
     return response.json()
 
@@ -269,7 +285,7 @@ def get_activity_power_curve(api_key: str, activity_id: str) -> dict | None:
     """
     url = f"{BASE_URL}/activity/{activity_id}/power-curves"
     response = requests.get(url, auth=("API_KEY", api_key), timeout=30)
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "get_activity_power_curve")
     body = response.json()
     if not body:
         return None
@@ -299,7 +315,7 @@ def get_activity_streams(api_key: str, activity_id: str) -> list[dict]:
         auth=("API_KEY", api_key),
         timeout=60,
     )
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "get_activity_streams")
     return response.json()
 
 
@@ -317,7 +333,7 @@ def get_activity_intervals(api_key: str, activity_id: str) -> dict:
         auth=("API_KEY", api_key),
         timeout=60,
     )
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "get_activity_intervals")
     return response.json()
 
 
@@ -342,5 +358,5 @@ def get_training_plan(api_key: str, athlete_id: str) -> dict:
         auth=("API_KEY", api_key),
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_status_with_context(response, "get_training_plan")
     return response.json()

@@ -27,7 +27,7 @@ The issued Bearer token is **stateless and Fernet-encrypted** — it contains th
 credentials and an expiry timestamp. No token table is kept in memory; tokens survive
 server restarts as long as `OAUTH_TOKEN_SECRET` stays the same.
 
-Token lifetime: **30 days**.
+Token lifetime: **30 days** by default. Configure with `OAUTH_ACCESS_TOKEN_LIFETIME_DAYS`.
 
 ### 2. Custom headers (Claude Desktop / API clients)
 
@@ -75,6 +75,7 @@ Environment variables:
 | `FASTMCP_ALLOWED_HOST` | *(empty)* | Additional hostname for the `allowed_hosts` security check (e.g. the App Service hostname) |
 | `STANDARD_LIBRARY_ATHLETE_ID` | *(empty)* | Athlete ID used by MCP method `list_standard_library_workouts` to return shared standard-library workouts |
 | `OAUTH_TOKEN_SECRET` | *(empty)* | Fernet key for stateless OAuth tokens. Generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. If not set, an ephemeral key is generated at startup and tokens are lost on restart. |
+| `OAUTH_ACCESS_TOKEN_LIFETIME_DAYS` | `30` | Access-token lifetime in days. Increase this as a first mitigation when clients fail to refresh reliably. |
 | `INTERVALS_DEV_MODE` | *(empty)* | Set to `true` for local development: falls back to `ATHLETE_ID` / `INTERVALS_API_KEY` from `.env` when no credentials are supplied. **Never enable in production.** |
 | `MCP_TRACE_RESPONSE_JSON` | *(empty)* | Optional: set to `true` to include a truncated JSON response preview in traces/logs for `POST /mcp` responses. Default is off. |
 | `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | `4096` | Maximum UTF-8 bytes captured as response preview when `MCP_TRACE_RESPONSE_JSON=true`. |
@@ -153,6 +154,7 @@ is excluded from source control via `.gitignore` and must **never** be committed
 | `AppInsightsName` | `APP_INSIGHTS_NAME` | Existing Application Insights instance name |
 | `CustomDomain` | `APP_CUSTOM_DOMAIN` | Optional custom domain (e.g. `intervals-mcp.training-architect.com`). Leave empty to use only the `.azurewebsites.net` hostname. |
 | `OAuthTokenSecret` | `OAUTH_TOKEN_SECRET` | Fernet key for stateless OAuth tokens. Generate once and store permanently. See `OAUTH_TOKEN_SECRET` above. |
+| `OAuthAccessTokenLifetimeDays` | `OAUTH_ACCESS_TOKEN_LIFETIME_DAYS` | Access-token lifetime in days (default `30`). Useful workaround when a client's refresh flow is unreliable. |
 | `StandardLibraryAthleteId` | `STANDARD_LIBRARY_ATHLETE_ID` | Athlete ID whose shared library is exposed by MCP method `list_standard_library_workouts` (e.g. `i57401`). |
 | `McpTraceResponseJson` | `MCP_TRACE_RESPONSE_JSON` | Controls MCP response preview tracing (`true`/`false`). Recommended: `false` in normal production operation. |
 | `McpTraceResponsePreviewLimit` | `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | Max UTF-8 bytes captured as response preview when tracing is enabled (e.g. `4096`). |
@@ -276,6 +278,7 @@ athlete data and increase telemetry volume.
 | `FASTMCP_ALLOWED_HOST` | `<appName>.azurewebsites.net` (slot-sticky) |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Connection string of the existing Application Insights instance |
 | `OAUTH_TOKEN_SECRET` | Fernet key for stateless OAuth tokens (from GitHub Secret `OAUTH_TOKEN_SECRET`) |
+| `OAUTH_ACCESS_TOKEN_LIFETIME_DAYS` | Access-token lifetime in days (default `30`) |
 | `STANDARD_LIBRARY_ATHLETE_ID` | Athlete ID for MCP method `list_standard_library_workouts` (from GitHub Secret `STANDARD_LIBRARY_ATHLETE_ID`) |
 | `MCP_TRACE_RESPONSE_JSON` | `false` (recommended) or `true` for temporary payload debugging |
 | `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | `4096` |

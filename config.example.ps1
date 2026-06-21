@@ -51,6 +51,9 @@ $config = @{
     # If not set, an ephemeral key is generated at startup (tokens lost on restart).
     OAuthTokenSecret     = "__OAUTH_TOKEN_SECRET__"
 
+    # OAuth access token lifetime in days (default behavior is 30 days).
+    OAuthAccessTokenLifetimeDays = "30"
+
     # Athlete ID whose shared workout library should be exposed as
     # "standard library" by MCP method list_standard_library_workouts.
     StandardLibraryAthleteId = "__STANDARD_LIBRARY_ATHLETE_ID__"

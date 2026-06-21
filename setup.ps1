@@ -55,6 +55,9 @@ if ($GitHub -or $All) {
     if ($config.OAuthTokenSecret) {
         gh secret set OAUTH_TOKEN_SECRET   --body $config.OAuthTokenSecret
     }
+    if ($config.OAuthAccessTokenLifetimeDays) {
+        gh secret set OAUTH_ACCESS_TOKEN_LIFETIME_DAYS --body $config.OAuthAccessTokenLifetimeDays
+    }
     if ($config.StandardLibraryAthleteId) {
         gh secret set STANDARD_LIBRARY_ATHLETE_ID --body $config.StandardLibraryAthleteId
     }
@@ -112,6 +115,7 @@ param location           = '$($config.Location)'
 param appServicePlanName = '$($config.AppServicePlanName)'
 param appInsightsName    = '$($config.AppInsightsName)'
 param customDomain       = '$($config.CustomDomain)'
+param oauthAccessTokenLifetimeDays = '$($config.OAuthAccessTokenLifetimeDays)'
 param standardLibraryAthleteId = '$($config.StandardLibraryAthleteId)'
 param mcpTraceResponseJson = '$($config.McpTraceResponseJson)'
 param mcpTraceResponsePreviewLimit = '$($config.McpTraceResponsePreviewLimit)'

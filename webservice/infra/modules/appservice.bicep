@@ -17,6 +17,9 @@ param customDomain string = ''
 @secure()
 param oauthTokenSecret string = ''
 
+@description('OAuth access token lifetime in days. Default is 30.')
+param oauthAccessTokenLifetimeDays string = '30'
+
 @description('Athlete ID whose shared workout library is exposed as standard library. Leave empty to disable.')
 param standardLibraryAthleteId string = ''
 
@@ -102,6 +105,10 @@ var commonAppSettings = [
   {
     name: 'MCP_RPC_EVENT_LOG_LEVEL'
     value: mcpRpcEventLogLevel
+  }
+  {
+    name: 'OAUTH_ACCESS_TOKEN_LIFETIME_DAYS'
+    value: oauthAccessTokenLifetimeDays
   }
 ]
 

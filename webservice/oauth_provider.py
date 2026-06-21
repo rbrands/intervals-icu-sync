@@ -87,12 +87,17 @@ class IntervalsOAuthProvider:
     resolve Bearer tokens to (athlete_id, api_key) pairs.
     """
 
-    _TOKEN_LIFETIME = timedelta(days=30)
+    _DEFAULT_TOKEN_LIFETIME_DAYS = 30
     _REFRESH_TOKEN_LIFETIME = timedelta(days=365)
     _CODE_LIFETIME = timedelta(minutes=10)
     _PENDING_LIFETIME = timedelta(minutes=30)
 
     def __init__(self) -> None:
+        self._token_lifetime = timedelta(days=self._parse_positive_int_env(
+            "OAUTH_ACCESS_TOKEN_LIFETIME_DAYS",
+            self._DEFAULT_TOKEN_LIFETIME_DAYS,
+        ))
+
         raw_key = os.environ.get("OAUTH_TOKEN_SECRET")
         if raw_key:
             self._fernet = Fernet(raw_key.encode())
@@ -106,6 +111,28 @@ class IntervalsOAuthProvider:
         self._clients: dict[str, _Client] = {}
         self._pending: dict[str, _PendingAuth] = {}
         self._codes: dict[str, _AuthCode] = {}
+
+    @staticmethod
+    def _parse_positive_int_env(name: str, default: int) -> int:
+        """Parse a positive integer env var with safe fallback."""
+        raw = os.environ.get(name)
+        if not raw:
+            return default
+
+        try:
+            parsed = int(raw)
+            if parsed > 0:
+                return parsed
+        except (TypeError, ValueError):
+            pass
+
+        logger.warning(
+            "%s=%r is invalid; falling back to %s.",
+            name,
+            raw,
+            default,
+        )
+        return default
 
     # ------------------------------------------------------------------
     # Public API used by AuthHeaderMiddleware
@@ -390,10 +417,10 @@ class IntervalsOAuthProvider:
                 )
 
         # Issue access token (Fernet-encrypted, stateless)
-        expires_at = datetime.now(timezone.utc) + self._TOKEN_LIFETIME
+        expires_at = datetime.now(timezone.utc) + self._token_lifetime
         payload = f"{auth_code.athlete_id}:{auth_code.api_key}:{expires_at.isoformat()}"
         token_str = self._fernet.encrypt(payload.encode()).decode()
-        expires_in = int(self._TOKEN_LIFETIME.total_seconds())
+        expires_in = int(self._token_lifetime.total_seconds())
 
         # Issue refresh token (long-lived, Fernet-encrypted, stateless)
         refresh_expires_at = datetime.now(timezone.utc) + self._REFRESH_TOKEN_LIFETIME
@@ -438,10 +465,10 @@ class IntervalsOAuthProvider:
             return JSONResponse({"error": "invalid_grant", "error_description": "Refresh token expired"}, status_code=401)
 
         # Issue new access token
-        new_expires_at = datetime.now(timezone.utc) + self._TOKEN_LIFETIME
+        new_expires_at = datetime.now(timezone.utc) + self._token_lifetime
         payload = f"{athlete_id}:{api_key}:{new_expires_at.isoformat()}"
         token_str = self._fernet.encrypt(payload.encode()).decode()
-        expires_in = int(self._TOKEN_LIFETIME.total_seconds())
+        expires_in = int(self._token_lifetime.total_seconds())
 
         # Issue a new (rotated) refresh token with a fresh expiry window.
         # As long as the client refreshes at least once per year, re-authentication
