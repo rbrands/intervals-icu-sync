@@ -12,6 +12,18 @@ MCP server for Azure App Service. Exposes tools over SSE transport, with credent
 | `list_standard_library_workouts` | Lists shared workouts of the configured standard library athlete (`STANDARD_LIBRARY_ATHLETE_ID`) with key fields (`shared_from`, `folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
 | `upload_week_plan` | Uploads a JSON training plan to intervals.icu as planned workout events. Accepts `dry_run` and `clear` flags. |
 
+## Prompts
+
+| Prompt | Description |
+|---|---|
+| `coach_prompt` | Generic prompt endpoint. Accepts `prompt_name` and `response_language`. |
+| `coach_prompt_single_workout_analysis` | Predefined prompt for single-workout analysis. |
+| `coach_prompt_weekly_analysis` | Predefined prompt for weekly analysis. |
+| `coach_prompt_training_plan_generation_manual` | Predefined prompt for manual training-plan generation. |
+| `coach_prompt_training_plan_generation_automatic` | Predefined prompt for automatic training-plan generation. |
+| `coach_prompt_fueling_analysis` | Predefined prompt for fueling analysis. |
+| `coach_prompt_metrics_wellness_summary` | Predefined prompt for metrics and wellness summary. |
+
 ## Authentication
 
 The server supports three authentication methods, resolved in this priority order:

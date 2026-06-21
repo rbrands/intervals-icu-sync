@@ -893,6 +893,48 @@ def coach_prompt(prompt_name: str = "", response_language: str = "de") -> str:
     return render_coach_prompt(prompt_name or None, response_language)
 
 
+@mcp.prompt(title="Coach Prompt - Single Workout Analysis", description="Single workout analysis prompt from prompts/library.")
+def coach_prompt_single_workout_analysis(response_language: str = "de") -> str:
+    """Return the single workout analysis coaching prompt."""
+    return render_coach_prompt("single_workout_analysis", response_language)
+
+
+@mcp.prompt(title="Coach Prompt - Weekly Analysis", description="Weekly analysis prompt from prompts/library.")
+def coach_prompt_weekly_analysis(response_language: str = "de") -> str:
+    """Return the weekly analysis coaching prompt."""
+    return render_coach_prompt("weekly_analysis", response_language)
+
+
+@mcp.prompt(
+    title="Coach Prompt - Training Plan Generation (Manual)",
+    description="Manual training plan generation prompt from prompts/library.",
+)
+def coach_prompt_training_plan_generation_manual(response_language: str = "de") -> str:
+    """Return the manual training plan generation coaching prompt."""
+    return render_coach_prompt("training_plan_generation_manual", response_language)
+
+
+@mcp.prompt(
+    title="Coach Prompt - Training Plan Generation (Automatic)",
+    description="Automatic training plan generation prompt from prompts/library.",
+)
+def coach_prompt_training_plan_generation_automatic(response_language: str = "de") -> str:
+    """Return the automatic training plan generation coaching prompt."""
+    return render_coach_prompt("training_plan_generation_automatic", response_language)
+
+
+@mcp.prompt(title="Coach Prompt - Fueling Analysis", description="Fueling analysis prompt from prompts/library.")
+def coach_prompt_fueling_analysis(response_language: str = "de") -> str:
+    """Return the fueling analysis coaching prompt."""
+    return render_coach_prompt("fueling_analysis", response_language)
+
+
+@mcp.prompt(title="Coach Prompt - Metrics & Wellness Summary", description="Metrics and wellness summary prompt from prompts/library.")
+def coach_prompt_metrics_wellness_summary(response_language: str = "de") -> str:
+    """Return the metrics and wellness summary coaching prompt."""
+    return render_coach_prompt("metrics_wellness_summary", response_language)
+
+
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
