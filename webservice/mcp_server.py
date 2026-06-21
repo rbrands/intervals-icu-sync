@@ -113,6 +113,7 @@ from starlette.middleware.cors import CORSMiddleware
 from intervals_icu.client import get_library_folders, get_library_workouts
 
 from context import api_key_var, athlete_id_var
+from intervals_icu.prompt_templates import render_coach_prompt
 from oauth_provider import IntervalsOAuthProvider
 
 # Singleton OAuth provider – shared between the ASGI app and the auth middleware.
@@ -880,6 +881,16 @@ def _collect_shared_outgoing_workouts(nodes: list, athlete_id: str, parent_path:
             )
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# Prompts
+# ---------------------------------------------------------------------------
+
+@mcp.prompt(title="Coach Prompt", description="Return a coaching prompt from prompts/library by prompt name.")
+def coach_prompt(prompt_name: str = "", response_language: str = "de") -> str:
+    """Return a coaching prompt from prompts/library."""
+    return render_coach_prompt(prompt_name or None, response_language)
 
 
 # ---------------------------------------------------------------------------

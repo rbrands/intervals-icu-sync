@@ -29,6 +29,7 @@ from mcp.server.fastmcp.server import TransportSecuritySettings
 import upload_plan as _upload_plan  # direct import – no subprocess overhead
 from intervals_icu.client import get_library_folders, get_library_workouts
 from intervals_icu.config import API_KEY, ATHLETE_ID, STANDARD_LIBRARY_ATHLETE_ID
+from intervals_icu.prompt_templates import render_coach_prompt
 PROCESSED_DIR = _ROOT / "data" / "processed"
 PLANS_DIR = _ROOT / "data" / "plans"
 
@@ -229,6 +230,16 @@ def _collect_shared_outgoing_workouts(nodes: list, athlete_id: str, parent_path:
             )
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# Prompts
+# ---------------------------------------------------------------------------
+
+@mcp.prompt(title="Coach Prompt", description="Return a coaching prompt from prompts/library by prompt name.")
+def coach_prompt(prompt_name: str = "", response_language: str = "de") -> str:
+    """Return a coaching prompt from prompts/library."""
+    return render_coach_prompt(prompt_name or None, response_language)
 
 
 # ---------------------------------------------------------------------------
