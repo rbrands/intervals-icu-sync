@@ -7,6 +7,18 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-06-22
+
+### Added
+
+- Added individually exposed MCP prompt endpoints backed by version-controlled files in `prompts/library/` for single workout analysis, weekly analysis, manual and automatic training-plan generation, fueling analysis, and metrics/wellness summary.
+- Added Azure Table Storage persistence for OAuth dynamic client registrations in the webservice, using the existing storage account plus dedicated infrastructure wiring for the client registry table and RBAC assignments.
+
+### Changed
+
+- Updated prompt loading so coach prompts are resolved from `prompts/library/`, including deployment packaging for those prompt assets.
+- Updated OAuth client handling so registrations survive app restarts and slot swaps via persistent storage, with application-managed cleanup of entries older than 200 days.
+
 ## [0.6.1] - 2026-06-13
 
 ### Changed

@@ -325,6 +325,59 @@ Keep the summary compact and action-oriented.
 
 ## Hinweise zur Verwendung / Usage Notes
 
+## MCP Prompt-Aufruf je Client / MCP Prompt Invocation by Client
+
+Die Prompts sind im MCP-Server nicht nur als Markdown-Dateien vorhanden, sondern auch als MCP-Prompts verdrahtet. Der direkte Aufruf hängt aber davon ab, ob der jeweilige Client MCP-Prompts nativ anzeigt. Wenn ein Client nur MCP-Tools, aber keine MCP-Prompts exponiert, müssen die Prompt-Texte weiterhin aus `prompts/library/` kopiert werden.
+
+The prompts are not only stored as Markdown files, but also exposed by the MCP server as MCP prompts. Direct invocation still depends on whether the client actually surfaces MCP prompts. If a client exposes MCP tools but not MCP prompts, the prompt text still needs to be copied from `prompts/library/`.
+
+### Verdrahtete MCP-Prompt-Namen / Wired MCP Prompt Names
+
+| Zweck / Purpose | MCP prompt name |
+| --- | --- |
+| Einzel-Workout-Analyse / Single workout analysis | `coach_prompt_single_workout_analysis` |
+| Wochen-Analyse / Weekly analysis | `coach_prompt_weekly_analysis` |
+| Trainingsplan manuell / Training plan manual | `coach_prompt_training_plan_generation_manual` |
+| Trainingsplan automatisch / Training plan automatic | `coach_prompt_training_plan_generation_automatic` |
+| Fueling-Analyse / Fueling analysis | `coach_prompt_fueling_analysis` |
+| Metriken & Wellness / Metrics & wellness | `coach_prompt_metrics_wellness_summary` |
+| Generischer Einstieg / Generic entry point | `coach_prompt` with `prompt_name` = `single_workout_analysis`, `weekly_analysis`, `training_plan_generation_manual`, `training_plan_generation_automatic`, `fueling_analysis`, or `metrics_wellness_summary` |
+
+Alle Prompt-Endpunkte akzeptieren zusätzlich `response_language`, zum Beispiel `de` oder `en`.
+
+All prompt endpoints also accept `response_language`, for example `de` or `en`.
+
+### Claude
+
+- In Claude können die verdrahteten MCP-Prompts direkt per Slash-Syntax aufgerufen werden, zum Beispiel `/coach_prompt_weekly_analysis` oder `/coach_prompt_fueling_analysis`, sofern der MCP-Server korrekt verbunden ist.
+- Falls ein bestimmter Claude-Client oder Workspace die Prompt-Endpunkte nicht sichtbar macht, ist der pragmatische Fallback: zuerst `prepare_week_data` ausführen und danach den passenden Prompt aus dieser Datei oder aus `prompts/library/` in den Chat kopieren.
+- Für flexiblere Aufrufe kann statt des spezifischen Prompt-Endpunkts auch `coach_prompt` mit `prompt_name` verwendet werden.
+
+### ChatGPT
+
+- Wenn die ChatGPT-MCP-Integration Prompt-Endpunkte sichtbar macht, gelten dieselben Prompt-Namen wie oben.
+- Wenn ChatGPT nur Tools, aber keine Prompts anzeigt, zuerst `prepare_week_data` ausführen und anschließend den gewünschten Prompt-Text manuell einfügen.
+- Für die automatische Wochenplanung ist in diesem Fall meist am klarsten: Tool-Daten holen, dann den Text von `03b_training_plan_generation_automatic.md` einfügen.
+
+### Mistral
+
+- Bei Mistral gilt dieselbe Logik: direkte Verwendung der MCP-Prompt-Namen, falls der Client Prompts unterstützt.
+- Falls nur Tools sichtbar sind, Daten per `prepare_week_data` laden und den Prompt-Text aus `prompts/library/` manuell verwenden.
+- Die verdrahteten Prompt-Namen bleiben serverseitig identisch; nur die Client-Oberfläche entscheidet, ob sie auswählbar sind.
+
+### Microsoft 365 Copilot
+
+- In Microsoft 365 Copilot scheinen die verdrahteten MCP-Prompts ebenfalls direkt per Slash-Syntax verwendbar zu sein, zum Beispiel `/coach_prompt_fueling_analysis`.
+- Ob das verfügbar ist, hängt weiterhin von der konkreten Copilot-MCP-Integration und der Oberfläche ab; falls die Prompt-Endpunkte nicht erscheinen, bleibt der robuste Weg: `prepare_week_data` über den MCP-Server ausführen und danach den gewünschten Prompt-Text aus dieser Bibliothek einfügen.
+- Die serverseitigen Namen bleiben identisch mit der Tabelle oben.
+
+### Praktische Empfehlung / Practical Recommendation
+
+- Für Claude und wahrscheinlich auch Microsoft 365 Copilot: die spezifischen Prompt-Namen direkt per Slash verwenden, zum Beispiel `/coach_prompt_weekly_analysis`.
+- Für andere Clients mit sichtbaren MCP-Prompts: direkt die spezifischen Prompt-Namen verwenden.
+- Für Clients ohne sichtbare MCP-Prompts: `prepare_week_data` als Tool aufrufen und danach den gewünschten Prompt aus `prompts/library/` einfügen.
+- Wenn unklar ist, ob ein Client Prompts oder nur Tools unterstützt, zuerst prüfen, ob `coach_prompt_weekly_analysis` oder `coach_prompt` in der UI auswählbar ist.
+
 ### Deutsch
 
 - **Mit MCP-Integration:** Die Prompts gehen davon aus, dass der MCP-Server eingerichtet ist und darüber die Daten gelesen werden können.
