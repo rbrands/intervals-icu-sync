@@ -29,7 +29,6 @@ import json
 import logging
 import os
 import secrets
-from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -182,9 +181,9 @@ class _OAuthClientStore:
         removed = 0
 
         try:
-            entities: Iterable[dict[str, Any]] = self._table_client.query_entities(
+            entities: list[dict[str, Any]] = list(self._table_client.query_entities(
                 query_filter=f"PartitionKey eq '{self._PARTITION_KEY}'"
-            )
+            ))
         except _TABLE_STORAGE_ERRORS:
             return 0
 
@@ -263,7 +262,7 @@ def _base_url_from_request(request: Request) -> str:
 class IntervalsOAuthProvider:
     """Self-contained OAuth 2.0 Authorization Server for intervals.icu credentials.
 
-    Authorization/pending/token state is in-memory. Dynamic client registrations
+    Authorization/pending/token state is stateless (Fernet-encrypted tokens). Dynamic client registrations
     are persisted to Azure Table Storage when configured, otherwise they remain
     in-memory. Create a single instance and register its routes on the Starlette
     app. Pass the instance to AuthHeaderMiddleware so it can resolve Bearer
@@ -293,8 +292,6 @@ class IntervalsOAuthProvider:
             )
         self._clients: dict[str, _Client] = {}
         self._client_store = _OAuthClientStore.from_environment()
-        self._pending: dict[str, _PendingAuth] = {}
-        self._codes: dict[str, _AuthCode] = {}
 
     def _get_client(self, client_id: str) -> _Client | None:
         client = self._clients.get(client_id)
@@ -503,14 +500,17 @@ class IntervalsOAuthProvider:
         if redirect_uri and client.redirect_uris and redirect_uri not in client.redirect_uris:
             return Response("redirect_uri mismatch.", status_code=400)
 
-        req_id = secrets.token_urlsafe(16)
-        self._pending[req_id] = _PendingAuth(
-            client_id=client_id,
-            redirect_uri=redirect_uri or (client.redirect_uris[0] if client.redirect_uris else ""),
-            state=state,
-            code_challenge=code_challenge,
-            code_challenge_method=code_challenge_method,
-        )
+        # Encode pending state as a Fernet-encrypted token so any App Service
+        # instance can validate it without shared in-memory state.
+        pending_payload = json.dumps({
+            "client_id": client_id,
+            "redirect_uri": redirect_uri or (client.redirect_uris[0] if client.redirect_uris else ""),
+            "state": state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": code_challenge_method,
+            "expires_at": (datetime.now(timezone.utc) + self._PENDING_LIFETIME).isoformat(),
+        })
+        req_id = self._fernet.encrypt(pending_payload.encode()).decode()
         base = _base_url_from_request(request)
         return RedirectResponse(f"{base}/oauth/form?req_id={req_id}", status_code=302)
 
@@ -518,10 +518,27 @@ class IntervalsOAuthProvider:
     # Login form
     # ------------------------------------------------------------------
 
+    def _decode_pending(self, req_id: str) -> _PendingAuth | None:
+        """Decode a Fernet-encrypted pending-auth token. Returns None if invalid or expired."""
+        try:
+            data = json.loads(self._fernet.decrypt(req_id.encode()).decode())
+            expires_at = datetime.fromisoformat(data["expires_at"])
+            if expires_at < datetime.now(timezone.utc):
+                return None
+            return _PendingAuth(
+                client_id=data["client_id"],
+                redirect_uri=data["redirect_uri"],
+                state=data.get("state"),
+                code_challenge=data.get("code_challenge"),
+                code_challenge_method=data.get("code_challenge_method", "S256"),
+            )
+        except (InvalidToken, ValueError, KeyError):
+            return None
+
     async def _handle_form(self, request: Request) -> Response:
         if request.method == "GET":
             req_id = request.query_params.get("req_id", "")
-            if req_id not in self._pending:
+            if self._decode_pending(req_id) is None:
                 return Response("Invalid or expired request.", status_code=400)
             return HTMLResponse(_login_html(req_id))
 
@@ -531,28 +548,27 @@ class IntervalsOAuthProvider:
         athlete_id = str(form.get("athlete_id", "")).strip()
         api_key = str(form.get("api_key", "")).strip()
 
-        pending = self._pending.pop(req_id, None)
+        pending = self._decode_pending(req_id)
         if pending is None:
             return Response("Invalid or expired request.", status_code=400)
         if not athlete_id or not api_key:
-            # Put the pending record back so the user can retry
-            self._pending[req_id] = pending
             return HTMLResponse(
                 _login_html(req_id, error="Please enter both Athlete ID and API Key."),
                 status_code=422,
             )
 
-        code = secrets.token_urlsafe(32)
-        self._codes[code] = _AuthCode(
-            code=code,
-            athlete_id=athlete_id,
-            api_key=api_key,
-            client_id=pending.client_id,
-            redirect_uri=pending.redirect_uri,
-            code_challenge=pending.code_challenge,
-            code_challenge_method=pending.code_challenge_method,
-            expires_at=datetime.now(timezone.utc) + self._CODE_LIFETIME,
-        )
+        # Encode auth code as a Fernet-encrypted token so any App Service
+        # instance can validate it at the token endpoint without shared state.
+        code_payload = json.dumps({
+            "athlete_id": athlete_id,
+            "api_key": api_key,
+            "client_id": pending.client_id,
+            "redirect_uri": pending.redirect_uri,
+            "code_challenge": pending.code_challenge,
+            "code_challenge_method": pending.code_challenge_method,
+            "expires_at": (datetime.now(timezone.utc) + self._CODE_LIFETIME).isoformat(),
+        })
+        code = self._fernet.encrypt(code_payload.encode()).decode()
 
         redirect = f"{pending.redirect_uri}?code={code}"
         if pending.state:
@@ -600,24 +616,27 @@ class IntervalsOAuthProvider:
             ):
                 return JSONResponse({"error": "invalid_client"}, status_code=401)
 
-        # Validate authorization code
+        # Validate authorization code (Fernet-encrypted, stateless)
         code = str(form.get("code", ""))
-        auth_code = self._codes.pop(code, None)
-        if auth_code is None:
+        try:
+            code_data = json.loads(self._fernet.decrypt(code.encode()).decode())
+            code_expires_at = datetime.fromisoformat(code_data["expires_at"])
+        except (InvalidToken, ValueError, KeyError):
             return JSONResponse(
                 {"error": "invalid_grant", "error_description": "Invalid or expired code"},
                 status_code=401,
             )
-        if auth_code.client_id != client_id:
-            return JSONResponse({"error": "invalid_grant"}, status_code=401)
-        if auth_code.expires_at < datetime.now(timezone.utc):
+        if code_expires_at < datetime.now(timezone.utc):
             return JSONResponse(
                 {"error": "invalid_grant", "error_description": "Code expired"},
                 status_code=401,
             )
+        if code_data.get("client_id") != client_id:
+            return JSONResponse({"error": "invalid_grant"}, status_code=401)
 
         # PKCE verification (S256)
-        if auth_code.code_challenge:
+        code_challenge = code_data.get("code_challenge")
+        if code_challenge:
             code_verifier = str(form.get("code_verifier", ""))
             if not code_verifier:
                 return JSONResponse(
@@ -626,21 +645,24 @@ class IntervalsOAuthProvider:
                 )
             digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
             computed = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
-            if not hmac.compare_digest(computed, auth_code.code_challenge):
+            if not hmac.compare_digest(computed, code_challenge):
                 return JSONResponse(
                     {"error": "invalid_grant", "error_description": "PKCE verification failed"},
                     status_code=401,
                 )
 
+        athlete_id_val = code_data["athlete_id"]
+        api_key_val = code_data["api_key"]
+
         # Issue access token (Fernet-encrypted, stateless)
         expires_at = datetime.now(timezone.utc) + self._token_lifetime
-        payload = f"{auth_code.athlete_id}:{auth_code.api_key}:{expires_at.isoformat()}"
+        payload = f"{athlete_id_val}:{api_key_val}:{expires_at.isoformat()}"
         token_str = self._fernet.encrypt(payload.encode()).decode()
         expires_in = int(self._token_lifetime.total_seconds())
 
         # Issue refresh token (long-lived, Fernet-encrypted, stateless)
         refresh_expires_at = datetime.now(timezone.utc) + self._REFRESH_TOKEN_LIFETIME
-        refresh_payload = f"refresh:{auth_code.athlete_id}:{auth_code.api_key}:{refresh_expires_at.isoformat()}"
+        refresh_payload = f"refresh:{athlete_id_val}:{api_key_val}:{refresh_expires_at.isoformat()}"
         refresh_token_str = self._fernet.encrypt(refresh_payload.encode()).decode()
 
         return JSONResponse(
