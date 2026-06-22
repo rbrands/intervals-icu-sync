@@ -6,5 +6,6 @@ mcp[cli]
 uvicorn[standard]
 azure-monitor-opentelemetry
 azure-identity
+azure-data-tables
 opentelemetry-instrumentation-starlette
 cryptography

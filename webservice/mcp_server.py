@@ -39,6 +39,7 @@ import json
 import logging
 import os
 import re
+import asyncio
 import hashlib
 import subprocess
 import sys
@@ -119,6 +120,9 @@ from oauth_provider import IntervalsOAuthProvider
 # Singleton OAuth provider – shared between the ASGI app and the auth middleware.
 _oauth = IntervalsOAuthProvider()
 
+_OAUTH_CLIENT_RETENTION_DAYS = 200
+_OAUTH_CLIENT_RETENTION_INTERVAL_SECONDS = 24 * 60 * 60
+
 _VERSION_FILE = _ROOT / "VERSION"
 _SCHEMA_VERSION = (
     _VERSION_FILE.read_text(encoding="utf-8").strip()
@@ -138,6 +142,14 @@ _MCP_TRACE_RESPONSE_ENABLED = os.environ.get("MCP_TRACE_RESPONSE_JSON", "").stri
 _MCP_TRACE_RESPONSE_PREVIEW_LIMIT = int(
     os.environ.get("MCP_TRACE_RESPONSE_PREVIEW_LIMIT", "4096")
 )
+
+
+async def _oauth_client_retention_loop() -> None:
+    """Periodically delete OAuth client registrations older than the retention window."""
+    while True:
+        _oauth.cleanup_expired_clients(_OAUTH_CLIENT_RETENTION_DAYS)
+
+        await asyncio.sleep(_OAUTH_CLIENT_RETENTION_INTERVAL_SECONDS)
 
 
 def _log_mcp_rpc_event(payload: dict) -> None:
@@ -1458,13 +1470,27 @@ def upload_week_plan(
 # streamable_http_app() lazily creates mcp._session_manager. Its Starlette app
 # passes `lifespan=lambda app: self.session_manager.run()` internally; that
 # lifespan is lost when we extract routes only. We therefore carry it over
-# explicitly so the StreamableHTTPSessionManager's task group is initialised
-# before any /mcp request arrives.
+# explicitly and also start the OAuth client retention loop so the storage
+# table is cleaned up automatically.
 _sse = mcp.sse_app()
 _http = mcp.streamable_http_app()  # initialises mcp._session_manager
+
+
+@contextlib.asynccontextmanager
+async def _combined_lifespan(_app):
+    retention_task = asyncio.create_task(_oauth_client_retention_loop())
+    try:
+        async with mcp.session_manager.run():
+            yield
+    finally:
+        retention_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await retention_task
+
+
 _combined = Starlette(
     routes=_oauth.get_routes() + list(_sse.routes) + list(_http.routes),
-    lifespan=lambda app: mcp.session_manager.run(),
+    lifespan=_combined_lifespan,
 )
 
 # configure_azure_monitor() auto-instruments FastAPI/Flask/Django but not plain

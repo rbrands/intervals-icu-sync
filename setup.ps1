@@ -58,6 +58,12 @@ if ($GitHub -or $All) {
     if ($config.OAuthAccessTokenLifetimeDays) {
         gh secret set OAUTH_ACCESS_TOKEN_LIFETIME_DAYS --body $config.OAuthAccessTokenLifetimeDays
     }
+    if ($config.PSObject.Properties.Name -contains 'OAuthClientStorageAccountName' -and $config.OAuthClientStorageAccountName) {
+        gh secret set OAUTH_CLIENT_STORAGE_ACCOUNT --body $config.OAuthClientStorageAccountName
+    }
+    if ($config.PSObject.Properties.Name -contains 'OAuthClientTableName' -and $config.OAuthClientTableName) {
+        gh secret set OAUTH_CLIENT_TABLE_NAME --body $config.OAuthClientTableName
+    }
     if ($config.StandardLibraryAthleteId) {
         gh secret set STANDARD_LIBRARY_ATHLETE_ID --body $config.StandardLibraryAthleteId
     }
@@ -101,6 +107,17 @@ if ($GitHub -or $All) {
 # 2. Generate bicepparam files
 #---------------------------------------------------------------------------
 if ($Bicep -or $All) {
+    $oauthClientStorageAccountName = if ($config.PSObject.Properties.Name -contains 'OAuthClientStorageAccountName' -and $config.OAuthClientStorageAccountName) {
+        $config.OAuthClientStorageAccountName
+    } else {
+        'stbrandsadvisorycentral'
+    }
+    $oauthClientTableName = if ($config.PSObject.Properties.Name -contains 'OAuthClientTableName' -and $config.OAuthClientTableName) {
+        $config.OAuthClientTableName
+    } else {
+        'mcpoauthclients'
+    }
+
     # --- webservice/infra/main.local.bicepparam ---------------------------
     Write-Host "Generating webservice/infra/main.local.bicepparam..." -ForegroundColor Yellow
 
@@ -117,6 +134,8 @@ param appInsightsName    = '$($config.AppInsightsName)'
 param customDomain       = '$($config.CustomDomain)'
 param oauthAccessTokenLifetimeDays = '$($config.OAuthAccessTokenLifetimeDays)'
 param standardLibraryAthleteId = '$($config.StandardLibraryAthleteId)'
+param oauthClientStorageAccountName = '$oauthClientStorageAccountName'
+param oauthClientTableName = '$oauthClientTableName'
 param mcpTraceResponseJson = '$($config.McpTraceResponseJson)'
 param mcpTraceResponsePreviewLimit = '$($config.McpTraceResponsePreviewLimit)'
 param mcpRpcEventLogLevel = '$($config.McpRpcEventLogLevel)'

@@ -43,6 +43,9 @@ jobs:
                 appInsightsName="${{ secrets.APP_INSIGHTS_NAME }}" \
                 customDomain="${{ secrets.APP_CUSTOM_DOMAIN }}" \
                 oauthTokenSecret="${{ secrets.OAUTH_TOKEN_SECRET }}" \
+                oauthAccessTokenLifetimeDays="${{ secrets.OAUTH_ACCESS_TOKEN_LIFETIME_DAYS || '30' }}" \
+                oauthClientStorageAccountName="stbrandsadvisorycentral" \
+                oauthClientTableName="mcpoauthclients" \
                 standardLibraryAthleteId="${{ secrets.STANDARD_LIBRARY_ATHLETE_ID }}" \
                 mcpTraceResponseJson="${{ secrets.MCP_TRACE_RESPONSE_JSON }}" \
                 mcpTraceResponsePreviewLimit="${{ secrets.MCP_TRACE_RESPONSE_PREVIEW_LIMIT }}" \

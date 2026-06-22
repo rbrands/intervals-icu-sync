@@ -32,6 +32,12 @@ param mcpTraceResponsePreviewLimit string = '4096'
 @description('Log level for structured MCP RPC events (INFO, WARNING, ERROR).')
 param mcpRpcEventLogLevel string = 'INFO'
 
+@description('Name of the existing Storage Account used for OAuth client registry table data.')
+param oauthClientStorageAccountName string = 'stbrandsadvisorycentral'
+
+@description('Name of the Azure Table used to persist OAuth client registrations.')
+param oauthClientTableName string = 'mcpoauthclients'
+
 // Reference the existing App Service Plan – it is not modified.
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' existing = {
   name: appServicePlanName
@@ -52,7 +58,7 @@ var tags = {
 var appInsightsSettings = appInsightsName != '' ? [
   {
     name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-    value: appInsights.properties.ConnectionString
+    value: appInsights!.properties.ConnectionString
   }
 ] : []
 
@@ -109,6 +115,14 @@ var commonAppSettings = [
   {
     name: 'OAUTH_ACCESS_TOKEN_LIFETIME_DAYS'
     value: oauthAccessTokenLifetimeDays
+  }
+  {
+    name: 'OAUTH_CLIENT_STORAGE_ACCOUNT'
+    value: oauthClientStorageAccountName
+  }
+  {
+    name: 'OAUTH_CLIENT_TABLE_NAME'
+    value: oauthClientTableName
   }
 ]
 
@@ -251,3 +265,12 @@ output devUrl string = 'https://${devSlot.properties.defaultHostName}'
 
 @description('Resource name of the Web App.')
 output appName string = webApp.name
+
+@description('Managed Identity principal id for the production slot.')
+output productionPrincipalId string = webApp.identity.principalId
+
+@description('Managed Identity principal id for the staging slot.')
+output stagingPrincipalId string = stagingSlot.identity.principalId
+
+@description('Managed Identity principal id for the dev slot.')
+output devPrincipalId string = devSlot.identity.principalId

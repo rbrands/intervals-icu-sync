@@ -34,6 +34,12 @@ param mcpTraceResponsePreviewLimit string = '4096'
 @description('Log level for structured MCP RPC events (INFO, WARNING, ERROR).')
 param mcpRpcEventLogLevel string = 'INFO'
 
+@description('Name of the existing Storage Account that should hold OAuth client registration table data.')
+param oauthClientStorageAccountName string = 'stbrandsadvisorycentral'
+
+@description('Name of the Azure Table used to persist OAuth client registrations.')
+param oauthClientTableName string = 'mcpoauthclients'
+
 module appservice 'modules/appservice.bicep' = {
   name: 'deploy-${appName}'
   params: {
@@ -48,6 +54,19 @@ module appservice 'modules/appservice.bicep' = {
     mcpTraceResponseJson: mcpTraceResponseJson
     mcpTraceResponsePreviewLimit: mcpTraceResponsePreviewLimit
     mcpRpcEventLogLevel: mcpRpcEventLogLevel
+    oauthClientStorageAccountName: oauthClientStorageAccountName
+    oauthClientTableName: oauthClientTableName
+  }
+}
+
+module oauthClientRegistry 'modules/oauth-client-registry.bicep' = {
+  name: 'oauth-registry-${appName}'
+  params: {
+    storageAccountName: oauthClientStorageAccountName
+    tableName: oauthClientTableName
+    productionPrincipalId: appservice.outputs.productionPrincipalId
+    stagingPrincipalId: appservice.outputs.stagingPrincipalId
+    devPrincipalId: appservice.outputs.devPrincipalId
   }
 }
 

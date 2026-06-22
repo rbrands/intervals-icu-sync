@@ -58,6 +58,12 @@ $config = @{
     # "standard library" by MCP method list_standard_library_workouts.
     StandardLibraryAthleteId = "__STANDARD_LIBRARY_ATHLETE_ID__"
 
+    # Existing Storage Account that should host persistent OAuth client registrations.
+    OAuthClientStorageAccountName = "stbrandsadvisorycentral"
+
+    # Azure Table name used for OAuth dynamic client registrations.
+    OAuthClientTableName = "mcpoauthclients"
+
     # Optional MCP response preview tracing in Application Insights.
     # Keep disabled in normal production operation to reduce telemetry volume.
     # Allowed values: true/false

@@ -25,9 +25,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import os
 import secrets
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -39,6 +41,22 @@ logger = logging.getLogger(__name__)
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from starlette.routing import Route
+
+try:
+    import azure.data.tables as azure_tables  # type: ignore[import-not-found]
+    import azure.core.exceptions as azure_exceptions  # type: ignore[import-not-found]
+    from azure.identity import DefaultAzureCredential  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - optional dependency for local dev
+    azure_tables = None
+    azure_exceptions = None
+    DefaultAzureCredential = None
+    ResourceExistsError = RuntimeError
+    AzureError = RuntimeError
+else:
+    ResourceExistsError = azure_exceptions.ResourceExistsError
+    AzureError = azure_exceptions.AzureError
+
+_TABLE_STORAGE_ERRORS = (AzureError,)
 
 
 @dataclass
@@ -71,6 +89,169 @@ class _AuthCode:
     expires_at: datetime
 
 
+class _OAuthClientStore:
+    """Persist OAuth client registrations in Azure Table Storage.
+
+    Uses Managed Identity / DefaultAzureCredential and gracefully degrades when
+    table storage is not configured or unavailable.
+    """
+
+    _PARTITION_KEY = "oauth_client"
+
+    def __init__(self, table_client: Any) -> None:
+        self._table_client = table_client
+
+    @classmethod
+    def from_environment(cls) -> "_OAuthClientStore | None":
+        account_name = os.environ.get("OAUTH_CLIENT_STORAGE_ACCOUNT", "").strip()
+        table_name = os.environ.get("OAUTH_CLIENT_TABLE_NAME", "mcpoauthclients").strip()
+
+        if not account_name:
+            logger.info(
+                "OAuth client persistence disabled (OAUTH_CLIENT_STORAGE_ACCOUNT not set)."
+            )
+            return None
+
+        if azure_tables is None or DefaultAzureCredential is None:
+            logger.warning(
+                "OAuth client persistence requested but Azure Table dependencies are missing. "
+                "Install azure-data-tables and azure-identity to enable persistence."
+            )
+            return None
+
+        endpoint = f"https://{account_name}.table.core.windows.net"
+        try:
+            credential = DefaultAzureCredential()
+            service_client = azure_tables.TableServiceClient(endpoint=endpoint, credential=credential)
+            table_client = service_client.get_table_client(table_name=table_name)
+            try:
+                table_client.create_table()
+                logger.info(
+                    "Created OAuth client registry table '%s' in storage account '%s'.",
+                    table_name,
+                    account_name,
+                )
+            except ResourceExistsError:
+                pass
+            logger.info(
+                "OAuth client persistence enabled using table '%s' in storage account '%s'.",
+                table_name,
+                account_name,
+            )
+            return cls(table_client)
+        except _TABLE_STORAGE_ERRORS as exc:
+            logger.exception(
+                "Failed to initialize OAuth client table storage (%s/%s): %s. "
+                "Falling back to in-memory registrations.",
+                account_name,
+                table_name,
+                exc,
+            )
+            return None
+
+    def save_client(self, client: _Client) -> None:
+        self.cleanup_expired_clients()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        entity = {
+            "PartitionKey": self._PARTITION_KEY,
+            "RowKey": client.client_id,
+            "client_name": client.client_name,
+            "client_secret": client.client_secret or "",
+            "token_endpoint_auth_method": client.token_endpoint_auth_method,
+            "redirect_uris_json": json.dumps(client.redirect_uris),
+            "updated_at_utc": now_iso,
+            "created_at_utc": now_iso,
+        }
+
+        try:
+            existing = self._table_client.get_entity(
+                partition_key=self._PARTITION_KEY,
+                row_key=client.client_id,
+            )
+            created_at = existing.get("created_at_utc")
+            if isinstance(created_at, str) and created_at:
+                entity["created_at_utc"] = created_at
+        except _TABLE_STORAGE_ERRORS:
+            # Entity does not exist or could not be fetched; upsert handles both.
+            pass
+
+        self._table_client.upsert_entity(entity=entity, mode="replace")
+
+    def cleanup_expired_clients(self, max_age_days: int = 200) -> int:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+        removed = 0
+
+        try:
+            entities: Iterable[dict[str, Any]] = self._table_client.query_entities(
+                query_filter=f"PartitionKey eq '{self._PARTITION_KEY}'"
+            )
+        except _TABLE_STORAGE_ERRORS:
+            return 0
+
+        for entity in entities:
+            created_at_raw = entity.get("created_at_utc")
+            if not isinstance(created_at_raw, str) or not created_at_raw:
+                continue
+
+            try:
+                created_at = datetime.fromisoformat(created_at_raw)
+            except ValueError:
+                continue
+
+            if created_at >= cutoff:
+                continue
+
+            row_key = entity.get("RowKey")
+            if not isinstance(row_key, str) or not row_key:
+                continue
+
+            try:
+                self._table_client.delete_entity(
+                    partition_key=self._PARTITION_KEY,
+                    row_key=row_key,
+                )
+                removed += 1
+            except _TABLE_STORAGE_ERRORS:
+                continue
+
+        if removed:
+            logger.info(
+                "Removed %s expired OAuth client registrations older than %s days.",
+                removed,
+                max_age_days,
+            )
+        return removed
+
+    def load_client(self, client_id: str) -> _Client | None:
+        try:
+            entity = self._table_client.get_entity(
+                partition_key=self._PARTITION_KEY,
+                row_key=client_id,
+            )
+        except _TABLE_STORAGE_ERRORS:
+            return None
+
+        redirect_uris_raw = entity.get("redirect_uris_json") or "[]"
+        try:
+            redirect_uris = json.loads(redirect_uris_raw)
+            if not isinstance(redirect_uris, list):
+                redirect_uris = []
+        except (TypeError, ValueError):
+            redirect_uris = []
+
+        client_secret = entity.get("client_secret") or None
+        client_name = str(entity.get("client_name") or "unknown")
+        auth_method = str(entity.get("token_endpoint_auth_method") or "client_secret_post")
+
+        return _Client(
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uris=[str(uri) for uri in redirect_uris],
+            client_name=client_name,
+            token_endpoint_auth_method=auth_method,
+        )
+
+
 def _base_url_from_request(request: Request) -> str:
     """Derive the public base URL from request headers (works behind App Service / Cloudflare)."""
     host = request.headers.get("host", "localhost:8000")
@@ -82,9 +263,11 @@ def _base_url_from_request(request: Request) -> str:
 class IntervalsOAuthProvider:
     """Self-contained OAuth 2.0 Authorization Server for intervals.icu credentials.
 
-    All state is in-memory. Create a single instance and register its routes
-    on the Starlette app.  Pass the instance to AuthHeaderMiddleware so it can
-    resolve Bearer tokens to (athlete_id, api_key) pairs.
+    Authorization/pending/token state is in-memory. Dynamic client registrations
+    are persisted to Azure Table Storage when configured, otherwise they remain
+    in-memory. Create a single instance and register its routes on the Starlette
+    app. Pass the instance to AuthHeaderMiddleware so it can resolve Bearer
+    tokens to (athlete_id, api_key) pairs.
     """
 
     _DEFAULT_TOKEN_LIFETIME_DAYS = 30
@@ -109,8 +292,41 @@ class IntervalsOAuthProvider:
                 "Tokens will be invalidated on restart."
             )
         self._clients: dict[str, _Client] = {}
+        self._client_store = _OAuthClientStore.from_environment()
         self._pending: dict[str, _PendingAuth] = {}
         self._codes: dict[str, _AuthCode] = {}
+
+    def _get_client(self, client_id: str) -> _Client | None:
+        client = self._clients.get(client_id)
+        if client is not None:
+            return client
+
+        if self._client_store is None:
+            return None
+
+        try:
+            stored = self._client_store.load_client(client_id)
+        except _TABLE_STORAGE_ERRORS as exc:
+            logger.warning("Failed to load OAuth client '%s' from table storage: %s", client_id, exc)
+            return None
+
+        if stored is not None:
+            self._clients[client_id] = stored
+        return stored
+
+    def _save_client(self, client: _Client) -> None:
+        self._clients[client.client_id] = client
+        if self._client_store is None:
+            return
+
+        try:
+            self._client_store.save_client(client)
+        except _TABLE_STORAGE_ERRORS as exc:
+            logger.warning(
+                "Failed to persist OAuth client '%s' to table storage: %s",
+                client.client_id,
+                exc,
+            )
 
     @staticmethod
     def _parse_positive_int_env(name: str, default: int) -> int:
@@ -250,7 +466,7 @@ class IntervalsOAuthProvider:
             client_name=body.get("client_name", "unknown"),
             token_endpoint_auth_method=auth_method,
         )
-        self._clients[client_id] = client
+        self._save_client(client)
 
         response_body: dict[str, Any] = {
             "client_id": client_id,
@@ -280,7 +496,7 @@ class IntervalsOAuthProvider:
                 {"error": "unsupported_response_type"}, status_code=400
             )
 
-        client = self._clients.get(client_id)
+        client = self._get_client(client_id)
         if client is None:
             return Response("Unknown client_id.", status_code=400)
 
@@ -373,7 +589,7 @@ class IntervalsOAuthProvider:
                 except (ValueError, UnicodeDecodeError):
                     pass
 
-        client = self._clients.get(client_id)
+        client = self._get_client(client_id)
         if client is None:
             return JSONResponse({"error": "invalid_client"}, status_code=401)
 
