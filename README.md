@@ -581,7 +581,9 @@ Each entry in the JSON file must have:
 - `name` — display name shown in intervals.icu
 - `duration_minutes` — planned duration (integer or float)
 
-Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate"]`), `steps` (structured workout intervals → uploaded as a ZWO file).
+Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `steps` (structured workout intervals → uploaded as a ZWO file).
+
+Tag handling: multiple tags per workout are supported. For backward compatibility, a legacy single `tag` string is also accepted and internally treated as a one-item `tags` list.
 
 Duplicate handling: before creating events, the script fetches existing WORKOUT events for the date range and indexes them by `(name, date)`. If a match is found the existing event is updated (`PUT`); otherwise a new event is created (`POST`). Re-running the script is safe and will never produce duplicates.
 

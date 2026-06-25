@@ -93,6 +93,7 @@ If no workouts are being created, respond in prose.
       "description": string,
       "ride_type": "vo2 | threshold | long_ride | endurance | recovery | race",
       "tag": string,
+      "tags": [string],
       "steps": [ { "duration_seconds": number, "power_pct_ftp": number } ]
     }
   ]
@@ -100,16 +101,19 @@ If no workouts are being created, respond in prose.
 
 Rules:
 - Every workout: date, name, duration_minutes, description, ride_type,
-  exactly ONE tag, non-empty steps.
+  at least one tag (use `tag` and/or `tags`), non-empty steps.
+- A workout may carry multiple tags when it serves multiple purposes.
+- Resolve ride intent per tag: each tag maps independently to its ride_type,
+  and the session counts toward all mapped ride types (tags do not compete).
 - Each step: duration_seconds (integer > 0), power_pct_ftp (integer).
 - Sum of step durations SHOULD approximately match duration_minutes.
 - Structure reflects warmup → main set → cooldown.
 - Tag format: "<domain>-<level>" — domain ∈ {vo2max, lactate-threshold,
   aerobic-threshold, race-specific, recovery}, level ∈ {low, moderate, high}.
-- ride_type "race" is used for race-specific sessions; it pairs with a
-  "race-specific-<level>" tag.
+- ride_type "race" is used for race-specific sessions; it pairs with at least
+  one "race-specific-<level>" tag.
   
 power_pct_ftp must align with the zones in training-zones.md.
 
 INVALID if: not valid JSON, missing workouts array, missing/empty steps,
-more than one tag, or any required field missing.
+no tag at all, or any required field missing.

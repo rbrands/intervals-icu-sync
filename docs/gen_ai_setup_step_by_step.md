@@ -1,6 +1,6 @@
 # Setup GenAI tools as Coach with intervals 
 
-# Section 01 - Prepare Coach Logic
+## Section 01 - Prepare Coach Logic
 
 *System prompt, athlete profiles, and coaching domain knowledge.*
 
@@ -13,8 +13,6 @@ The base system prompt for the LLM. Contains a placeholder block where you inser
 
 **`coach-logic/`**
 Modular documentation of the coaching domain knowledge — training philosophy, decision logic, fueling rules, zones, schema and example workouts.
-
----
 
 ## System prompt – swap in the athlete profile
 
@@ -34,8 +32,6 @@ Before passing the prompt to the coach, copy the contents of the matching `disci
 | `discipline_roadrace.md` | Road racer / aerobic durability and FTP focus |
 | `discipline_marathon.md` | Mountain marathon rider / aerobic durability + climbing endurance focus |
 
----
-
 ## `coach-logic/` – domain knowledge modules
 
 Modular markdown files describing the coaching domain knowledge — share them with your AI coach alongside the system prompt.
@@ -54,8 +50,6 @@ Modular markdown files describing the coaching domain knowledge — share them w
 > **Note:** Feel free to adapt the system prompt and the coach-logic files to your own training philosophy and preferences. However, keep `input-schema.md` and the plan JSON output contract in `system_prompt.md` **compatible** with `upload_plan.py` / `upload_week_plan` (required per workout: `date`, `name`, `duration_minutes`; optional: `description`, `tag`/`tags`, `steps`).
 
 > **Keep your files up to date:** Check the [CHANGELOG](https://github.com/rbrands/intervals-icu-sync/blob/main/CHANGELOG.md) periodically for updates to the prompt and coach-logic files, and replace your uploaded copies when relevant changes are listed.
-
----
 
 ## Where to put it – ChatGPT, Claude, Mistral AI and Microsoft Copilot
 
@@ -122,9 +116,7 @@ Under **"Instructions"**, paste the contents of `system_prompt.md` with the matc
 
 Under **"Knowledge"**, upload all files from the `coach-logic/` directory. ([Download as ZIP](https://download-directory.github.io/?url=https%3A%2F%2Fgithub.com%2Frbrands%2Fintervals-icu-sync%2Ftree%2Fmain%2Fcoach-logic))
 
-
----
-# Section 02 – Using the Managed MCP Server
+## Section 02 – Using the Managed MCP Server
 
 *No local Python installation needed — your AI tool fetches your data and uploads the plan directly via MCP.*
 
@@ -226,7 +218,7 @@ Under **"Tools"**, select **"Add tools → Add new → MCP"**.
 Fill in the fields:
 
 | Field | Value |
-|-------|-------|
+| ------- | ------- |
 | Server name | e.g. `intervals-icu-sync` |
 | Description | `Reads and writes training data from/to intervals.icu` |
 | Server URL | `https://intervals-mcp.training-architect.com/mcp` |
@@ -240,10 +232,7 @@ Select **"Create new connection"** and enter your intervals.icu **Athlete ID** a
 
 Select **Publish** to make the agent available.
 
----
-
-
-# Section 03 – Set Up Phase Planning in intervals.icu
+## Section 03 – Set Up Phase Planning in intervals.icu
 
 *Define season phases and weekly TSS targets so the coach can evaluate plan adherence correctly.*
 
@@ -279,9 +268,7 @@ in the `training_plan` section of the coach input.
 > **Tip:** Re-open Targets Generator whenever your availability or race goals change.
 > Keeping phase blocks and weekly targets up to date significantly improves coaching quality.
 
----
-
-# Section 04 – Typical Workflow
+## Section 04 – Typical Workflow
 
 *How you use the tool every week/daily with your AI coach.*
 
@@ -294,8 +281,6 @@ For the coaching assessment to be meaningful, enter the following in intervals.i
 - **Description / Notes** *(optional but recommended)* — a short comment on how the ride felt, any issues, or context the coach should know about
 
 The more consistently you log these, the better the coaching output.
-
----
 
 ## Step 1 – Prepare the week and share with your coach
 
@@ -343,6 +328,4 @@ Need more ready-to-use variants? See the prompt library in `docs/prompt_library.
 After discussing the assessment, ask Claude to create the plan and upload it:
 
 > Based on our discussion, please create a training plan for next week and upload it directly to my intervals.icu calendar using the `upload_week_plan` tool. Show me the plan first and wait for my confirmation before uploading.
-
----
 

@@ -111,6 +111,10 @@ and automatic distribution.
 
 Priority: tags > interval detection > automatic classification
 
+If a session has multiple canonical tags, all matching tag mappings apply.
+Tags do not compete. A single session can classify into multiple ride types
+and should be counted in each mapped domain.
+
 ### Tag taxonomy (canonical source)
 Format: "<domain>-<level>"
 - domains: vo2max, lactate-threshold, aerobic-threshold, recovery, race-specific
@@ -127,6 +131,13 @@ and with library filter tooling. Do not rename without updating all three.
     - else            → endurance
 - recovery-*          → recovery
 - race-specific-*     → race
+
+### Multiple tags on one session (CRITICAL)
+- Resolve each tag independently using the mapping above.
+- Keep all resolved ride types; do not collapse to a single class.
+- Example: tags `aerobic-threshold-high` and `vo2max-moderate` classify
+    as both `long_ride` and `vo2` (for duration ≥ 2h), and the session counts
+    toward both domains.
 
 ---
 

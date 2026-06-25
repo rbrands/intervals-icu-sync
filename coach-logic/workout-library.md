@@ -8,16 +8,16 @@ when generating a plan.
 - All intensities reference the zones in training-zones.md — this file
   names zones (Z1–Z7), never FTP percentages.
 - Tags follow the canonical taxonomy in interpretation-rules.md.
-  Every workout carries exactly one "<domain>-<level>" tag.
+  Every workout carries one or more "`<domain>-<level>`" tags.
 - The structures below are MAIN SETS; warmup and cooldown are added per
   the modeling rules in decision-process.md.
 
 Dose levels:
+
 - High → strong stimulus
 - Moderate → standard session
 - Low → reduced load / fatigue management
 
----
 
 ## VO2max (Z5)
 
@@ -29,7 +29,6 @@ Dose levels:
 
 Work in Z5; recovery in Z1.
 
----
 
 ## Threshold (Z4)
 
@@ -42,7 +41,6 @@ Work in Z5; recovery in Z1.
 Work in Z4 (sweet spot to threshold); recovery in Z1. Over/unders may add
 brief Z5 spikes.
 
----
 
 ## Aerobic Threshold / Long Ride (Z2)
 
@@ -55,7 +53,7 @@ brief Z5 spikes.
 Steady Z2 (upper Z2 preferred for performance gains). Avoid early Z3 spikes
 on long rides to protect durability.
 
----
+
 
 ## Race-Specific / Breakaway (Z6 + Z4)
 
@@ -69,7 +67,7 @@ consolidation (Z4). Full recovery (Z1) between sets, not partial.
 | Moderate | 3×(2 min Z6 + 3 min Z4), 5 min full rec between sets | race-specific-moderate |
 | Low      | 2×(2 min Z6 + 3 min Z4), 5 min full rec between sets | race-specific-low |
 
----
+
 
 ## Recovery (Z1)
 
@@ -77,11 +75,11 @@ consolidation (Z4). Full recovery (Z1) between sets, not partial.
 | ---- | ----------------------- | --- |
 | —    | 30–60 min easy, Z1 only | recovery-low |
 
----
+
 
 ## Consistency Rules (CRITICAL)
 
 - Every interval maps to a defined zone (training-zones.md). Do not use
   arbitrary %FTP values outside the zone definitions.
 - Interval description, intensity, and tag must be consistent within a workout.
-- Exactly one tag per workout, from the canonical taxonomy.
+- At least one tag per workout, from the canonical taxonomy.

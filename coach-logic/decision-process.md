@@ -72,7 +72,7 @@ steady aerobic pacing, fueling mandatory (below).
 ### Race-specific
 For criterium / road-race goals (discipline block). Hard anaerobic effort
 (Z6) + threshold consolidation (Z4), full recovery between sets.
-Produces ride_type "race", tag "race-specific-<level>".
+Produces ride_type "race", tags include "race-specific-<level>".
 
 ---
 
