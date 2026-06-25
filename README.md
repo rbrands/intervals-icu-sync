@@ -216,6 +216,8 @@ intervals-icu-sync/
 
 ## Setup
 
+> macOS note: if `python`/`pip` are not available (or point to Python 2), use `python3` and `pip3` for all commands below.
+
 ### 1. Create a virtual environment
 
 ```bash
@@ -239,7 +241,7 @@ pre-commit install
 
 This project includes `.pre-commit-config.yaml` with `nbstripout`, so notebook output and execution-count-only changes are removed automatically at commit time.
 
-### 2c. Windows launcher scripts (parallel Python versions)
+### 2c. Launcher scripts (parallel Python versions)
 
 This repository includes two helper scripts so you can keep Python 3.14 for the
 main project and Python 3.12 for Chainlit in parallel:
@@ -252,11 +254,24 @@ main project and Python 3.12 for Chainlit in parallel:
 .\Start-Chainlit.ps1 -Port 8013 -Watch
 ```
 
+On macOS/Linux (PowerShell Core), run:
+
+```bash
+pwsh ./Start-Chainlit.ps1 -Port 8013 -Watch
+```
+
 If `.venv312` does not exist yet:
 
 ```powershell
 py -3.12 -m venv .venv312
 .\.venv312\Scripts\python.exe -m pip install -r foundry-agent/requirements.txt
+```
+
+macOS/Linux equivalent:
+
+```bash
+python3.12 -m venv .venv312
+./.venv312/bin/python -m pip install -r foundry-agent/requirements.txt
 ```
 
 ### 3. Set your API key

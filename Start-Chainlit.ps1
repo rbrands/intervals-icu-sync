@@ -3,11 +3,21 @@ param(
     [switch]$Watch
 )
 
-$pythonExe = Join-Path $PSScriptRoot ".venv312\Scripts\python.exe"
-$appPath = Join-Path $PSScriptRoot "foundry-agent\chainlit_app.py"
+if ($IsWindows) {
+    $pythonExe = Join-Path $PSScriptRoot ".venv312\Scripts\python.exe"
+    $createHint = "py -3.12 -m venv .venv312"
+} else {
+    $pythonExe = Join-Path $PSScriptRoot ".venv312/bin/python3"
+    if (-not (Test-Path $pythonExe)) {
+        $pythonExe = Join-Path $PSScriptRoot ".venv312/bin/python"
+    }
+    $createHint = "python3.12 -m venv .venv312"
+}
+
+$appPath = Join-Path $PSScriptRoot "foundry-agent/chainlit_app.py"
 
 if (-not (Test-Path $pythonExe)) {
-    Write-Error "Chainlit environment not found at .venv312. Create it first: py -3.12 -m venv .venv312"
+    Write-Error "Chainlit environment not found at .venv312. Create it first: $createHint"
     exit 1
 }
 
