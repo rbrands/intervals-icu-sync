@@ -7,6 +7,14 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-06-26
+
+### Changed
+
+- Clarified tag usage rules in `prompts/system_prompt.md` and `foundry-agent/agent.yaml`: workouts may use multiple tags, each tag maps independently to ride intent, and plan outputs must include at least one valid canonical tag.
+- Updated coach-logic guidance (`coach-logic/interpretation-rules.md`, `coach-logic/decision-process.md`, `coach-logic/workout-library.md`) to align limiter detection and workout selection with the canonical tag scheme (`<domain>-<level>`).
+- Refined documentation in `README.md` and `docs/gen_ai_setup_step_by_step.md` to make tag-driven prompt behavior and practical tag usage clearer for manual and MCP-based workflows.
+
 ## [0.6.2] - 2026-06-22
 
 ### Added
