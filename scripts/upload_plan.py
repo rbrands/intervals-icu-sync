@@ -37,6 +37,12 @@ from intervals_icu.client import _ascii_safe, _steps_to_zwo, create_activity, de
 from intervals_icu.config import API_KEY, ATHLETE_ID
 
 DEFAULT_PLAN = Path(__file__).resolve().parents[1] / "data" / "plans" / "week_plan.json"
+MAX_ACTIVITY_NAME_LENGTH = 127
+MAX_ACTIVITY_DESCRIPTION_LENGTH = 512
+
+
+def _truncate_field(value: str, max_len: int) -> str:
+    return value[:max_len] if len(value) > max_len else value
 
 
 def load_plan(path: Path) -> list[dict]:
@@ -105,13 +111,14 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
             skipped += 1
             continue
 
-        name = workout["name"]
+        name = _truncate_field(str(workout["name"]), MAX_ACTIVITY_NAME_LENGTH)
         date = workout["date"]
         # intervals.icu requires a full ISO 8601 datetime; append time if only a date was given
         if len(date) == 10:
             date = date + "T00:00:00"
         duration_seconds = int(float(workout["duration_minutes"]) * 60)
-        description = workout.get("description", "")
+        raw_description = workout.get("description", "")
+        description = "" if raw_description is None else str(raw_description)
         fueling = workout.get("fueling")
         if fueling:
             carbs_per_hour = fueling.get("carbs_per_hour")
@@ -123,6 +130,7 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                 parts.append(f"{total_carbs}g total")
             if parts:
                 description = f"{description}\nFueling: {', '.join(parts)}" if description else f"Fueling: {', '.join(parts)}"
+        description = _truncate_field(description, MAX_ACTIVITY_DESCRIPTION_LENGTH)
         # Steps can be at the top level ("steps") or nested under a "workout" key
         workout_doc = workout.get("workout")
         if workout_doc is None and workout.get("steps"):

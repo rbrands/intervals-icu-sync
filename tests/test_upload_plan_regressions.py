@@ -67,6 +67,38 @@ class UploadPlanRegressionTests(unittest.TestCase):
             module.upload_plan(plan, dry_run=True)
         self.assertIn("1 steps", output.getvalue())
 
+    def test_upload_plan_truncates_name_and_description(self):
+        module = _load_upload_plan_module()
+        captured: dict[str, str] = {}
+
+        def _fake_get_events(*args, **kwargs):
+            return []
+
+        def _fake_create_activity(*, name: str, description: str, **kwargs):
+            captured["name"] = name
+            captured["description"] = description
+            return {"id": "evt-1"}
+
+        module.get_events = _fake_get_events
+        module.create_activity = _fake_create_activity
+
+        plan = [
+            {
+                "date": "2026-05-19",
+                "name": "N" * 160,
+                "duration_minutes": 60,
+                "description": "D" * 800,
+            }
+        ]
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            module.upload_plan(plan, dry_run=False)
+
+        self.assertEqual(len(captured["name"]), 127)
+        self.assertEqual(captured["name"], "N" * 127)
+        self.assertEqual(len(captured["description"]), 512)
+        self.assertEqual(captured["description"], "D" * 512)
+
 
 if __name__ == "__main__":
     unittest.main()
