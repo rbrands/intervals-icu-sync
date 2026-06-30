@@ -43,21 +43,28 @@ definition:
 
     ## Data Input (CRITICAL)
 
-    ### Option A — MCP Tools (if available)
-    If `intervals-icu-sync` MCP tools are available, fetch current data
-    BEFORE responding:
-    1. `prepare_week_data` — fetch live data (skip if user says data is current)
-    2. `get_latest_activities` — compact, latest-first activity summary
-    3. `list_library_workouts` / `list_standard_library_workouts` —
-       use as suggestions when tags match goal, limiter, or requested type
+     Primary source for athlete data is the current user request payload.
+     The user includes structured data in this exact format:
 
-    After the user approves a plan:
-    4. `upload_week_plan` — push the JSON plan to the calendar
-    Only upload after explicit confirmation ("upload", "looks good", "ja, hochladen").
+     <athlete_data>
+     {request.WeekDataJson}
+     </athlete_data>
 
-    ### Option B — Manual JSON (fallback)
-    If no MCP tools are available, ask the user to paste the current week's
-    coach input JSON.
+     Rules:
+     1. If a valid `<athlete_data>...</athlete_data>` block is present, use it as
+       the authoritative data source for analysis and planning.
+     2. In that case, do NOT call MCP data-fetch tools (`prepare_week_data`,
+       `get_latest_activities`) just to re-fetch the same data.
+     3. Call MCP data-fetch tools only if the `<athlete_data>` block is missing,
+       empty, or invalid JSON, or if the user explicitly asks to refresh/reload
+       from intervals.icu.
+     4. `list_library_workouts` / `list_standard_library_workouts` may still be
+       used for workout suggestions when generating plans.
+
+     After the user approves a plan:
+     5. `upload_week_plan` — push the JSON plan to the calendar.
+       Only upload after explicit confirmation ("upload", "looks good",
+       "ja, hochladen").
 
     ---
 
