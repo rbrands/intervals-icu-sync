@@ -142,6 +142,10 @@ _MCP_TRACE_RESPONSE_ENABLED = os.environ.get("MCP_TRACE_RESPONSE_JSON", "").stri
 _MCP_TRACE_RESPONSE_PREVIEW_LIMIT = int(
     os.environ.get("MCP_TRACE_RESPONSE_PREVIEW_LIMIT", "4096")
 )
+_HTTP_ERROR_LINE_RE = re.compile(
+    r"^(?P<operation>[A-Za-z0-9_]+) failed with HTTP (?P<status>\d{3}) "
+    r"(?P<reason>.+?) for (?P<url>\S+?)(?:; response body: (?P<body>.*))?$"
+)
 
 
 async def _oauth_client_retention_loop() -> None:
@@ -186,6 +190,57 @@ def _emit_tool_error(
     }
     payload.update(context)
     _logger.error(json.dumps(payload, ensure_ascii=False))
+
+
+def _http_error_hint(status_code: int) -> str:
+    """Return a short human-readable hint for common HTTP failures."""
+    if status_code in (401, 403):
+        return "Check ATHLETE_ID and INTERVALS_API_KEY; intervals.icu rejected the credentials."
+    if status_code == 404:
+        return "Check ATHLETE_ID; the athlete was not found or is not accessible with this API key."
+    if status_code == 429:
+        return "intervals.icu rate limit reached; retry after a short delay."
+    return ""
+
+
+def _summarize_script_failure(output: str) -> str:
+    """Reduce a traceback-heavy subprocess failure to a concise error message."""
+    text = output.strip()
+    if not text:
+        return text
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    last_exception_line = ""
+    for line in reversed(lines):
+        if line.startswith("requests.exceptions.") or ": " in line:
+            last_exception_line = line
+            break
+
+    if not last_exception_line:
+        return text
+
+    if last_exception_line.startswith("requests.exceptions."):
+        last_exception_line = last_exception_line.split(": ", 1)[1]
+
+    http_match = _HTTP_ERROR_LINE_RE.match(last_exception_line)
+    if http_match:
+        status_code = int(http_match.group("status"))
+        summary = (
+            f"{http_match.group('operation')} failed with HTTP {status_code} "
+            f"{http_match.group('reason')} for {http_match.group('url')}"
+        )
+        body = (http_match.group("body") or "").strip()
+        if body:
+            summary = f"{summary}; response body: {body}"
+        hint = _http_error_hint(status_code)
+        if hint:
+            summary = f"{summary} Hint: {hint}"
+        return summary
+
+    if last_exception_line.startswith("Traceback"):
+        return lines[-1]
+
+    return last_exception_line
 
 
 def _extract_mcp_rpc_metadata(body: bytes) -> tuple[str, str | None, str | None]:
@@ -682,6 +737,8 @@ def _run_script(
     output = result.stdout + (
         f"\nSTDERR: {result.stderr}" if result.stderr.strip() else ""
     )
+    if result.returncode != 0:
+        output = _summarize_script_failure(output)
     return result.returncode == 0, output.strip(), result.returncode
 
 
