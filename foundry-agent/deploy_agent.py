@@ -332,12 +332,12 @@ def _build_toolbox(project_client, skill_name: str, skill_version: str) -> tuple
     """Create/update toolbox only when skill reference differs. Returns (name, version, changed)."""
     from azure.core.exceptions import HttpResponseError
 
-    if not hasattr(project_client, "beta") or not hasattr(project_client.beta, "toolboxes"):
-        print("ERROR: this azure-ai-projects version does not expose beta.toolboxes operations.")
-        print("       Upgrade foundry-agent dependencies and try again.")
-        sys.exit(1)
-
     toolbox_name = os.environ.get("TOOLBOX_NAME", _DEFAULT_TOOLBOX_NAME)
+
+    if not hasattr(project_client, "beta") or not hasattr(project_client.beta, "toolboxes"):
+        print("WARNING: this azure-ai-projects version does not expose beta.toolboxes operations.")
+        print("         Continuing without toolbox update.")
+        return toolbox_name, "unsupported", False
 
     try:
         toolbox_details = project_client.beta.toolboxes.get(name=toolbox_name)
