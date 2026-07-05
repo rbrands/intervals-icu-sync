@@ -7,6 +7,27 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-07-05
+
+### Changed
+
+- Updated `prepare_week_data` outputs (local and webservice MCP tools) to merge per-activity fueling details from `fueling_analysis.activities` into each `activities[]` item as nested `fueling`, matched by `date`.
+- Removed `fueling_analysis.activities` from consolidated `coach_input` output; kept `fueling_analysis.weekly_summary` and `fueling_analysis.recommendations`.
+- Updated local consolidation script `scripts/prepare_week_for_coach.py` to apply the same merge/removal behavior for file-based `coach_input` generation.
+- Updated schema models/contracts to reflect the new shape: added `FuelingDetail`, added `activities[].fueling`, and removed `FuelingAnalysis.activities`.
+- Updated `scripts/fueling_planner.py` to use `activities[].fueling` (with backward-compatible fallback to legacy `fueling_analysis.activities`).
+- Replaced per-segment activity export field `interval_segments` with compact `interval_hr_analysis` in `scripts/prepare_activities_for_coach.py`, including `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, and `hr_power_decoupling`.
+- Added eligibility thresholds for interval HR analysis so only WORK intervals with at least 120 seconds and at least 95% FTP intensity are considered.
+- Added optional `lookback_days` parameter (default `7`) to MCP tool `prepare_week_data` in both local and webservice servers.
+- Switched activity/fueling preparation windows to a sliding lookback filter (`activity.date >= current_date - timedelta(days=lookback_days)`) in `prepare_activities_for_coach.py` and `fueling_analysis.py` (without changing calendar-week `week_summary` aggregation).
+- Updated the week-data contracts and schema models (`src/intervals_icu/week_data_schema.py`, `contracts/week-data/week-data.schema.json`, `contracts/week-data/WeekDataDto.cs`) to use `interval_hr_analysis`.
+- Updated documentation (`README.md`, `coach-logic/input-schema.md`) to describe the new interval HR summary fields and their thresholds.
+- Updated `notebooks/week_summary.ipynb` to display `interval_hr_analysis` instead of `interval_segments`.
+
+### Fixed
+
+- Fixed notebook loading in `notebooks/week_summary.ipynb` to support both consolidated `coach_input` payloads (dict) and activities-only exports (list), preventing `TypeError: list indices must be integers or slices, not str`.
+
 ## [0.6.3] - 2026-06-26
 
 ### Changed

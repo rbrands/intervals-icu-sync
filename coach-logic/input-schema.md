@@ -12,11 +12,14 @@ unit, and how it is derived.
 
 ## Top-Level Structure
 
-schema_version, week_starting, current_date, metrics, week_summary,
+schema_version, week_starting, lookback_days, current_date, metrics, week_summary,
 activities, fueling_analysis, planned_workouts
 
-`week_starting` / `current_date` (YYYY-MM-DD) are the ONLY authoritative
+- `week_starting` / `current_date` (YYYY-MM-DD) are the ONLY authoritative
 dates. Derive all dates from these (see system prompt, Date Handling).
+
+- `lookback_days`: sliding activity/fueling window size used during data
+  preparation. `week_summary` remains calendar-week based.
 
 ---
 
@@ -78,17 +81,29 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   null otherwise. Key field: `wbal_min_j` = lowest W'bal reached.
 - `power_curve`: best mean-maximal power per duration; null if no power.
   p3m ≈ VO2max proxy, p5m = gold-standard VO2max effort, p20m ≈ FTP proxy.
-- `interval_segments`: per-interval breakdown; null if no structured
-  intervals. Times in seconds; type WORK | RECOVERY; intensity_pct =
-  avg_power / FTP × 100; zone = power zone (1–7).
+- `interval_hr_analysis`: compact WORK-interval HR durability summary;
+  null if no suitable structured intervals are available.
+  Suitable means: WORK intervals with at least 120 seconds duration and at
+  least 95% FTP intensity.
+  - `hr_start_avg`: avg HR of first half of WORK intervals.
+  - `hr_end_avg`: avg HR of second half of WORK intervals.
+  - `hr_drift_pct`: HR drift from first to second half in %.
+  - `hr_power_decoupling`: HR drift (%) minus power drop (%) across WORK reps.
 
 ---
 
 ## fueling_analysis — non-obvious fields
 
-- `fueling_ratio`: carbs_ingested / carbs_used (classification thresholds
-  in interpretation-rules.md).
-- `flags`: may indicate underfueling or other issues.
+- `fueling_analysis` now carries aggregate week-level outputs only
+  (`weekly_summary`, `recommendations`).
+- Per-activity fueling details are nested under `activities[].fueling`.
+  - `carbs_classification`: classification of absolute intake rate
+    (`carbs_per_hour`).
+  - `ratio_classification`: classification of intake adequacy relative to
+    estimated carbohydrate use (`fueling_ratio`).
+  - `fueling_ratio`: carbs_ingested / carbs_used (classification thresholds
+    in interpretation-rules.md).
+  - `flags`: may indicate underfueling or other issues.
 
 ---
 
