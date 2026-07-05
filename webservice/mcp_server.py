@@ -1,8 +1,9 @@
 """MCP server for Azure App Service deployment.
 
 Exposes MCP tools over SSE transport:
-    - prepare_week_data       – runs the full data pipeline and returns the
-                                                            consolidated coach input as JSON
+    - prepare_week_data       – runs the full data pipeline and returns
+                                consolidated coach input JSON (activity/fueling
+                                window controlled by lookback_days)
     - get_latest_activities   – returns a compact list of latest rides
     - list_library_workouts   – lists the caller's own workout library entries
     - list_standard_library_workouts – lists shared workouts of configured standard library athlete
@@ -646,7 +647,7 @@ class AuthHeaderMiddleware:
     <h2>MCP Methods</h2>
     <table>
         <tr><th>Method</th><th>Description</th></tr>
-        <tr><td><code>prepare_week_data</code></td><td>Runs the full weekly pipeline and returns consolidated coach input JSON. Supports optional <code>lookback_days</code> (default: 7) for activity/fueling window.</td></tr>
+        <tr><td><code>prepare_week_data</code></td><td>Runs the full pipeline and returns consolidated coach input JSON. Supports optional <code>lookback_days</code> (default: 7) for the activity/fueling window while <code>week_summary</code> stays calendar-week based.</td></tr>
         <tr><td><code>get_latest_activities</code></td><td>Returns a compact latest-first activity list to avoid large payload truncation.</td></tr>
         <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
         <tr><td><code>list_standard_library_workouts</code></td><td>Lists shared workouts of STANDARD_LIBRARY_ATHLETE_ID with duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
@@ -1095,8 +1096,12 @@ def coach_prompt_metrics_wellness_summary(response_language: str = "de") -> str:
 
 @mcp.tool()
 def prepare_week_data(lookback_days: int = 7) -> str:
-    """Fetch all training data for the current week from intervals.icu, run the
-    full analysis pipeline, and return the consolidated coach input as JSON.
+    """Fetch all training data and return consolidated coach input as JSON.
+
+    Activity and fueling details use a sliding window controlled by
+    ``lookback_days`` (default: 7).
+    Calendar-week anchored sections (e.g. ``week_summary`` and ``week_starting``)
+    remain based on the current Monday.
 
     Pipeline steps:
     1. get_activities               – fetch Garmin/manual rides
@@ -1109,6 +1114,10 @@ def prepare_week_data(lookback_days: int = 7) -> str:
 
     Returns the consolidated JSON directly. Nothing is persisted on the server
     beyond the duration of this call.
+
+    Args:
+        lookback_days: Sliding-window size in days for activity/fueling data.
+            Must be >= 1.
 
     Credentials are read from the X-Intervals-Athlete-Id and X-Intervals-Api-Key
     request headers.
