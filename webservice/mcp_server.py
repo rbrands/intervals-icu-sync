@@ -646,7 +646,7 @@ class AuthHeaderMiddleware:
     <h2>MCP Methods</h2>
     <table>
         <tr><th>Method</th><th>Description</th></tr>
-        <tr><td><code>prepare_week_data</code></td><td>Runs the full weekly pipeline and returns consolidated coach input JSON.</td></tr>
+        <tr><td><code>prepare_week_data</code></td><td>Runs the full weekly pipeline and returns consolidated coach input JSON. Supports optional <code>lookback_days</code> (default: 7) for activity/fueling window.</td></tr>
         <tr><td><code>get_latest_activities</code></td><td>Returns a compact latest-first activity list to avoid large payload truncation.</td></tr>
         <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
         <tr><td><code>list_standard_library_workouts</code></td><td>Lists shared workouts of STANDARD_LIBRARY_ATHLETE_ID with duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>

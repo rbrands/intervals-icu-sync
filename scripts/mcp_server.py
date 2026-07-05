@@ -383,8 +383,12 @@ def coach_prompt_metrics_wellness_summary(response_language: str = "de") -> str:
 
 @mcp.tool()
 def prepare_week_data(lookback_days: int = 7) -> str:
-    """Fetch all training data for the current week from intervals.icu, run fueling
-    and week analysis, and consolidate everything into a coach_input JSON file.
+    """Fetch all training data, run fueling/week analysis, and consolidate output.
+
+    Activity and fueling details use a sliding window controlled by
+    ``lookback_days`` (default: 7).
+    Calendar-week anchored sections (e.g. ``week_summary`` and ``week_starting``)
+    remain based on the current Monday.
 
     This tool runs the full pipeline:
     1. get_activities – fetches Garmin/manual rides from intervals.icu
@@ -395,6 +399,10 @@ def prepare_week_data(lookback_days: int = 7) -> str:
     6. fueling_analysis – analyses carbohydrate intake quality
     7. analyze_week – computes Joe-Friel weekly summary
     8. consolidates all outputs into data/processed/coach_input_{monday}.json
+
+    Args:
+        lookback_days: Sliding-window size in days for activity/fueling data.
+            Must be >= 1.
 
     Returns a status summary with the result of each step.
     """
