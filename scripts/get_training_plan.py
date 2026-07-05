@@ -41,6 +41,13 @@ _AVAILABILITY_TO_CONSTRAINT: dict[str, tuple[str, bool]] = {
     "NONE": ("UNAVAILABLE", False),
 }
 
+_WEEK_NOTE_TYPE_MAP: dict[str, str] = {
+    "recovery week": "RECOVERY",
+    "erholungswoche": "RECOVERY",
+    "race week": "RACE",
+    "rennwoche": "RACE",
+}
+
 
 def fetch_all_events(start: str, end: str) -> list:
     url = f"{BASE_URL}/athlete/{ATHLETE_ID}/events.json"
@@ -81,7 +88,11 @@ def find_active_phases(events: list, today: date) -> list:
 
 
 def find_week_note(events: list, monday: date) -> str | None:
-    """Return the name of a NOTE event for the given week, if one exists (e.g. 'Recovery Week')."""
+    """Return the name of a week-type NOTE event for the given week.
+
+    Only explicit week-level note labels (e.g. Recovery/Race week) are treated
+    as week notes. Day-specific notes must become day constraints instead.
+    """
     week_start = monday.isoformat()
     week_end = (monday + timedelta(days=6)).isoformat()
     for ev in events:
@@ -89,7 +100,9 @@ def find_week_note(events: list, monday: date) -> str | None:
             continue
         ev_date = ev.get("start_date_local", "")[:10]
         if week_start <= ev_date <= week_end:
-            return ev.get("name")
+            note_name = (ev.get("name") or "").strip()
+            if note_name.lower() in _WEEK_NOTE_TYPE_MAP:
+                return note_name
     return None
 
 
@@ -101,12 +114,7 @@ def find_weekly_load_targets(events: list, monday: date) -> list:
     falling back to 'NORMAL'.
     """
     week_note = find_week_note(events, monday)
-    # Map known note names to canonical week_type values
-    _NOTE_TYPE_MAP = {
-        "recovery week": "RECOVERY",
-        "race week": "RACE",
-    }
-    note_week_type = _NOTE_TYPE_MAP.get(week_note.lower(), "NOTE") if week_note else None
+    note_week_type = _WEEK_NOTE_TYPE_MAP.get(week_note.lower()) if week_note else None
 
     week_start = monday.isoformat()
     week_end = (monday + timedelta(days=6)).isoformat()
@@ -160,9 +168,14 @@ def find_day_constraints(events: list, monday: date) -> list[dict]:
 
         if category == "NOTE":
             classified = _classify_note_constraint(name)
-            if not classified:
-                continue
-            constraint_type, training_allowed = classified
+            if classified:
+                constraint_type, training_allowed = classified
+            else:
+                availability_raw = (ev.get("training_availability") or "").strip().upper()
+                mapped = _AVAILABILITY_TO_CONSTRAINT.get(availability_raw)
+                if not mapped:
+                    continue
+                constraint_type, training_allowed = mapped
             key = (ev_date, constraint_type, category)
             constraints_by_key[key] = {
                 "date": ev_date,
