@@ -216,20 +216,16 @@
           "default": null,
           "title": "Interval Summary"
         },
-        "interval_segments": {
+        "interval_hr_analysis": {
           "anyOf": [
             {
-              "items": {
-                "$ref": "#/$defs/IntervalSegment"
-              },
-              "type": "array"
+              "$ref": "#/$defs/IntervalHrAnalysis"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Interval Segments"
+          "default": null
         },
         "decoupling": {
           "anyOf": [
@@ -394,6 +390,17 @@
           "anyOf": [
             {
               "$ref": "#/$defs/Weather"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fueling": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FuelingDetail"
             },
             {
               "type": "null"
@@ -581,10 +588,10 @@
       "title": "DayConstraint",
       "type": "object"
     },
-    "FuelingActivity": {
+    "FuelingAnalysis": {
       "additionalProperties": true,
       "properties": {
-        "date": {
+        "week_starting": {
           "anyOf": [
             {
               "type": "string"
@@ -594,9 +601,9 @@
             }
           ],
           "default": null,
-          "title": "Date"
+          "title": "Week Starting"
         },
-        "name": {
+        "current_date": {
           "anyOf": [
             {
               "type": "string"
@@ -606,23 +613,41 @@
             }
           ],
           "default": null,
-          "title": "Name"
+          "title": "Current Date"
         },
-        "duration_hours": {
+        "weekly_summary": {
           "anyOf": [
             {
-              "type": "number"
+              "$ref": "#/$defs/FuelingWeeklySummary"
             },
             {
-              "type": "integer"
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "recommendations": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "title": "Duration Hours"
-        },
+          "title": "Recommendations"
+        }
+      },
+      "title": "FuelingAnalysis",
+      "type": "object"
+    },
+    "FuelingDetail": {
+      "additionalProperties": true,
+      "properties": {
         "ride_type": {
           "anyOf": [
             {
@@ -729,79 +754,7 @@
           "title": "Flags"
         }
       },
-      "title": "FuelingActivity",
-      "type": "object"
-    },
-    "FuelingAnalysis": {
-      "additionalProperties": true,
-      "properties": {
-        "week_starting": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Week Starting"
-        },
-        "current_date": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Current Date"
-        },
-        "activities": {
-          "anyOf": [
-            {
-              "items": {
-                "$ref": "#/$defs/FuelingActivity"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Activities"
-        },
-        "weekly_summary": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/FuelingWeeklySummary"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "recommendations": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Recommendations"
-        }
-      },
-      "title": "FuelingAnalysis",
+      "title": "FuelingDetail",
       "type": "object"
     },
     "FuelingFormAnalysis": {
@@ -998,70 +951,10 @@
       "title": "FuelingWeeklySummary",
       "type": "object"
     },
-    "IntervalSegment": {
+    "IntervalHrAnalysis": {
       "additionalProperties": true,
       "properties": {
-        "start_time": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Start Time"
-        },
-        "end_time": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "End Time"
-        },
-        "elapsed_time": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Elapsed Time"
-        },
-        "type": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Type"
-        },
-        "label": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Label"
-        },
-        "avg_power": {
+        "hr_start_avg": {
           "anyOf": [
             {
               "type": "number"
@@ -1074,9 +967,9 @@
             }
           ],
           "default": null,
-          "title": "Avg Power"
+          "title": "Hr Start Avg"
         },
-        "avg_hr": {
+        "hr_end_avg": {
           "anyOf": [
             {
               "type": "number"
@@ -1089,9 +982,9 @@
             }
           ],
           "default": null,
-          "title": "Avg Hr"
+          "title": "Hr End Avg"
         },
-        "max_hr": {
+        "hr_drift_pct": {
           "anyOf": [
             {
               "type": "number"
@@ -1104,9 +997,9 @@
             }
           ],
           "default": null,
-          "title": "Max Hr"
+          "title": "Hr Drift Pct"
         },
-        "intensity_pct": {
+        "hr_power_decoupling": {
           "anyOf": [
             {
               "type": "number"
@@ -1119,22 +1012,10 @@
             }
           ],
           "default": null,
-          "title": "Intensity Pct"
-        },
-        "zone": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Zone"
+          "title": "Hr Power Decoupling"
         }
       },
-      "title": "IntervalSegment",
+      "title": "IntervalHrAnalysis",
       "type": "object"
     },
     "Metrics": {
@@ -2475,6 +2356,18 @@
     "week_starting": {
       "title": "Week Starting",
       "type": "string"
+    },
+    "lookback_days": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lookback Days"
     },
     "current_date": {
       "title": "Current Date",

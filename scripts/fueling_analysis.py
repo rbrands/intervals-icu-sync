@@ -10,6 +10,33 @@ _DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "process
 DATA_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
 
 
+def _lookback_days() -> int:
+    """Return sliding-window lookback days from env, defaulting to 7."""
+    raw = os.environ.get("LOOKBACK_DAYS", "7")
+    try:
+        value = int(raw)
+    except ValueError:
+        return 7
+    return value if value >= 1 else 7
+
+
+def _filter_by_lookback(activities: list[dict]) -> list[dict]:
+    today = date.today()
+    lower_bound = today - timedelta(days=_lookback_days())
+    filtered: list[dict] = []
+    for activity in activities:
+        date_str = activity.get("date")
+        if not date_str:
+            continue
+        try:
+            activity_date = date.fromisoformat(date_str)
+        except ValueError:
+            continue
+        if activity_date >= lower_bound:
+            filtered.append(activity)
+    return filtered
+
+
 def load_data() -> list:
     today = date.today()
     monday = today - timedelta(days=today.weekday())
@@ -260,6 +287,7 @@ def save_json(analyses: list, summary: dict, recommendations: list) -> None:
 
 def main() -> None:
     activities = load_data()
+    activities = _filter_by_lookback(activities)
     if not activities:
         print("No activities found.")
         sys.exit(0)

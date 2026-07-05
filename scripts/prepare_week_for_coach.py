@@ -1,6 +1,7 @@
 """Run all data fetch and analysis scripts in order."""
 
 import json
+import os
 import subprocess
 import sys
 from datetime import date, timedelta
@@ -14,13 +15,26 @@ _VERSION_FILE = _ROOT / "VERSION"
 _SCHEMA_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip() if _VERSION_FILE.exists() else "unknown"
 
 
-def run(script: str) -> None:
+def _lookback_days() -> int:
+    raw = os.environ.get("LOOKBACK_DAYS", "7")
+    try:
+        value = int(raw)
+    except ValueError:
+        return 7
+    return value if value >= 1 else 7
+
+
+def run(script: str, extra_env: dict[str, str] | None = None) -> None:
     print(f"\n{'=' * 50}")
     print(f"Running {script} ...")
     print("=" * 50)
+    env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
     result = subprocess.run(
         [sys.executable, str(SCRIPTS_DIR / script)],
         check=False,
+        env=env,
     )
     if result.returncode != 0:
         print(f"\nERROR: {script} failed with exit code {result.returncode}. Aborting.")
@@ -113,10 +127,49 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
     return result
 
 
+def _merge_fueling_into_activities(
+    activities: list[dict] | None,
+    fueling_data: dict | None,
+) -> tuple[list[dict], dict | None]:
+    activity_list = activities if isinstance(activities, list) else []
+
+    fueling_by_date: dict[str, list[dict]] = {}
+    cleaned_fueling = fueling_data
+    if isinstance(fueling_data, dict):
+        fueling_activities = fueling_data.get("activities")
+        if isinstance(fueling_activities, list):
+            for entry in fueling_activities:
+                if not isinstance(entry, dict):
+                    continue
+                entry_date = entry.get("date")
+                if not isinstance(entry_date, str):
+                    continue
+                fueling_by_date.setdefault(entry_date, []).append(entry)
+        cleaned_fueling = {k: v for k, v in fueling_data.items() if k != "activities"}
+
+    merged_activities: list[dict] = []
+    for activity in activity_list:
+        date_key = activity.get("date")
+        queue = fueling_by_date.get(date_key, []) if isinstance(date_key, str) else []
+        fueling_match = queue.pop(0) if queue else None
+        if isinstance(fueling_match, dict):
+            fueling_match = {
+                k: v
+                for k, v in fueling_match.items()
+                if k not in {"date", "name", "duration_hours"}
+            }
+        merged = dict(activity)
+        merged["fueling"] = fueling_match
+        merged_activities.append(merged)
+
+    return merged_activities, cleaned_fueling
+
+
 def consolidate() -> None:
     today = date.today()
     monday = today - timedelta(days=today.weekday())
     monday_str = monday.isoformat()
+    lookback_days = _lookback_days()
 
     # Locate metrics file (uses today's date)
     metrics_files = sorted(PROCESSED_DIR.glob("metrics_*.json"))
@@ -137,10 +190,15 @@ def consolidate() -> None:
 
     # coach_input is currently a flat list of activities
     activities = activities_data if isinstance(activities_data, list) else (activities_data or {}).get("activities")
+    activities, fueling_data = _merge_fueling_into_activities(
+        activities if isinstance(activities, list) else [],
+        fueling_data if isinstance(fueling_data, dict) else None,
+    )
 
     coach_input = {
         "schema_version": _SCHEMA_VERSION,
         "week_starting": monday_str,
+        "lookback_days": lookback_days,
         "current_date": date.today().isoformat(),
         "metrics": metrics,
         "week_summary": week_data,
@@ -158,9 +216,10 @@ def main() -> None:
     run("get_activities.py")
     run("get_metrics.py")
     run("get_training_plan.py")
-    run("prepare_activities_for_coach.py")
+    lookback_env = {"LOOKBACK_DAYS": str(_lookback_days())}
+    run("prepare_activities_for_coach.py", extra_env=lookback_env)
     run("prepare_planned_workouts_for_coach.py")
-    run("fueling_analysis.py")
+    run("fueling_analysis.py", extra_env=lookback_env)
     run("analyze_week.py")
     print(f"\n{'=' * 50}")
     print("Consolidating all data into coach_input ...")

@@ -19,6 +19,9 @@ _DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "process
 DATA_DIR = Path(os.environ.get("INTERVALS_RAW_DIR", str(_DEFAULT_RAW_DIR)))
 OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
 
+MIN_WORK_INTERVAL_SECONDS = 120
+MIN_WORK_INTERVAL_INTENSITY_PCT = 95.0
+
 
 # ---------------------------------------------------------------------------
 # W'bal condition check and computation
@@ -116,8 +119,15 @@ def _fetch_wbal_summary(activity: dict) -> dict | None:
     return summarize_wbal(wbal, float(w_prime))
 
 
-def _fetch_interval_segments(activity: dict) -> list[dict] | None:
-    """Fetch interval segments with per-interval avg HR and avg power."""
+def _fetch_interval_hr_analysis(activity: dict) -> dict | None:
+    """Fetch interval data and compute a compact HR drift summary.
+
+    Uses WORK intervals that pass minimum duration/intensity filters and returns:
+    - hr_start_avg: avg HR of first half of WORK reps
+    - hr_end_avg: avg HR of second half of WORK reps
+    - hr_drift_pct: HR drift from first to second half
+    - hr_power_decoupling: HR drift minus power drop (both in %)
+    """
     act_id = activity.get("id")
     if not act_id:
         return None
@@ -131,23 +141,79 @@ def _fetch_interval_segments(activity: dict) -> list[dict] | None:
     if not intervals:
         return None
 
-    segments: list[dict] = []
-    for itv in intervals:
-        segments.append(
-            {
-                "start_time": itv.get("start_time"),
-                "end_time": itv.get("end_time"),
-                "elapsed_time": itv.get("elapsed_time"),
-                "type": itv.get("type"),
-                "label": itv.get("label"),
-                "avg_power": itv.get("average_watts"),
-                "avg_hr": itv.get("average_heartrate"),
-                "max_hr": itv.get("max_heartrate"),
-                "intensity_pct": itv.get("intensity"),
-                "zone": itv.get("zone"),
-            }
-        )
-    return segments
+    ftp = activity.get("icu_ftp")
+
+    def _intensity_pct(itv: dict) -> float | None:
+        intensity = itv.get("intensity")
+        if intensity is not None:
+            raw = float(intensity)
+            # intervals.icu may provide either ratio (1.05) or percent (105).
+            return raw * 100.0 if raw <= 3 else raw
+        avg_power = itv.get("average_watts")
+        if avg_power is not None and ftp:
+            ftp_f = float(ftp)
+            if ftp_f > 0:
+                return float(avg_power) / ftp_f * 100.0
+        return None
+
+    def _is_eligible_work_interval(itv: dict) -> bool:
+        if (itv.get("type") or "").upper() != "WORK":
+            return False
+        elapsed = itv.get("elapsed_time")
+        if elapsed is None or float(elapsed) < MIN_WORK_INTERVAL_SECONDS:
+            return False
+        intensity_pct = _intensity_pct(itv)
+        if intensity_pct is None or intensity_pct < MIN_WORK_INTERVAL_INTENSITY_PCT:
+            return False
+        return True
+
+    work_intervals = [itv for itv in intervals if _is_eligible_work_interval(itv)]
+    if len(work_intervals) < 2:
+        return None
+
+    hr_values = [
+        float(itv["average_heartrate"])
+        for itv in work_intervals
+        if itv.get("average_heartrate") is not None
+    ]
+    if len(hr_values) < 2:
+        return None
+
+    split_idx = len(hr_values) // 2
+    first_half_hr = hr_values[:split_idx]
+    second_half_hr = hr_values[split_idx:]
+    if not first_half_hr or not second_half_hr:
+        return None
+
+    hr_start_avg = sum(first_half_hr) / len(first_half_hr)
+    hr_end_avg = sum(second_half_hr) / len(second_half_hr)
+    hr_drift_pct = None
+    if hr_start_avg > 0:
+        hr_drift_pct = ((hr_end_avg - hr_start_avg) / hr_start_avg) * 100
+
+    power_values = [
+        float(itv["average_watts"])
+        for itv in work_intervals
+        if itv.get("average_watts") is not None
+    ]
+    hr_power_decoupling = None
+    if len(power_values) >= 2:
+        power_split_idx = len(power_values) // 2
+        first_half_power = power_values[:power_split_idx]
+        second_half_power = power_values[power_split_idx:]
+        if first_half_power and second_half_power:
+            power_start_avg = sum(first_half_power) / len(first_half_power)
+            power_end_avg = sum(second_half_power) / len(second_half_power)
+            if power_start_avg > 0 and hr_drift_pct is not None:
+                power_drop_pct = ((power_start_avg - power_end_avg) / power_start_avg) * 100
+                hr_power_decoupling = hr_drift_pct - power_drop_pct
+
+    return {
+        "hr_start_avg": round(hr_start_avg),
+        "hr_end_avg": round(hr_end_avg),
+        "hr_drift_pct": round(hr_drift_pct, 1) if hr_drift_pct is not None else None,
+        "hr_power_decoupling": round(hr_power_decoupling, 1) if hr_power_decoupling is not None else None,
+    }
 
 
 def load_data() -> list:
@@ -160,9 +226,33 @@ def load_data() -> list:
     return json.loads(latest.read_text())
 
 
+def _lookback_days() -> int:
+    """Return sliding-window lookback days from env, defaulting to 7."""
+    raw = os.environ.get("LOOKBACK_DAYS", "7")
+    try:
+        value = int(raw)
+    except ValueError:
+        return 7
+    return value if value >= 1 else 7
+
+
+def _activity_date(activity: dict) -> date | None:
+    date_str = (activity.get("start_date_local") or "")[:10]
+    if not date_str:
+        return None
+    try:
+        return date.fromisoformat(date_str)
+    except ValueError:
+        return None
+
+
 def filter_activities(activities: list) -> list:
+    today = date.today()
+    lower_bound = today - timedelta(days=_lookback_days())
+
     return [
         a for a in activities
+        if ((act_date := _activity_date(a)) is not None and act_date >= lower_bound)
         if a.get("type") in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide")
         and a.get("source") != "STRAVA"
         and (a.get("icu_training_load", 0) > 20 or bool(a.get("tags")))
@@ -291,7 +381,7 @@ def extract_fields(
     activity: dict,
     wbal_summary: dict | None = None,
     power_curve: dict | None = None,
-    interval_segments: list[dict] | None = None,
+    interval_hr_analysis: dict | None = None,
 ) -> dict:
     avg_hr, max_hr = _extract_heart_rate(activity)
     interval_summary = activity.get("interval_summary")
@@ -315,7 +405,7 @@ def extract_fields(
         "z3_z4_pct": zone_dist["z3_z4_pct"],
         "z5_plus_pct": zone_dist["z5_plus_pct"],
         "interval_summary": interval_summary,
-        "interval_segments": interval_segments,
+        "interval_hr_analysis": interval_hr_analysis,
         "decoupling": activity.get("decoupling"),
         "decoupling_label": _classify_decoupling(float(activity["decoupling"])) if activity.get("decoupling") is not None else None,
         "rpe": activity.get("icu_rpe"),
@@ -357,13 +447,13 @@ def main() -> None:
             print(f"  Computing W'bal for {a.get('name', a.get('id'))} …")
             wbal_summary = _fetch_wbal_summary(a)
         power_curve = _fetch_power_curve(a)
-        interval_segments = _fetch_interval_segments(a)
+        interval_hr_analysis = _fetch_interval_hr_analysis(a)
         output.append(
             extract_fields(
                 a,
                 wbal_summary=wbal_summary,
                 power_curve=power_curve,
-                interval_segments=interval_segments,
+                interval_hr_analysis=interval_hr_analysis,
             )
         )
 

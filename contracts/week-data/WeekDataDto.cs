@@ -13,6 +13,9 @@ public class WeekDataDto
     [JsonPropertyName("week_starting")]
     public string WeekStarting { get; set; }
 
+    [JsonPropertyName("lookback_days")]
+    public int? LookbackDays { get; set; }
+
     [JsonPropertyName("current_date")]
     public string CurrentDate { get; set; }
 
@@ -82,8 +85,8 @@ public class ActivityDto
     [JsonPropertyName("interval_summary")]
     public List<string>? IntervalSummary { get; set; }
 
-    [JsonPropertyName("interval_segments")]
-    public List<IntervalSegmentDto>? IntervalSegments { get; set; }
+    [JsonPropertyName("interval_hr_analysis")]
+    public IntervalHrAnalysisDto? IntervalHrAnalysis { get; set; }
 
     [JsonPropertyName("decoupling")]
     public double? Decoupling { get; set; }
@@ -120,6 +123,9 @@ public class ActivityDto
 
     [JsonPropertyName("weather")]
     public WeatherDto? Weather { get; set; }
+
+    [JsonPropertyName("fueling")]
+    public FuelingDetailDto? Fueling { get; set; }
 
     [JsonPropertyName("power_curve")]
     public Dictionary<string, double>? PowerCurve { get; set; }
@@ -173,17 +179,26 @@ public class DayConstraintDto
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
-public class FuelingActivityDto
+public class FuelingAnalysisDto
 {
-    [JsonPropertyName("date")]
-    public string? Date { get; set; }
+    [JsonPropertyName("week_starting")]
+    public string? WeekStarting { get; set; }
 
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
+    [JsonPropertyName("current_date")]
+    public string? CurrentDate { get; set; }
 
-    [JsonPropertyName("duration_hours")]
-    public double? DurationHours { get; set; }
+    [JsonPropertyName("weekly_summary")]
+    public FuelingWeeklySummaryDto? WeeklySummary { get; set; }
 
+    [JsonPropertyName("recommendations")]
+    public List<string>? Recommendations { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public class FuelingDetailDto
+{
     [JsonPropertyName("ride_type")]
     public string? RideType { get; set; }
 
@@ -207,27 +222,6 @@ public class FuelingActivityDto
 
     [JsonPropertyName("flags")]
     public List<string>? Flags { get; set; }
-
-    [JsonExtensionData]
-    public Dictionary<string, JsonElement>? Extra { get; set; }
-}
-
-public class FuelingAnalysisDto
-{
-    [JsonPropertyName("week_starting")]
-    public string? WeekStarting { get; set; }
-
-    [JsonPropertyName("current_date")]
-    public string? CurrentDate { get; set; }
-
-    [JsonPropertyName("activities")]
-    public List<FuelingActivityDto>? Activities { get; set; }
-
-    [JsonPropertyName("weekly_summary")]
-    public FuelingWeeklySummaryDto? WeeklySummary { get; set; }
-
-    [JsonPropertyName("recommendations")]
-    public List<string>? Recommendations { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
@@ -287,37 +281,19 @@ public class FuelingWeeklySummaryDto
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
-public class IntervalSegmentDto
+public class IntervalHrAnalysisDto
 {
-    [JsonPropertyName("start_time")]
-    public int? StartTime { get; set; }
+    [JsonPropertyName("hr_start_avg")]
+    public double? HrStartAvg { get; set; }
 
-    [JsonPropertyName("end_time")]
-    public int? EndTime { get; set; }
+    [JsonPropertyName("hr_end_avg")]
+    public double? HrEndAvg { get; set; }
 
-    [JsonPropertyName("elapsed_time")]
-    public int? ElapsedTime { get; set; }
+    [JsonPropertyName("hr_drift_pct")]
+    public double? HrDriftPct { get; set; }
 
-    [JsonPropertyName("type")]
-    public string? Type { get; set; }
-
-    [JsonPropertyName("label")]
-    public string? Label { get; set; }
-
-    [JsonPropertyName("avg_power")]
-    public double? AvgPower { get; set; }
-
-    [JsonPropertyName("avg_hr")]
-    public double? AvgHr { get; set; }
-
-    [JsonPropertyName("max_hr")]
-    public double? MaxHr { get; set; }
-
-    [JsonPropertyName("intensity_pct")]
-    public double? IntensityPct { get; set; }
-
-    [JsonPropertyName("zone")]
-    public int? Zone { get; set; }
+    [JsonPropertyName("hr_power_decoupling")]
+    public double? HrPowerDecoupling { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

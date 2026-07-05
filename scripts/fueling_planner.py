@@ -1,7 +1,7 @@
 """Generate carbohydrate intake recommendations for planned cycling activities.
 
-Reads fueling_analysis activities (which include ride_type) from the consolidated
-coach_input_{monday}.json and produces a per-session fueling plan with targets,
+Reads per-activity fueling details from consolidated coach_input data
+(activities[].fueling) and produces a per-session fueling plan with targets,
 totals, and practical strategies.
 
 Usage:
@@ -214,8 +214,21 @@ def main() -> None:
     print(f"Loading {input_file.name}\n")
     data = json.loads(input_file.read_text())
 
-    # fueling_analysis.activities already carry ride_type from fueling_analysis.py
-    activities = data.get("fueling_analysis", {}).get("activities", [])
+    # Preferred schema: per-activity fueling details are nested in activities[].fueling.
+    activities = []
+    for activity in data.get("activities", []):
+        fueling = activity.get("fueling")
+        if not isinstance(fueling, dict):
+            continue
+        merged = dict(fueling)
+        merged.setdefault("date", activity.get("date"))
+        merged.setdefault("name", activity.get("name"))
+        merged.setdefault("duration_hours", activity.get("duration_hours"))
+        activities.append(merged)
+
+    # Backward-compatible fallback for older consolidated payloads.
+    if not activities:
+        activities = data.get("fueling_analysis", {}).get("activities", [])
     if not activities:
         # Fall back to main activities list (ride_type will default to endurance)
         activities = data.get("activities", [])

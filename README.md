@@ -420,7 +420,7 @@ Output: console + `data/processed/week_summary_{monday}.json`
 
 ### `prepare_activities_for_coach.py`
 
-Exports a simplified JSON of this week's rides for sharing with a coach or ChatGPT. Includes duration, training load, power, HR (avg/max), RPE, interval summary, per-interval segments with average/max HR and average power (`interval_segments`), decoupling, and carbohydrate intake.
+Exports a simplified JSON of rides in the active lookback window (`LOOKBACK_DAYS`, default: `7`) for sharing with a coach or ChatGPT. Includes duration, training load, power, HR (avg/max), RPE, interval summary, compact interval HR analysis (`interval_hr_analysis` with `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, `hr_power_decoupling`), decoupling, and carbohydrate intake. The HR interval summary is computed only from eligible WORK intervals (minimum 120 seconds and minimum 95% FTP intensity).
 Activities in the exported list are sorted by date/time with the newest ride first.
 
 ```bash
@@ -433,7 +433,7 @@ Output: `data/processed/coach_input_{monday}.json`
 
 ### `fueling_analysis.py`
 
-Analyzes carbohydrate fueling quality per activity and for the week. Classifies fueling based on duration (no fueling needed / optional / required), computes carbs/h and fueling ratio, detects underfueled sessions, and generates coaching recommendations.
+Analyzes carbohydrate fueling quality per activity and for the active lookback window (`LOOKBACK_DAYS`, default: `7`). Classifies fueling based on duration (no fueling needed / optional / required), computes carbs/h and fueling ratio, detects underfueled sessions, and generates coaching recommendations.
 
 ```bash
 python scripts/fueling_analysis.py
@@ -446,7 +446,7 @@ Output: console report + `data/processed/fueling_analysis_{monday}.json`
 ### `fueling_planner.py`
 
 Generates per-session carbohydrate intake targets based on ride type, duration, and current fatigue (Form %).
-Reads from `coach_input_{monday}.json` (specifically the `fueling_analysis.activities` list, which already carries `ride_type`).
+Reads from `coach_input_{monday}.json` (specifically `activities[].fueling`, which carries the fueling classification fields including `ride_type`).
 
 Target ranges by ride type:
 

@@ -124,17 +124,11 @@ class WeekSummary(_SchemaModel):
     training_plan: list[TrainingPlanEntry] | None = None
 
 
-class IntervalSegment(_SchemaModel):
-    start_time: int | None = None
-    end_time: int | None = None
-    elapsed_time: int | None = None
-    type: str | None = None
-    label: str | None = None
-    avg_power: float | int | None = None
-    avg_hr: float | int | None = None
-    max_hr: float | int | None = None
-    intensity_pct: float | int | None = None
-    zone: int | None = None
+class IntervalHrAnalysis(_SchemaModel):
+    hr_start_avg: float | int | None = None
+    hr_end_avg: float | int | None = None
+    hr_drift_pct: float | int | None = None
+    hr_power_decoupling: float | int | None = None
 
 
 class Weather(_SchemaModel):
@@ -149,6 +143,17 @@ class ActivityWbalSummary(_SchemaModel):
     seconds_below_30pct: int | None = None
     depletion_events: int | None = None
     recovery_ratio: float | int | None = None
+
+
+class FuelingDetail(_SchemaModel):
+    ride_type: str | None = None
+    fueling_status: str | None = None
+    carbs_per_hour: float | int | None = None
+    fueling_ratio: float | int | None = None
+    carbs_classification: str | None = None
+    ratio_classification: str | None = None
+    is_long_ride: bool | None = None
+    flags: list[str] | None = None
 
 
 class Activity(_SchemaModel):
@@ -167,7 +172,7 @@ class Activity(_SchemaModel):
     z3_z4_pct: float | int | None = None
     z5_plus_pct: float | int | None = None
     interval_summary: list[str] | None = None
-    interval_segments: list[IntervalSegment] | None = None
+    interval_hr_analysis: IntervalHrAnalysis | None = None
     decoupling: float | int | None = None
     decoupling_label: str | None = None
     rpe: float | int | None = None
@@ -180,22 +185,9 @@ class Activity(_SchemaModel):
     tags: list[str] | None = None
     notes: str | None = None
     weather: Weather | None = None
+    fueling: FuelingDetail | None = None
     power_curve: dict[str, float | int] | None = None
     wbal_summary: ActivityWbalSummary | None = None
-
-
-class FuelingActivity(_SchemaModel):
-    date: str | None = None
-    name: str | None = None
-    duration_hours: float | int | None = None
-    ride_type: str | None = None
-    fueling_status: str | None = None
-    carbs_per_hour: float | int | None = None
-    fueling_ratio: float | int | None = None
-    carbs_classification: str | None = None
-    ratio_classification: str | None = None
-    is_long_ride: bool | None = None
-    flags: list[str] | None = None
 
 
 class FuelingWeeklySummary(_SchemaModel):
@@ -208,7 +200,6 @@ class FuelingWeeklySummary(_SchemaModel):
 class FuelingAnalysis(_SchemaModel):
     week_starting: str | None = None
     current_date: str | None = None
-    activities: list[FuelingActivity] | None = None
     weekly_summary: FuelingWeeklySummary | None = None
     recommendations: list[str] | None = None
 
@@ -254,6 +245,7 @@ class WeekData(_SchemaModel):
 
     schema_version: str
     week_starting: str
+    lookback_days: int | None = None
     current_date: str
     metrics: Metrics | None = None
     week_summary: WeekSummary | None = None

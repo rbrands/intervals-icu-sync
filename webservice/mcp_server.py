@@ -753,6 +753,91 @@ def _current_monday() -> date:
     return today - timedelta(days=today.weekday())
 
 
+def _filter_activities_by_lookback(
+    activities: list[dict] | None,
+    *,
+    current_date: date,
+    lookback_days: int,
+) -> list[dict]:
+    if not activities:
+        return []
+
+    lower_bound = current_date - timedelta(days=lookback_days)
+    filtered: list[dict] = []
+    for activity in activities:
+        activity_date_str = activity.get("date")
+        if not activity_date_str:
+            continue
+        try:
+            activity_date = date.fromisoformat(activity_date_str)
+        except ValueError:
+            continue
+        if activity_date >= lower_bound:
+            filtered.append(activity)
+    return filtered
+
+
+def _filter_fueling_analysis_by_lookback(
+    fueling_data: dict | None,
+    *,
+    current_date: date,
+    lookback_days: int,
+) -> dict | None:
+    if not isinstance(fueling_data, dict):
+        return fueling_data
+
+    activities = fueling_data.get("activities")
+    if not isinstance(activities, list):
+        return fueling_data
+
+    filtered = _filter_activities_by_lookback(
+        activities,
+        current_date=current_date,
+        lookback_days=lookback_days,
+    )
+    updated = dict(fueling_data)
+    updated["activities"] = filtered
+    return updated
+
+
+def _merge_fueling_into_activities(
+    activities: list[dict] | None,
+    fueling_data: dict | None,
+) -> tuple[list[dict], dict | None]:
+    activity_list = activities if isinstance(activities, list) else []
+
+    fueling_by_date: dict[str, list[dict]] = {}
+    cleaned_fueling = fueling_data
+    if isinstance(fueling_data, dict):
+        fueling_activities = fueling_data.get("activities")
+        if isinstance(fueling_activities, list):
+            for entry in fueling_activities:
+                if not isinstance(entry, dict):
+                    continue
+                entry_date = entry.get("date")
+                if not isinstance(entry_date, str):
+                    continue
+                fueling_by_date.setdefault(entry_date, []).append(entry)
+        cleaned_fueling = {k: v for k, v in fueling_data.items() if k != "activities"}
+
+    merged_activities: list[dict] = []
+    for activity in activity_list:
+        date_key = activity.get("date")
+        queue = fueling_by_date.get(date_key, []) if isinstance(date_key, str) else []
+        fueling_match = queue.pop(0) if queue else None
+        if isinstance(fueling_match, dict):
+            fueling_match = {
+                k: v
+                for k, v in fueling_match.items()
+                if k not in {"date", "name", "duration_hours"}
+            }
+        merged = dict(activity)
+        merged["fueling"] = fueling_match
+        merged_activities.append(merged)
+
+    return merged_activities, cleaned_fueling
+
+
 def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dict]:
     """Return Ride-only training plan entries for the current and next week."""
     if not plan_data:
@@ -1009,7 +1094,7 @@ def coach_prompt_metrics_wellness_summary(response_language: str = "de") -> str:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def prepare_week_data() -> str:
+def prepare_week_data(lookback_days: int = 7) -> str:
     """Fetch all training data for the current week from intervals.icu, run the
     full analysis pipeline, and return the consolidated coach input as JSON.
 
@@ -1029,6 +1114,15 @@ def prepare_week_data() -> str:
     request headers.
     """
     with _tool_span("mcp.tool/prepare_week_data") as span:
+        span.set_attribute("lookback_days", lookback_days)
+
+        if lookback_days < 1:
+            span.set_status(_ERROR, "invalid lookback_days")
+            return json.dumps(
+                {"error": "lookback_days must be >= 1"},
+                ensure_ascii=False,
+            )
+
         err = _check_credentials()
         if err:
             span.set_status(_ERROR, "missing credentials")
@@ -1051,14 +1145,17 @@ def prepare_week_data() -> str:
 
             tmp_raw_path = Path(tmp_raw)
             tmp_proc_path = Path(tmp_proc)
-            extra_env = {
+            base_env = {
                 "INTERVALS_RAW_DIR": str(tmp_raw_path),
                 "INTERVALS_PROCESSED_DIR": str(tmp_proc_path),
             }
 
             log_lines: list[str] = []
             for script in pipeline:
-                ok, output, return_code = _run_script(script, extra_env=extra_env)
+                per_script_env = dict(base_env)
+                if script in {"prepare_activities_for_coach.py", "fueling_analysis.py"}:
+                    per_script_env["LOOKBACK_DAYS"] = str(lookback_days)
+                ok, output, return_code = _run_script(script, extra_env=per_script_env)
                 status = "OK" if ok else "FAILED"
                 log_lines.append(f"[{status}] {script}")
                 if output:
@@ -1116,10 +1213,22 @@ def prepare_week_data() -> str:
                 if isinstance(activities_data, list)
                 else (activities_data or {}).get("activities")
             )
+            activities = _filter_activities_by_lookback(
+                activities if isinstance(activities, list) else [],
+                current_date=today,
+                lookback_days=lookback_days,
+            )
+            fueling_data = _filter_fueling_analysis_by_lookback(
+                fueling_data if isinstance(fueling_data, dict) else None,
+                current_date=today,
+                lookback_days=lookback_days,
+            )
+            activities, fueling_data = _merge_fueling_into_activities(activities, fueling_data)
 
             coach_input = {
                 "schema_version": _SCHEMA_VERSION,
                 "week_starting": monday_str,
+                "lookback_days": lookback_days,
                 "current_date": today.isoformat(),
                 "metrics": metrics,
                 "week_summary": week_data,

@@ -6,7 +6,7 @@ MCP server for Azure App Service. Exposes tools over SSE transport, with credent
 
 | Tool | Description |
 |---|---|
-| `prepare_week_data` | Runs the full data pipeline (activities, metrics, training plan, fueling, week analysis) and returns the consolidated coach input as JSON. Nothing is stored on the server. |
+| `prepare_week_data` | Runs the full data pipeline (activities, metrics, training plan, fueling, week analysis) and returns the consolidated coach input as JSON. Supports optional `lookback_days` (default `7`) for activity/fueling windows while keeping `week_summary` anchored to calendar week. Nothing is stored on the server. |
 | `get_latest_activities` | Runs a slim pipeline and returns a compact, latest-first activity list (`date`, `name`, `duration_hours`, `training_load`, `avg_hr`, `max_hr`, `rpe`, `tags`) to avoid client-side truncation on large payloads. |
 | `list_library_workouts` | Lists the authenticated caller's own workout library with key fields (`folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
 | `list_standard_library_workouts` | Lists shared workouts of the configured standard library athlete (`STANDARD_LIBRARY_ATHLETE_ID`) with key fields (`shared_from`, `folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
