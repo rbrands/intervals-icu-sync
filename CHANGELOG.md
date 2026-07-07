@@ -7,6 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-07-07
+
+### Changed
+
+- Removed `ride_type` from the generated training-plan JSON contract in `prompts/system_prompt.md` and `foundry-agent/agent.yaml`; ride intent is now derived from workout tags downstream.
+- Simplified the generated plan contract to require only a non-empty `tags` array; a single tag must now also be emitted as a one-item `tags` list.
+- Updated `scripts/fueling_planner.py` to derive the primary fueling ride type from workout tags when `ride_type` is absent, while still honoring legacy payloads that include `ride_type`.
+- Updated documentation (`README.md`, `docs/gen_ai_setup_step_by_step.md`, `coach-logic/decision-process.md`) to match the tag-only plan format and the tag-derived ride-type behavior.
+
+### Added
+
+- Added regression coverage in `tests/test_workout_tag_conventions.py` for tag-based fueling-plan inference, including multi-tag sessions.
+
 ## [0.6.5] - 2026-07-05
 
 ### Changed
