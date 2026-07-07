@@ -445,8 +445,8 @@ Output: console report + `data/processed/fueling_analysis_{monday}.json`
 
 ### `fueling_planner.py`
 
-Generates per-session carbohydrate intake targets based on ride type, duration, and current fatigue (Form %).
-Reads from `coach_input_{monday}.json` (specifically `activities[].fueling`, which carries the fueling classification fields including `ride_type`).
+Generates per-session carbohydrate intake targets based on tag-derived ride type, duration, and current fatigue (Form %).
+Reads from `coach_input_{monday}.json` (specifically `activities[].fueling` plus workout `tags`; if a legacy `ride_type` is present it is still honored).
 
 Target ranges by ride type:
 

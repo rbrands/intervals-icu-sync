@@ -1,10 +1,20 @@
 import re
 import unittest
+import importlib.util
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKOUTS_FILE = REPO_ROOT / "coach-logic" / "workout-library.md"
+
+
+def _load_fueling_planner_module():
+    module_path = REPO_ROOT / "scripts" / "fueling_planner.py"
+    spec = importlib.util.spec_from_file_location("fueling_planner_script", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(module)
+    return module
 
 EXPECTED_PREFIXES = {
     "vo2max",
@@ -68,6 +78,32 @@ class WorkoutTagConventionTests(unittest.TestCase):
                     f"{sorted(REQUIRED_SUFFIXES_BY_PREFIX[prefix])} but found {sorted(found_suffixes)}"
                 ),
             )
+
+    def test_fueling_planner_derives_long_ride_from_aerobic_threshold_tag(self):
+        module = _load_fueling_planner_module()
+
+        plan = module.plan_activity({
+            "date": "2026-07-07",
+            "name": "Aerobic endurance",
+            "duration_hours": 2.5,
+            "tags": ["aerobic-threshold-high"],
+        })
+
+        self.assertEqual(plan["ride_type"], "long_ride")
+        self.assertEqual(plan["target_range"], (80, 90))
+
+    def test_fueling_planner_prefers_highest_demand_when_multiple_tags_apply(self):
+        module = _load_fueling_planner_module()
+
+        plan = module.plan_activity({
+            "date": "2026-07-07",
+            "name": "Mixed session",
+            "duration_hours": 3.0,
+            "tags": ["vo2max-moderate", "aerobic-threshold-high"],
+        })
+
+        self.assertEqual(plan["ride_type"], "long_ride")
+        self.assertEqual(plan["target_range"], (80, 90))
 
 
 if __name__ == "__main__":

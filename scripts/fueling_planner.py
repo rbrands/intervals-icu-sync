@@ -19,6 +19,13 @@ from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 
+_TAG_PREFIX_TO_RIDE_TYPE: dict[str, str] = {
+    "vo2max": "vo2",
+    "lactate-threshold": "threshold",
+    "recovery": "recovery",
+    "race-specific": "race",
+}
+
 # Target range (min, max) in g/h per ride type
 _TARGETS: dict[str, tuple[int, int]] = {
     "vo2":                   (40, 60),
@@ -49,11 +56,53 @@ def _target_range(ride_type: str, duration_hours: float) -> tuple[int, int]:
     """Return (min, max) g/h target for the ride type and duration."""
     if ride_type == "endurance":
         key = "endurance_long" if duration_hours >= 2.0 else "endurance_short"
+    elif ride_type == "race":
+        key = "endurance_with_sprint"
     elif ride_type in _TARGETS:
         key = ride_type
     else:
         key = "endurance_long"
     return _TARGETS[key]
+
+
+def _activity_tags(activity: dict) -> list[str]:
+    """Return normalized tags from either `tags` or legacy single `tag`."""
+    raw_tags = activity.get("tags") or []
+    if not raw_tags and activity.get("tag"):
+        raw_tags = [activity["tag"]]
+    return [str(tag) for tag in raw_tags if tag]
+
+
+def _resolve_ride_types(tags: list[str], duration_hours: float) -> list[str]:
+    """Resolve one or more ride types from workout tags."""
+    resolved: list[str] = []
+
+    for tag in tags:
+        prefix, _, _ = tag.rpartition("-")
+        if prefix == "aerobic-threshold":
+            ride_type = "long_ride" if duration_hours >= 2.0 else "endurance"
+        else:
+            ride_type = _TAG_PREFIX_TO_RIDE_TYPE.get(prefix)
+        if ride_type and ride_type not in resolved:
+            resolved.append(ride_type)
+
+    return resolved
+
+
+def _primary_ride_type(activity: dict, duration_hours: float) -> str:
+    """Return the primary fueling ride type for an activity.
+
+    When multiple tags apply, choose the one with the highest fueling demand.
+    """
+    explicit = activity.get("ride_type")
+    if explicit:
+        return str(explicit)
+
+    resolved = _resolve_ride_types(_activity_tags(activity), duration_hours)
+    if not resolved:
+        return "endurance"
+
+    return max(resolved, key=lambda ride_type: _target_range(ride_type, duration_hours)[1])
 
 
 def _suggested_strategy(target_carbs_per_hour: int, duration_hours: float) -> list[str]:
@@ -97,7 +146,8 @@ def plan_activity(activity: dict, form_pct: float | None = None) -> dict:
     """Build a fueling plan for a single activity.
 
     Args:
-        activity: dict with at least ``duration_hours`` and ``ride_type``.
+        activity: dict with at least ``duration_hours`` and either ``ride_type``
+              or workout tags from which it can be derived.
         form_pct: current Form % (CTL - ATL) / CTL.  When < -0.20 an extra
                   +10 g/h is applied to account for elevated carbohydrate demand
                   under high fatigue.
@@ -106,7 +156,7 @@ def plan_activity(activity: dict, form_pct: float | None = None) -> dict:
         dict with fueling targets, range, total carbs, and practical strategy.
     """
     duration = activity.get("duration_hours") or 0.0
-    ride_type = activity.get("ride_type") or "endurance"
+    ride_type = _primary_ride_type(activity, duration)
     name = activity.get("name") or "Unnamed ride"
     activity_date = activity.get("date") or ""
 
@@ -224,13 +274,16 @@ def main() -> None:
         merged.setdefault("date", activity.get("date"))
         merged.setdefault("name", activity.get("name"))
         merged.setdefault("duration_hours", activity.get("duration_hours"))
+        merged.setdefault("tags", activity.get("tags") or [])
+        if activity.get("tag"):
+            merged.setdefault("tag", activity.get("tag"))
         activities.append(merged)
 
     # Backward-compatible fallback for older consolidated payloads.
     if not activities:
         activities = data.get("fueling_analysis", {}).get("activities", [])
     if not activities:
-        # Fall back to main activities list (ride_type will default to endurance)
+        # Fall back to main activities list (ride type is derived from tags or defaults to endurance)
         activities = data.get("activities", [])
 
     form_pct = data.get("week_summary", {}).get("form_pct")
