@@ -624,7 +624,7 @@ Optional per entry: `description` (free-text notes), `tags` (list of tag strings
 
 Field limits on upload: `name` is truncated to 127 characters and `description`/notes to 512 characters.
 
-Tag handling: multiple tags per workout are supported. For backward compatibility, a legacy single `tag` string is also accepted and internally treated as a one-item `tags` list.
+Tag handling: the plan format should always use `tags`, including for a single tag. For backward compatibility, `upload_plan.py` still accepts a legacy single `tag` string and internally treats it as a one-item `tags` list.
 
 Duplicate handling: before creating events, the script fetches existing WORKOUT events for the date range and indexes them by `(name, date)`. If a match is found the existing event is updated (`PUT`); otherwise a new event is created (`POST`). Re-running the script is safe and will never produce duplicates.
 

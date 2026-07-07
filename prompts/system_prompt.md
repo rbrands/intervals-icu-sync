@@ -91,7 +91,6 @@ If no workouts are being created, respond in prose.
       "name": string,
       "duration_minutes": number,
       "description": string,
-      "tag": string,
       "tags": [string],
       "steps": [ { "duration_seconds": number, "power_pct_ftp": number } ]
     }
@@ -100,7 +99,7 @@ If no workouts are being created, respond in prose.
 
 Rules:
 - Every workout: date, name, duration_minutes, description,
-  at least one tag (use `tag` and/or `tags`), non-empty steps.
+  a non-empty `tags` array, non-empty steps.
 - A workout may carry multiple tags when it serves multiple purposes.
 - Do not emit a `ride_type` field. Downstream logic derives ride intent from
   the tags; each tag maps independently and the session counts toward all
@@ -116,4 +115,4 @@ Rules:
 power_pct_ftp must align with the zones in training-zones.md.
 
 INVALID if: not valid JSON, missing workouts array, missing/empty steps,
-no tag at all, or any required field missing.
+missing/empty `tags`, or any required field missing.
