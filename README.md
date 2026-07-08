@@ -403,7 +403,7 @@ Output: `data/processed/metrics_{date}.json`
 
 ### `analyze_week.py`
 
-Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies sessions (VO2max / Threshold / Endurance), computes aerobic decoupling, and prints a coaching interpretation.
+Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies sessions (VO2max / Threshold / Endurance), computes aerobic decoupling (for Base/Pyramidal/Threshold rides ≥ 90 min only), and prints a coaching interpretation.
 
 Also computes **Form %** based on CTL (fitness) and ATL (fatigue):
 
@@ -422,7 +422,7 @@ Output: console + `data/processed/week_summary_{monday}.json`
 
 ### `prepare_activities_for_coach.py`
 
-Exports a simplified JSON of rides in the active lookback window (`LOOKBACK_DAYS`, default: `7`) for sharing with a coach or ChatGPT. Includes duration, training load, power, HR (avg/max), RPE, interval summary, compact interval HR analysis (`interval_hr_analysis` with `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, `hr_power_decoupling`), decoupling, and carbohydrate intake. The HR interval summary is computed only from eligible WORK intervals (minimum 120 seconds and minimum 95% FTP intensity).
+Exports a simplified JSON of rides in the active lookback window (`LOOKBACK_DAYS`, default: `7`) for sharing with a coach or ChatGPT. Includes duration, training load, power, HR (avg/max), RPE, interval summary, compact interval HR analysis (`interval_hr_analysis` with `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, `hr_power_decoupling`), decoupling, and carbohydrate intake. The HR interval summary is computed only from eligible WORK intervals (minimum 120 seconds and minimum 95% FTP intensity). Decoupling labels are only classified for Base/Pyramidal/Threshold rides ≥ 90 min; shorter or high-intensity rides show `"limited durability signal"`.
 Activities in the exported list are sorted by date/time with the newest ride first.
 
 ```bash
@@ -683,9 +683,9 @@ Exit code behavior:
 Interactive Jupyter notebook that loads the consolidated `coach_input_{monday}.json` and displays a structured overview of the current training week:
 
 - **Athlete Metrics**: FTP, eFTP, VO2Max, W\', CTL/ATL, HRV, weight — FTP values shown in W and W/kg
-- **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling
+- **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling (only from rides ≥ 90 min; shows `"no durability data"` if no eligible rides exist)
 - **Form & Fatigue Analysis**: CTL, ATL, Form (absolute and % relative to fitness), Form Zone, HRV — with coaching interpretation based on form zone
-- **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling, and carbohydrate data
+- **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling (labeled only for Base/Pyramidal/Threshold rides ≥ 90 min), and carbohydrate data
 - **Zone Distribution Chart**: bar charts per activity showing Z1+2 / Z3+4 / Z5+ split
 - **Integrated Fatigue & Fueling Analysis**: combines Form % and weekly fueling quality into a single coaching interpretation with recommendation
 - **Fueling Analysis**: per-ride fueling status, carbs/h, fueling ratio, and weekly recommendations

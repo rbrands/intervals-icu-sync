@@ -29,8 +29,13 @@ subjective fatigue) and recent intensity — never in isolation.
 
 ## Decoupling (Aerobic Durability)
 
-Power:HR drift over an effort. Valid ONLY for steady efforts
-(not interval / variable sessions).
+Power:HR drift over an effort. Valid **ONLY for endurance-oriented steady efforts**:
+- Base / Pyramidal / Threshold rides
+- Duration ≥ 90 minutes
+- NOT VO2max / short high-intensity sessions
+- NOT interval work or variable efforts
+
+For rides outside these conditions, durability signal is limited or not applicable.
 
 | decoupling | label |
 | ---------- | ----- |

@@ -7,9 +7,11 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
 ### Added
 
-## [0.6.6] - 2026-07-07
+## [0.6.6] - 2026-07-08
 
 ### Changed
 
@@ -17,6 +19,10 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Simplified the generated plan contract to require only a non-empty `tags` array; a single tag must now also be emitted as a one-item `tags` list.
 - Updated `scripts/fueling_planner.py` to derive the primary fueling ride type from workout tags when `ride_type` is absent, while still honoring legacy payloads that include `ride_type`.
 - Updated documentation (`README.md`, `docs/gen_ai_setup_step_by_step.md`, `coach-logic/decision-process.md`) to match the tag-only plan format and the tag-derived ride-type behavior.
+- Updated decoupling (aerobic durability) classification to be zone-distribution aware instead of duration/ride-type based: only classifies durability for rides with Z1+Z2 ≥ 80% (full validity); shows `"limited durability signal"` for rides with Z1+Z2 60–80% (marginal endurance); returns `null` for rides with Z1+Z2 < 60% (not applicable).
+- Updated `scripts/prepare_activities_for_coach.py` to pass `z1_z2_pct` to `_classify_decoupling()` and use zone distribution instead of duration/ride classification.
+- Updated `scripts/analyze_week.py` to filter decoupling values to only include rides with Z1+Z2 ≥ 80% when computing weekly average; shows `"no durability data"` if no eligible rides exist.
+- Updated documentation (`README.md`, `coach-logic/interpretation-rules.md`) to reflect zone-based decoupling validity thresholds.
 
 ### Added
 
