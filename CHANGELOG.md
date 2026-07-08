@@ -7,6 +7,11 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added `scripts/validate_plan.py` to validate plan JSON files against `contracts/week-plan/week-plan.schema.json` before running `upload_plan.py`.
+- Documented the validation step and new script usage in `README.md`.
+
 ## [0.6.6] - 2026-07-07
 
 ### Changed
@@ -19,6 +24,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Added regression coverage in `tests/test_workout_tag_conventions.py` for tag-based fueling-plan inference, including multi-tag sessions.
+- Added upload-plan JSON Schema at `contracts/week-plan/week-plan.schema.json`, covering both accepted input shapes (`[...]` and `{ "week": "...", "workouts": [...] }`) and workout/step fields used by `scripts/upload_plan.py`.
 
 ## [0.6.5] - 2026-07-05
 

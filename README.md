@@ -96,7 +96,8 @@ Run the Python scripts locally and exchange JSON files with your AI coaching too
 1. Run `prepare_week_for_coach.py` to pull all data from intervals.icu and produce a single coaching input file.
 2. Upload or paste that file into your AI assistant (ChatGPT, Claude, etc.) along with the system prompt.
 3. Discuss the week with your coach, receive a JSON training plan, save it locally.
-4. Run `upload_plan.py` to push the plan to intervals.icu.
+4. Run `validate_plan.py` to validate the plan JSON against the upload schema.
+5. Run `upload_plan.py` to push the plan to intervals.icu.
 
 **Best for:** Users who want full control, prefer no external dependencies, or want to understand the tooling in detail.
 
@@ -139,6 +140,7 @@ intervals-icu-sync/
 │   ├── prepare_planned_workouts_for_coach.py  # Format planned workouts → data/processed/
 │   ├── fueling_analysis.py         # Analyze carbohydrate fueling quality
 │   ├── fueling_planner.py          # Generate carbohydrate targets per session
+│   ├── validate_plan.py            # Validate week_plan JSON against upload schema
 │   ├── upload_plan.py              # Upload JSON training plan to intervals.icu
 │   ├── wbal_analysis.py            # Compute W'bal time series from power stream
 │   ├── prepare_week_for_coach.py   # Run all scripts in sequence
@@ -622,6 +624,8 @@ Each entry in the JSON file must have:
 
 Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `steps` (structured workout intervals → uploaded as a ZWO file).
 
+Plan JSON Schema: `contracts/week-plan/week-plan.schema.json` (supports both accepted top-level formats: bare workout array or `{ "week": "...", "workouts": [...] }`).
+
 Field limits on upload: `name` is truncated to 127 characters and `description`/notes to 512 characters.
 
 Tag handling: the plan format should always use `tags`, including for a single tag. For backward compatibility, `upload_plan.py` still accepts a legacy single `tag` string and internally treats it as a one-item `tags` list.
@@ -643,6 +647,31 @@ python scripts/upload_plan.py --clear
 ```
 
 Output: one `Created` or `Updated` line per workout, summary of counts.
+
+---
+
+### `validate_plan.py`
+
+Validates a plan JSON file against the upload schema before calendar upload.
+
+Default inputs:
+- Plan: `data/plans/week_plan.json`
+- Schema: `contracts/week-plan/week-plan.schema.json`
+
+```bash
+# Validate default plan file
+python scripts/validate_plan.py
+
+# Validate a custom plan file
+python scripts/validate_plan.py --plan data/plans/my_plan.json
+
+# Print more than 10 validation errors
+python scripts/validate_plan.py --max-errors 25
+```
+
+Exit code behavior:
+- `0` when the plan is valid
+- `1` when the plan/schema file is missing, JSON is invalid, or validation fails
 
 ---
 

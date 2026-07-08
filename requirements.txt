@@ -6,5 +6,6 @@ jupyter
 ipykernel
 mcp[cli]
 pydantic>=2,<3
+jsonschema>=4.23,<5
 pre-commit
 nbstripout
