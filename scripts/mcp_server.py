@@ -15,6 +15,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -739,6 +740,89 @@ def save_week_plan(plan_json: str) -> str:
         "workouts": count,
         "message": f"{count} workout(s) saved. Run upload_week_plan to push to intervals.icu.",
     }, ensure_ascii=False)
+
+
+@mcp.tool()
+def validate_week_plan(plan_json: str = "", max_errors: int = 10) -> str:
+    """Validate a training plan JSON against the upload schema.
+
+    If plan_json is provided, the tool validates that inline payload.
+    If omitted, the tool validates data/plans/week_plan.json.
+
+    Args:
+        plan_json: Optional plan JSON string to validate.
+        max_errors: Maximum number of schema errors to include (>= 1).
+    """
+    if max_errors < 1:
+        return json.dumps({"error": "max_errors must be >= 1"}, ensure_ascii=False)
+
+    schema_path = _ROOT / "contracts" / "week-plan" / "week-plan.schema.json"
+    validate_script = SCRIPTS_DIR / "validate_plan.py"
+
+    plan_source = "saved"
+    temp_plan_path: Path | None = None
+
+    if plan_json.strip():
+        plan_source = "inline"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as tmp:
+            tmp.write(plan_json)
+            temp_plan_path = Path(tmp.name)
+        plan_path = temp_plan_path
+    else:
+        plan_path = PLANS_DIR / "week_plan.json"
+        if not plan_path.exists():
+            return json.dumps(
+                {"error": "No week_plan.json found in data/plans/. Run save_week_plan first or pass plan_json."},
+                ensure_ascii=False,
+            )
+
+    try:
+        cmd = [
+            sys.executable,
+            str(validate_script),
+            "--plan",
+            str(plan_path),
+            "--schema",
+            str(schema_path),
+            "--max-errors",
+            str(max_errors),
+        ]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            stdin=subprocess.DEVNULL,
+            check=False,
+        )
+        output = (result.stdout or "") + (f"\nSTDERR: {result.stderr}" if (result.stderr or "").strip() else "")
+        output = output.strip()
+
+        if result.returncode == 0:
+            return json.dumps(
+                {
+                    "status": "valid",
+                    "plan_source": plan_source,
+                    "schema": "contracts/week-plan/week-plan.schema.json",
+                    "details": output,
+                },
+                ensure_ascii=False,
+            )
+
+        return json.dumps(
+            {
+                "status": "invalid",
+                "plan_source": plan_source,
+                "schema": "contracts/week-plan/week-plan.schema.json",
+                "details": output or "Validation failed.",
+            },
+            ensure_ascii=False,
+        )
+    except subprocess.TimeoutExpired:
+        return json.dumps({"error": "Validation timed out after 30s"}, ensure_ascii=False)
+    finally:
+        if temp_plan_path is not None:
+            temp_plan_path.unlink(missing_ok=True)
 
 
 @mcp.tool()

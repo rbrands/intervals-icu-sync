@@ -7,6 +7,7 @@ Exposes MCP tools over SSE transport:
     - get_latest_activities   – returns a compact list of latest rides
     - list_library_workouts   – lists the caller's own workout library entries
     - list_standard_library_workouts – lists shared workouts of configured standard library athlete
+    - validate_week_plan      – validates plan JSON against upload schema
     - upload_week_plan        – uploads a JSON training plan to intervals.icu
 
 Credentials are resolved in priority order:
@@ -651,6 +652,7 @@ class AuthHeaderMiddleware:
         <tr><td><code>get_latest_activities</code></td><td>Returns a compact latest-first activity list to avoid large payload truncation.</td></tr>
         <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
         <tr><td><code>list_standard_library_workouts</code></td><td>Lists shared workouts of STANDARD_LIBRARY_ATHLETE_ID with duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
+        <tr><td><code>validate_week_plan</code></td><td>Validates plan JSON against <code>contracts/week-plan/week-plan.schema.json</code> and returns structured validation results.</td></tr>
         <tr><td><code>upload_week_plan</code></td><td>Uploads a JSON training plan to intervals.icu (supports dry-run and clear).</td></tr>
     </table>
   <h2>Authentication</h2>
@@ -1504,6 +1506,102 @@ def list_standard_library_workouts(
             },
             ensure_ascii=False,
         )
+
+
+@mcp.tool()
+def validate_week_plan(
+    plan_json: str,
+    max_errors: int = 10,
+) -> str:
+    """Validate a training plan JSON against the upload schema.
+
+    This runs scripts/validate_plan.py on a temporary file and returns a
+    structured result suitable for MCP clients.
+
+    Args:
+        plan_json: The plan JSON to validate.
+        max_errors: Maximum number of schema errors to include (>= 1).
+    """
+    with _tool_span("mcp.tool/validate_week_plan") as span:
+        span.set_attribute("max_errors", max_errors)
+
+        if max_errors < 1:
+            span.set_status(_ERROR, "invalid max_errors")
+            return json.dumps({"error": "max_errors must be >= 1"}, ensure_ascii=False)
+
+        try:
+            json.loads(plan_json)
+        except json.JSONDecodeError as exc:
+            _emit_tool_error(
+                "validate_week_plan",
+                "invalid_json",
+                f"Invalid JSON: {exc}",
+            )
+            span.set_status(_ERROR, f"invalid plan JSON: {exc}")
+            return json.dumps({"error": f"Invalid JSON: {exc}"}, ensure_ascii=False)
+
+        schema_path = _ROOT / "contracts" / "week-plan" / "week-plan.schema.json"
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        ) as tmp:
+            tmp.write(plan_json)
+            tmp_path = Path(tmp.name)
+
+        try:
+            cmd = [
+                sys.executable,
+                str(SCRIPTS_DIR / "validate_plan.py"),
+                "--plan",
+                str(tmp_path),
+                "--schema",
+                str(schema_path),
+                "--max-errors",
+                str(max_errors),
+            ]
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                stdin=subprocess.DEVNULL,
+                check=False,
+            )
+            output = (result.stdout or "") + (
+                f"\nSTDERR: {result.stderr}" if (result.stderr or "").strip() else ""
+            )
+            output = output.strip()
+
+            if result.returncode == 0:
+                span.set_status(_OK)
+                return json.dumps(
+                    {
+                        "status": "valid",
+                        "schema": "contracts/week-plan/week-plan.schema.json",
+                        "details": output,
+                    },
+                    ensure_ascii=False,
+                )
+
+            span.set_status(_ERROR, "validation failed")
+            return json.dumps(
+                {
+                    "status": "invalid",
+                    "schema": "contracts/week-plan/week-plan.schema.json",
+                    "details": output or "Validation failed.",
+                },
+                ensure_ascii=False,
+            )
+        except subprocess.TimeoutExpired:
+            _emit_tool_error(
+                "validate_week_plan",
+                "validation_timeout",
+                "Validation timed out after 30s",
+            )
+            span.set_status(_ERROR, "validation timed out")
+            return json.dumps({"error": "Validation timed out after 30s"}, ensure_ascii=False)
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
 
 @mcp.tool()
