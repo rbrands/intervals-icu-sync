@@ -23,6 +23,11 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Updated `scripts/prepare_activities_for_coach.py` to pass `z1_z2_pct` to `_classify_decoupling()` and use zone distribution instead of duration/ride classification.
 - Updated `scripts/analyze_week.py` to filter decoupling values to only include rides with Z1+Z2 ≥ 80% when computing weekly average; shows `"no durability data"` if no eligible rides exist.
 - Updated documentation (`README.md`, `coach-logic/interpretation-rules.md`) to reflect zone-based decoupling validity thresholds.
+- Added `metrics.ftp_classification` in `scripts/get_metrics.py` based on FTP W/kg, age group, and sex (including `w_per_kg`, `category_range`, `next_category`, and `delta_to_next`).
+- Added `metrics.ftp_classification` in `scripts/get_metrics.py` based on FTP W/kg, age group, and sex (including `category_range`, `next_category`, and `delta_to_next`).
+- Updated week-data contracts and schema models (`src/intervals_icu/week_data_schema.py`, `contracts/week-data/week-data.schema.json`, `contracts/week-data/WeekDataDto.cs`) to include `metrics.ftp_classification` and keep FTP W/kg only inside `ftp_classification.w_per_kg`.
+- Updated documentation (`README.md`, `coach-logic/input-schema.md`) to describe FTP W/kg as part of `ftp_classification`.
+- Added regression coverage in `tests/test_get_metrics_ftp_classification.py` for FTP classification mapping.
 
 ### Added
 

@@ -204,6 +204,109 @@ _POWER_PROFILE_TARGETS: dict[int, str] = {
     1200: "p20min",
 }
 
+_FTP_BANDS: dict[str, dict[str, dict[str, float | None]]] = {
+    "male": {
+        "elite_18_39": {
+            "beginner_max": 2.5,
+            "recreational_min": 2.5,
+            "recreational_max": 3.5,
+            "ambitious_min": 3.5,
+            "ambitious_max": 4.5,
+            "performance_min": 4.5,
+            "performance_max": 5.0,
+            "elite_min": 5.0,
+            "pro_min": 5.5,
+            "pro_max": 6.5,
+        },
+        "master_40_49": {
+            "beginner_max": 2.3,
+            "recreational_min": 2.3,
+            "recreational_max": 3.3,
+            "ambitious_min": 3.3,
+            "ambitious_max": 4.3,
+            "performance_min": 4.3,
+            "performance_max": 4.8,
+            "elite_min": 4.8,
+            "pro_min": None,
+            "pro_max": None,
+        },
+        "grand_master_50_59": {
+            "beginner_max": 2.1,
+            "recreational_min": 2.1,
+            "recreational_max": 3.1,
+            "ambitious_min": 3.1,
+            "ambitious_max": 4.1,
+            "performance_min": 4.1,
+            "performance_max": 4.6,
+            "elite_min": 4.6,
+            "pro_min": None,
+            "pro_max": None,
+        },
+        "senior_60_plus": {
+            "beginner_max": 2.0,
+            "recreational_min": 2.0,
+            "recreational_max": 2.9,
+            "ambitious_min": 2.9,
+            "ambitious_max": 3.9,
+            "performance_min": 3.9,
+            "performance_max": 4.4,
+            "elite_min": 4.4,
+            "pro_min": None,
+            "pro_max": None,
+        },
+    },
+    "female": {
+        "elite_18_39": {
+            "beginner_max": 2.3,
+            "recreational_min": 2.3,
+            "recreational_max": 3.2,
+            "ambitious_min": 3.2,
+            "ambitious_max": 4.2,
+            "performance_min": 4.2,
+            "performance_max": 4.8,
+            "elite_min": 4.8,
+            "pro_min": 4.8,
+            "pro_max": 6.0,
+        },
+        "master_40_49": {
+            "beginner_max": 2.1,
+            "recreational_min": 2.1,
+            "recreational_max": 3.0,
+            "ambitious_min": 3.0,
+            "ambitious_max": 4.0,
+            "performance_min": 4.0,
+            "performance_max": 4.6,
+            "elite_min": 4.6,
+            "pro_min": None,
+            "pro_max": None,
+        },
+        "grand_master_50_59": {
+            "beginner_max": 2.0,
+            "recreational_min": 2.0,
+            "recreational_max": 2.8,
+            "ambitious_min": 2.8,
+            "ambitious_max": 3.8,
+            "performance_min": 3.8,
+            "performance_max": 4.4,
+            "elite_min": 4.4,
+            "pro_min": None,
+            "pro_max": None,
+        },
+        "senior_60_plus": {
+            "beginner_max": 1.8,
+            "recreational_min": 1.8,
+            "recreational_max": 2.6,
+            "ambitious_min": 2.6,
+            "ambitious_max": 3.6,
+            "performance_min": 3.6,
+            "performance_max": 4.2,
+            "elite_min": 4.2,
+            "pro_min": None,
+            "pro_max": None,
+        },
+    },
+}
+
 
 def fetch_power_profile() -> dict:
     """Fetch best-effort power for key durations from the 42-day power curve.
@@ -256,6 +359,110 @@ def calc_vo2max_from_power(p5min_watts: float, weight_kg: float) -> float:
     return round(16.6 + (8.87 * p5min_watts / weight_kg), 1)
 
 
+def _calc_wkg(power_watts: float | int | None, weight_kg: float | int | None) -> float | None:
+    power = _to_float(power_watts)
+    weight = _to_float(weight_kg)
+    if power is None or weight is None or weight <= 0:
+        return None
+    return round(power / weight, 2)
+
+
+def _normalize_sex_label(value: str | None) -> str | None:
+    if not value:
+        return None
+    norm = value.strip().lower()
+    if norm in {"male", "m"}:
+        return "male"
+    if norm in {"female", "f"}:
+        return "female"
+    return None
+
+
+def _age_group_slug(age: int | None) -> str | None:
+    if age is None:
+        return None
+    if age >= 60:
+        return "senior_60_plus"
+    if age >= 50:
+        return "grand_master_50_59"
+    if age >= 40:
+        return "master_40_49"
+    return "elite_18_39"
+
+
+def _build_ftp_classification(
+    ftp_wkg: float | int | None,
+    age: int | None,
+    sex: str | None,
+) -> dict | None:
+    wkg = _to_float(ftp_wkg)
+    sex_slug = _normalize_sex_label(sex)
+    age_group = _age_group_slug(age)
+
+    if wkg is None or wkg <= 0 or sex_slug is None or age_group is None:
+        return None
+
+    bands = _FTP_BANDS[sex_slug][age_group]
+
+    category = "elite"
+    min_v = bands["elite_min"]
+    max_v = None
+
+    if wkg < bands["beginner_max"]:
+        category = "beginner"
+        min_v = None
+        max_v = bands["beginner_max"]
+    elif wkg < bands["recreational_max"]:
+        category = "recreational"
+        min_v = bands["recreational_min"]
+        max_v = bands["recreational_max"]
+    elif wkg < bands["ambitious_max"]:
+        category = "ambitious_amateur"
+        min_v = bands["ambitious_min"]
+        max_v = bands["ambitious_max"]
+    elif wkg < bands["performance_max"]:
+        category = "performance_oriented"
+        min_v = bands["performance_min"]
+        max_v = bands["performance_max"]
+
+    pro_min = bands["pro_min"]
+    pro_max = bands["pro_max"]
+    if pro_min is not None and wkg >= pro_min and (pro_max is None or wkg <= pro_max):
+        category = "pro"
+        min_v = pro_min
+        max_v = pro_max
+
+    thresholds: list[tuple[str, float]] = [
+        ("recreational", bands["recreational_min"]),
+        ("ambitious_amateur", bands["ambitious_min"]),
+        ("performance_oriented", bands["performance_min"]),
+        ("elite", bands["elite_min"]),
+    ]
+    if pro_min is not None:
+        thresholds.append(("pro", pro_min))
+
+    current_idx = next((i for i, (name, _) in enumerate(thresholds) if name == category), None)
+    next_category = None
+    delta_to_next = None
+    if current_idx is not None and current_idx + 1 < len(thresholds):
+        next_category = thresholds[current_idx + 1][0]
+        next_min = thresholds[current_idx + 1][1]
+        delta_to_next = round(max(0.0, next_min - wkg), 2)
+
+    return {
+        "w_per_kg": round(wkg, 2),
+        "age_group": age_group,
+        "sex": sex_slug,
+        "category": category,
+        "category_range": {
+            "min": min_v,
+            "max": max_v,
+        },
+        "next_category": next_category,
+        "delta_to_next": delta_to_next,
+    }
+
+
 def main() -> None:
     if not API_KEY:
         print("Error: INTERVALS_API_KEY is not set.")
@@ -270,6 +477,13 @@ def main() -> None:
     metrics.update(fetch_athlete_info())
     metrics.update(fetch_wellness())
 
+    ftp_wkg = _calc_wkg(metrics.get("ftp"), metrics.get("weight"))
+    metrics["ftp_classification"] = _build_ftp_classification(
+        ftp_wkg,
+        metrics.get("age"),
+        metrics.get("sex"),
+    )
+
     power_profile = fetch_power_profile()
     metrics["power_profile"] = power_profile
     p5min = (power_profile.get("p5min") or {}).get("watts")
@@ -282,6 +496,13 @@ def main() -> None:
 
     print(f"Date:         {metrics['date']}")
     print(f"FTP:          {metrics.get('ftp')} W")
+    ftp_class = metrics.get("ftp_classification") or {}
+    if ftp_class.get("w_per_kg") is not None:
+        print(f"FTP (W/kg):   {ftp_class.get('w_per_kg'):.2f}")
+    else:
+        print("FTP (W/kg):   n/a")
+    if ftp_class.get("category"):
+        print(f"FTP Class:    {ftp_class.get('category')} ({ftp_class.get('age_group')}, {ftp_class.get('sex')})")
     print(f"Rolling FTP:  {metrics.get('rolling_ftp')} W")
     print(f"eFTP:         {metrics.get('eftp'):.1f} W" if metrics.get("eftp") else "eFTP:         n/a")
     print(f"W':           {metrics.get('w_prime')} J")

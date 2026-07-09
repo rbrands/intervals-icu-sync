@@ -588,6 +588,139 @@
       "title": "DayConstraint",
       "type": "object"
     },
+    "FtpCategoryRange": {
+      "additionalProperties": true,
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        }
+      },
+      "title": "FtpCategoryRange",
+      "type": "object"
+    },
+    "FtpClassification": {
+      "additionalProperties": true,
+      "properties": {
+        "w_per_kg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "W Per Kg"
+        },
+        "age_group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Age Group"
+        },
+        "sex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sex"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "category_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FtpCategoryRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "next_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Category"
+        },
+        "delta_to_next": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta To Next"
+        }
+      },
+      "title": "FtpClassification",
+      "type": "object"
+    },
     "FuelingAnalysis": {
       "additionalProperties": true,
       "properties": {
@@ -1047,6 +1180,17 @@
           ],
           "default": null,
           "title": "Ftp"
+        },
+        "ftp_classification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FtpClassification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "rolling_ftp": {
           "anyOf": [

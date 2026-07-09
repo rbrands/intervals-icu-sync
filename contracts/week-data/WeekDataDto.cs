@@ -179,6 +179,45 @@ public class DayConstraintDto
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
+public class FtpCategoryRangeDto
+{
+    [JsonPropertyName("min")]
+    public double? Min { get; set; }
+
+    [JsonPropertyName("max")]
+    public double? Max { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public class FtpClassificationDto
+{
+    [JsonPropertyName("w_per_kg")]
+    public double? WPerKg { get; set; }
+
+    [JsonPropertyName("age_group")]
+    public string? AgeGroup { get; set; }
+
+    [JsonPropertyName("sex")]
+    public string? Sex { get; set; }
+
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
+
+    [JsonPropertyName("category_range")]
+    public FtpCategoryRangeDto? CategoryRange { get; set; }
+
+    [JsonPropertyName("next_category")]
+    public string? NextCategory { get; set; }
+
+    [JsonPropertyName("delta_to_next")]
+    public double? DeltaToNext { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
 public class FuelingAnalysisDto
 {
     [JsonPropertyName("week_starting")]
@@ -306,6 +345,9 @@ public class MetricsDto
 
     [JsonPropertyName("ftp")]
     public double? Ftp { get; set; }
+
+    [JsonPropertyName("ftp_classification")]
+    public FtpClassificationDto? FtpClassification { get; set; }
 
     [JsonPropertyName("rolling_ftp")]
     public double? RollingFtp { get; set; }

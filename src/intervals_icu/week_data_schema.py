@@ -42,9 +42,25 @@ class PowerProfile(_SchemaModel):
     period_days: int | None = None
 
 
+class FtpCategoryRange(_SchemaModel):
+    min: float | int | None = None
+    max: float | int | None = None
+
+
+class FtpClassification(_SchemaModel):
+    w_per_kg: float | int | None = None
+    age_group: str | None = None
+    sex: str | None = None
+    category: str | None = None
+    category_range: FtpCategoryRange | None = None
+    next_category: str | None = None
+    delta_to_next: float | int | None = None
+
+
 class Metrics(_SchemaModel):
     date: str | None = None
     ftp: float | int | None = None
+    ftp_classification: FtpClassification | None = None
     rolling_ftp: float | int | None = None
     w_prime: float | int | None = None
     rolling_w_prime: float | int | None = None

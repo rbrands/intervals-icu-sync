@@ -390,7 +390,7 @@ Output: `data/raw/activities_{date}.json`
 
 ### `get_metrics.py`
 
-Fetches athlete performance metrics: FTP, eFTP, W', weight, CTL, ATL, resting HR, HRV, best 5-minute power, and calculated VO2Max.
+Fetches athlete performance metrics: FTP, FTP classification by age/sex (including W/kg), eFTP, W', weight, CTL, ATL, resting HR, HRV, best 5-minute power, and calculated VO2Max.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 
 ```bash
