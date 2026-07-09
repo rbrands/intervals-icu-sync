@@ -47,7 +47,7 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)
   = aerobic/climber.
-- `vo2max`: estimated from p5min power and weight (ml/kg/min).
+- `vo2max_classification.ml_per_kg_min`: VO2Max estimated from p5min power and weight (ml/kg/min).
 - `vo2max_classification`: age- and sex-adjusted VO2Max category based on VO2Max
   (ml/kg/min), including `ml_per_kg_min`, `age_group`, `sex`, `category`,
   `category_range`, `next_category`, and `delta_to_next`. Age groups:
