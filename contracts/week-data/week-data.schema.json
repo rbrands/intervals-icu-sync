@@ -721,6 +721,103 @@
       "title": "FtpClassification",
       "type": "object"
     },
+    "Vo2MaxClassification": {
+      "additionalProperties": true,
+      "properties": {
+        "ml_per_kg_min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ml Per Kg Min"
+        },
+        "age_group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Age Group"
+        },
+        "sex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sex"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "category_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FtpCategoryRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category Range"
+        },
+        "next_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Category"
+        },
+        "delta_to_next": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta To Next"
+        }
+      },
+      "title": "Vo2MaxClassification",
+      "type": "object"
+    },
     "FuelingAnalysis": {
       "additionalProperties": true,
       "properties": {
@@ -1457,20 +1554,17 @@
           ],
           "default": null
         },
-        "vo2max": {
+        "vo2max_classification": {
           "anyOf": [
             {
-              "type": "number"
-            },
-            {
-              "type": "integer"
+              "$ref": "#/$defs/Vo2MaxClassification"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "title": "Vo2Max"
+          "title": "Vo2Max Classification"
         }
       },
       "title": "Metrics",

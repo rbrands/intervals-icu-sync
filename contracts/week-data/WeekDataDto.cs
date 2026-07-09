@@ -218,6 +218,33 @@ public class FtpClassificationDto
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
+public class Vo2MaxClassificationDto
+{
+    [JsonPropertyName("ml_per_kg_min")]
+    public double? MlPerKgMin { get; set; }
+
+    [JsonPropertyName("age_group")]
+    public string? AgeGroup { get; set; }
+
+    [JsonPropertyName("sex")]
+    public string? Sex { get; set; }
+
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
+
+    [JsonPropertyName("category_range")]
+    public FtpCategoryRangeDto? CategoryRange { get; set; }
+
+    [JsonPropertyName("next_category")]
+    public string? NextCategory { get; set; }
+
+    [JsonPropertyName("delta_to_next")]
+    public double? DeltaToNext { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
 public class FuelingAnalysisDto
 {
     [JsonPropertyName("week_starting")]
@@ -406,8 +433,8 @@ public class MetricsDto
     [JsonPropertyName("power_profile")]
     public PowerProfileDto? PowerProfile { get; set; }
 
-    [JsonPropertyName("vo2max")]
-    public double? Vo2max { get; set; }
+    [JsonPropertyName("vo2max_classification")]
+    public Vo2MaxClassificationDto? Vo2maxClassification { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

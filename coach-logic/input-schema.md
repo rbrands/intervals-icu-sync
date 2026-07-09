@@ -47,7 +47,12 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)
   = aerobic/climber.
-- `vo2max`: estimated from p5min power and weight.
+- `vo2max`: estimated from p5min power and weight (ml/kg/min).
+- `vo2max_classification`: age- and sex-adjusted VO2Max category based on VO2Max
+  (ml/kg/min), including `ml_per_kg_min`, `age_group`, `sex`, `category`,
+  `category_range`, `next_category`, and `delta_to_next`. Age groups:
+  teen_13_19, adult_20_29, master_30_39, master_40_49, grand_master_50_59,
+  senior_60_plus. Categories: very_poor, poor, average, good, very_good, excellent.
 - `sleep_secs`: SECONDS (÷3600 for hours).
 - `sleep_quality`: one of `GREAT`, `GOOD`, `AVG`, `POOR` (mapped from intervals.icu scale 1–4; GREAT = best).
 - `lthr`: lactate threshold heart rate (bpm).

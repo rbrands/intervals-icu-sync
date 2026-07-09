@@ -57,6 +57,16 @@ class FtpClassification(_SchemaModel):
     delta_to_next: float | int | None = None
 
 
+class Vo2MaxClassification(_SchemaModel):
+    ml_per_kg_min: float | int | None = None
+    age_group: str | None = None
+    sex: str | None = None
+    category: str | None = None
+    category_range: FtpCategoryRange | None = None
+    next_category: str | None = None
+    delta_to_next: float | int | None = None
+
+
 class Metrics(_SchemaModel):
     date: str | None = None
     ftp: float | int | None = None
@@ -80,7 +90,7 @@ class Metrics(_SchemaModel):
     sleep_quality: str | None = None
     wellness_trends: WellnessTrends | None = None
     power_profile: PowerProfile | None = None
-    vo2max: float | int | None = None
+    vo2max_classification: Vo2MaxClassification | None = None
 
 
 class FuelingFormAnalysis(_SchemaModel):

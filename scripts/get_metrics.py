@@ -308,6 +308,158 @@ _FTP_BANDS: dict[str, dict[str, dict[str, float | None]]] = {
 }
 
 
+_VO2MAX_BANDS: dict[str, dict[str, dict[str, float]]] = {
+    "male": {
+        "teen_13_19": {
+            "very_poor_max": 35.0,
+            "poor_min": 35.0,
+            "poor_max": 38.3,
+            "average_min": 38.4,
+            "average_max": 45.1,
+            "good_min": 45.2,
+            "good_max": 50.9,
+            "very_good_min": 51.0,
+            "very_good_max": 55.9,
+            "excellent_min": 56.0,
+        },
+        "adult_20_29": {
+            "very_poor_max": 33.0,
+            "poor_min": 33.0,
+            "poor_max": 36.4,
+            "average_min": 36.6,
+            "average_max": 42.4,
+            "good_min": 42.5,
+            "good_max": 46.4,
+            "very_good_min": 46.5,
+            "very_good_max": 52.4,
+            "excellent_min": 52.5,
+        },
+        "master_30_39": {
+            "very_poor_max": 31.5,
+            "poor_min": 31.5,
+            "poor_max": 35.4,
+            "average_min": 35.5,
+            "average_max": 40.9,
+            "good_min": 41.0,
+            "good_max": 44.9,
+            "very_good_min": 45.0,
+            "very_good_max": 49.4,
+            "excellent_min": 49.5,
+        },
+        "master_40_49": {
+            "very_poor_max": 30.2,
+            "poor_min": 30.2,
+            "poor_max": 33.5,
+            "average_min": 33.6,
+            "average_max": 38.9,
+            "good_min": 39.0,
+            "good_max": 43.7,
+            "very_good_min": 43.8,
+            "very_good_max": 48.0,
+            "excellent_min": 48.1,
+        },
+        "grand_master_50_59": {
+            "very_poor_max": 26.1,
+            "poor_min": 26.1,
+            "poor_max": 30.9,
+            "average_min": 31.0,
+            "average_max": 35.7,
+            "good_min": 35.8,
+            "good_max": 40.9,
+            "very_good_min": 41.0,
+            "very_good_max": 45.3,
+            "excellent_min": 45.4,
+        },
+        "senior_60_plus": {
+            "very_poor_max": 20.5,
+            "poor_min": 20.5,
+            "poor_max": 26.0,
+            "average_min": 26.1,
+            "average_max": 32.2,
+            "good_min": 32.3,
+            "good_max": 36.4,
+            "very_good_min": 36.5,
+            "very_good_max": 44.2,
+            "excellent_min": 44.3,
+        },
+    },
+    "female": {
+        "teen_13_19": {
+            "very_poor_max": 25.0,
+            "poor_min": 25.0,
+            "poor_max": 30.9,
+            "average_min": 31.0,
+            "average_max": 34.9,
+            "good_min": 35.0,
+            "good_max": 38.9,
+            "very_good_min": 39.0,
+            "very_good_max": 41.9,
+            "excellent_min": 42.0,
+        },
+        "adult_20_29": {
+            "very_poor_max": 23.6,
+            "poor_min": 23.6,
+            "poor_max": 28.9,
+            "average_min": 29.0,
+            "average_max": 32.9,
+            "good_min": 33.0,
+            "good_max": 36.9,
+            "very_good_min": 37.0,
+            "very_good_max": 41.0,
+            "excellent_min": 41.1,
+        },
+        "master_30_39": {
+            "very_poor_max": 22.8,
+            "poor_min": 22.8,
+            "poor_max": 26.9,
+            "average_min": 27.0,
+            "average_max": 31.4,
+            "good_min": 31.5,
+            "good_max": 35.6,
+            "very_good_min": 35.7,
+            "very_good_max": 40.0,
+            "excellent_min": 40.1,
+        },
+        "master_40_49": {
+            "very_poor_max": 21.0,
+            "poor_min": 21.0,
+            "poor_max": 24.4,
+            "average_min": 24.5,
+            "average_max": 28.9,
+            "good_min": 29.0,
+            "good_max": 32.8,
+            "very_good_min": 32.9,
+            "very_good_max": 36.9,
+            "excellent_min": 37.0,
+        },
+        "grand_master_50_59": {
+            "very_poor_max": 20.2,
+            "poor_min": 20.2,
+            "poor_max": 22.7,
+            "average_min": 22.8,
+            "average_max": 26.9,
+            "good_min": 27.0,
+            "good_max": 31.4,
+            "very_good_min": 31.5,
+            "very_good_max": 35.7,
+            "excellent_min": 35.8,
+        },
+        "senior_60_plus": {
+            "very_poor_max": 17.5,
+            "poor_min": 17.5,
+            "poor_max": 20.1,
+            "average_min": 20.2,
+            "average_max": 24.4,
+            "good_min": 24.5,
+            "good_max": 30.2,
+            "very_good_min": 30.3,
+            "very_good_max": 31.4,
+            "excellent_min": 31.5,
+        },
+    },
+}
+
+
 def fetch_power_profile() -> dict:
     """Fetch best-effort power for key durations from the 42-day power curve.
 
@@ -379,6 +531,7 @@ def _normalize_sex_label(value: str | None) -> str | None:
 
 
 def _age_group_slug(age: int | None) -> str | None:
+    """Age group for FTP classification."""
     if age is None:
         return None
     if age >= 60:
@@ -388,6 +541,23 @@ def _age_group_slug(age: int | None) -> str | None:
     if age >= 40:
         return "master_40_49"
     return "elite_18_39"
+
+
+def _age_group_slug_vo2max(age: int | None) -> str | None:
+    """Age group for VO2max classification."""
+    if age is None:
+        return None
+    if age >= 60:
+        return "senior_60_plus"
+    if age >= 50:
+        return "grand_master_50_59"
+    if age >= 40:
+        return "master_40_49"
+    if age >= 30:
+        return "master_30_39"
+    if age >= 20:
+        return "adult_20_29"
+    return "teen_13_19"
 
 
 def _build_ftp_classification(
@@ -463,6 +633,82 @@ def _build_ftp_classification(
     }
 
 
+def _build_vo2max_classification(
+    vo2max: float | int | None,
+    age: int | None,
+    sex: str | None,
+) -> dict | None:
+    """Classify VO2max based on age, sex, and ml/kg/min value.
+    
+    Returns category, category_range, next_category, and delta_to_next.
+    """
+    vo2_val = _to_float(vo2max)
+    sex_slug = _normalize_sex_label(sex)
+    age_group = _age_group_slug_vo2max(age)
+
+    if vo2_val is None or vo2_val <= 0 or sex_slug is None or age_group is None:
+        return None
+
+    bands = _VO2MAX_BANDS[sex_slug][age_group]
+
+    # Determine category
+    category = "excellent"
+    min_v = bands["excellent_min"]
+    max_v = None
+
+    if vo2_val <= bands["very_poor_max"]:
+        category = "very_poor"
+        min_v = None
+        max_v = bands["very_poor_max"]
+    elif vo2_val <= bands["poor_max"]:
+        category = "poor"
+        min_v = bands["poor_min"]
+        max_v = bands["poor_max"]
+    elif vo2_val <= bands["average_max"]:
+        category = "average"
+        min_v = bands["average_min"]
+        max_v = bands["average_max"]
+    elif vo2_val <= bands["good_max"]:
+        category = "good"
+        min_v = bands["good_min"]
+        max_v = bands["good_max"]
+    elif vo2_val <= bands["very_good_max"]:
+        category = "very_good"
+        min_v = bands["very_good_min"]
+        max_v = bands["very_good_max"]
+
+    # Calculate next category
+    thresholds: list[tuple[str, float]] = [
+        ("very_poor", 0.0),
+        ("poor", bands["poor_min"]),
+        ("average", bands["average_min"]),
+        ("good", bands["good_min"]),
+        ("very_good", bands["very_good_min"]),
+        ("excellent", bands["excellent_min"]),
+    ]
+
+    current_idx = next((i for i, (name, _) in enumerate(thresholds) if name == category), None)
+    next_category = None
+    delta_to_next = None
+    if current_idx is not None and current_idx + 1 < len(thresholds):
+        next_category = thresholds[current_idx + 1][0]
+        next_min = thresholds[current_idx + 1][1]
+        delta_to_next = round(max(0.0, next_min - vo2_val), 1)
+
+    return {
+        "ml_per_kg_min": round(vo2_val, 1),
+        "age_group": age_group,
+        "sex": sex_slug,
+        "category": category,
+        "category_range": {
+            "min": min_v,
+            "max": max_v,
+        },
+        "next_category": next_category,
+        "delta_to_next": delta_to_next,
+    }
+
+
 def main() -> None:
     if not API_KEY:
         print("Error: INTERVALS_API_KEY is not set.")
@@ -487,8 +733,15 @@ def main() -> None:
     power_profile = fetch_power_profile()
     metrics["power_profile"] = power_profile
     p5min = (power_profile.get("p5min") or {}).get("watts")
+    vo2max = None
     if p5min and metrics.get("weight"):
-        metrics["vo2max"] = calc_vo2max_from_power(p5min, metrics["weight"])
+        vo2max = calc_vo2max_from_power(p5min, metrics["weight"])
+    
+    metrics["vo2max_classification"] = _build_vo2max_classification(
+        vo2max,
+        metrics.get("age"),
+        metrics.get("sex"),
+    )
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_file = OUTPUT_DIR / f"metrics_{today.isoformat()}.json"
@@ -506,7 +759,13 @@ def main() -> None:
     print(f"Rolling FTP:  {metrics.get('rolling_ftp')} W")
     print(f"eFTP:         {metrics.get('eftp'):.1f} W" if metrics.get("eftp") else "eFTP:         n/a")
     print(f"W':           {metrics.get('w_prime')} J")
-    print(f"VO2Max:       {metrics.get('vo2max')} (intervals.icu formula)")
+    vo2_class = metrics.get("vo2max_classification") or {}
+    if vo2_class.get("ml_per_kg_min") is not None:
+        print(f"VO2Max:       {vo2_class.get('ml_per_kg_min')} ml/kg/min (intervals.icu formula)")
+    else:
+        print("VO2Max:       n/a")
+    if vo2_class.get("category"):
+        print(f"VO2Max Class: {vo2_class.get('category')} ({vo2_class.get('age_group')}, {vo2_class.get('sex')})")
     print(f"Age:          {metrics.get('age')} years")
     print(f"Weight:       {metrics.get('weight')} kg")
     print(f"CTL:          {metrics.get('ctl'):.1f}" if metrics.get("ctl") else "CTL:          n/a")
