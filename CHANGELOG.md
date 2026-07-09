@@ -9,12 +9,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Added `metrics.vo2max_classification` in `scripts/get_metrics.py` based on VO2Max (ml/kg/min), age group (teen 13–19, adult 20–29, master 30–39, 40–49, grand master 50–59, senior 60+), and sex (male/female). Classification categories: *very poor*, *poor*, *average*, *good*, *very good*, *excellent*. Includes `ml_per_kg_min`, `age_group`, `sex`, `category`, `category_range` (min/max), `next_category`, and `delta_to_next`.
-- Updated week-data contracts and schema models (`src/intervals_icu/week_data_schema.py`, `contracts/week-data/week-data.schema.json`, `contracts/week-data/WeekDataDto.cs`) to include `metrics.vo2max_classification`.
-- Updated documentation (`README.md`, `coach-logic/input-schema.md`) to describe VO2Max classification.
-- Added regression coverage in `tests/test_get_metrics_vo2max_classification.py` for VO2Max classification mapping across all age groups and sex combinations.
-
-## [0.6.6] - 2026-07-08
+## [0.6.6] - 2026-07-09
 
 ### Changed
 
@@ -39,6 +34,10 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Added `scripts/validate_plan.py` to validate plan JSON files against `contracts/week-plan/week-plan.schema.json` before running `upload_plan.py`.
 - Documented the validation step and new script usage in `README.md`.
 - Added MCP tool `validate_week_plan` in both local and webservice MCP servers to validate plan JSON against the upload schema before `upload_week_plan`.
+- Added `metrics.vo2max_classification` in `scripts/get_metrics.py` based on VO2Max (ml/kg/min), age group (teen 13–19, adult 20–29, master 30–39, 40–49, grand master 50–59, senior 60+), and sex (male/female). Classification categories: *very poor*, *poor*, *average*, *good*, *very good*, *excellent*. Includes `ml_per_kg_min`, `age_group`, `sex`, `category`, `category_range` (min/max), `next_category`, and `delta_to_next`.
+- Updated week-data contracts and schema models (`src/intervals_icu/week_data_schema.py`, `contracts/week-data/week-data.schema.json`, `contracts/week-data/WeekDataDto.cs`) to include `metrics.vo2max_classification`.
+- Updated documentation (`README.md`, `coach-logic/input-schema.md`) to describe VO2Max classification.
+- Added regression coverage in `tests/test_get_metrics_vo2max_classification.py` for VO2Max classification mapping across all age groups and sex combinations.
 
 ## [0.6.5] - 2026-07-05
 
