@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rbrands.github.io/intervals-icu-sync/schemas/week-plan.schema.json",
+  "title": "Week Plan Upload",
+  "description": "Schema for JSON plans consumed by scripts/upload_plan.py.",
+  "oneOf": [
+    {
+      "type": "array",
+      "title": "Workout List",
+      "items": {
+        "$ref": "#/$defs/workout"
+      }
+    },
+    {
+      "type": "object",
+      "title": "Week Wrapper",
+      "additionalProperties": false,
+      "properties": {
+        "week": {
+          "type": "string",
+          "description": "Optional week label (for display/logging only), e.g. 2026-07-06."
+        },
+        "workouts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/workout"
+          }
+        }
+      },
+      "required": [
+        "workouts"
+      ]
+    }
+  ],
+  "$defs": {
+    "workout": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "ISO date or local datetime (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS).",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2})?$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Workout title shown in intervals.icu."
+        },
+        "duration_minutes": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Planned duration in minutes."
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional workout notes."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Canonical tag field; use this also for a single tag.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Legacy single-tag field. Deprecated; use tags[] instead."
+        },
+        "steps": {
+          "type": "array",
+          "description": "Optional top-level workout steps; converted to ZWO when provided.",
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "workout": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "steps": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/step"
+              }
+            }
+          }
+        },
+        "fueling": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "carbs_per_hour": {
+              "type": "number"
+            },
+            "total_carbs": {
+              "type": "number"
+            }
+          },
+          "description": "Optional helper values appended to description on upload."
+        }
+      },
+      "required": [
+        "date",
+        "name",
+        "duration_minutes"
+      ]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "duration_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Preferred step duration in seconds."
+        },
+        "duration": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Legacy alias for duration_seconds."
+        },
+        "power_pct_ftp": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Preferred target power in percent FTP (e.g. 95)."
+        },
+        "power": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Legacy alias for power_pct_ftp."
+        }
+      }
+    }
+  }
+}

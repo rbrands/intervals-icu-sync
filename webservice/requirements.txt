@@ -3,6 +3,7 @@ python-dotenv
 pandas
 matplotlib
 mcp[cli]
+jsonschema>=4.23,<5
 uvicorn[standard]
 azure-monitor-opentelemetry
 azure-identity

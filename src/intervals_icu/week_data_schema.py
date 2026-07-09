@@ -40,11 +40,42 @@ class PowerProfile(_SchemaModel):
     p20min: PowerProfilePoint | None = None
     curve_slope: float | int | None = None
     period_days: int | None = None
+    type: str | None = None
+    type_key: str | None = None
+    heuristic_score: float | int | None = None
+    type_scores: dict[str, float | int] | None = None
+    type_method: str | None = None
+
+
+class FtpCategoryRange(_SchemaModel):
+    min: float | int | None = None
+    max: float | int | None = None
+
+
+class FtpClassification(_SchemaModel):
+    w_per_kg: float | int | None = None
+    age_group: str | None = None
+    sex: str | None = None
+    category: str | None = None
+    category_range: FtpCategoryRange | None = None
+    next_category: str | None = None
+    delta_to_next: float | int | None = None
+
+
+class Vo2MaxClassification(_SchemaModel):
+    ml_per_kg_min: float | int | None = None
+    age_group: str | None = None
+    sex: str | None = None
+    category: str | None = None
+    category_range: FtpCategoryRange | None = None
+    next_category: str | None = None
+    delta_to_next: float | int | None = None
 
 
 class Metrics(_SchemaModel):
     date: str | None = None
     ftp: float | int | None = None
+    ftp_classification: FtpClassification | None = None
     rolling_ftp: float | int | None = None
     w_prime: float | int | None = None
     rolling_w_prime: float | int | None = None
@@ -64,7 +95,7 @@ class Metrics(_SchemaModel):
     sleep_quality: str | None = None
     wellness_trends: WellnessTrends | None = None
     power_profile: PowerProfile | None = None
-    vo2max: float | int | None = None
+    vo2max_classification: Vo2MaxClassification | None = None
 
 
 class FuelingFormAnalysis(_SchemaModel):

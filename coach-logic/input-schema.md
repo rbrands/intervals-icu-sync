@@ -35,15 +35,24 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 
 ## metrics — non-obvious fields
 
-- `ftp` / `rolling_ftp` / `eftp`: set FTP; 42-day rolling estimate;
-  effective FTP from recent rides. Use `ftp` for zones unless told otherwise.
+- `ftp` / `rolling_ftp` / `eftp`: set FTP (W), 42-day rolling estimate,
+  and effective FTP from recent rides. Use `ftp` for zones unless told
+  otherwise.
+- `ftp_classification`: age- and sex-adjusted FTP category based on FTP
+  W/kg, including `w_per_kg`, `category`, `category_range`,
+  `next_category`, and `delta_to_next`.
 - `w_prime` / `rolling_w_prime` / `w_prime_wellness`: set W' (J); 42-day
   rolling estimate; wellness-model estimate (HRV/sleep-based).
 - `rolling_p_max`: rolling max 1-second power (42-day).
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)
   = aerobic/climber.
-- `vo2max`: estimated from p5min power and weight.
+- `vo2max_classification.ml_per_kg_min`: VO2Max estimated from p5min power and weight (ml/kg/min).
+- `vo2max_classification`: age- and sex-adjusted VO2Max category based on VO2Max
+  (ml/kg/min), including `ml_per_kg_min`, `age_group`, `sex`, `category`,
+  `category_range`, `next_category`, and `delta_to_next`. Age groups:
+  teen_13_19, adult_20_29, master_30_39, master_40_49, grand_master_50_59,
+  senior_60_plus. Categories: very_poor, poor, average, good, very_good, excellent.
 - `sleep_secs`: SECONDS (÷3600 for hours).
 - `sleep_quality`: one of `GREAT`, `GOOD`, `AVG`, `POOR` (mapped from intervals.icu scale 1–4; GREAT = best).
 - `lthr`: lactate threshold heart rate (bpm).

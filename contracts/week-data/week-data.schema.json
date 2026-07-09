@@ -588,6 +588,139 @@
       "title": "DayConstraint",
       "type": "object"
     },
+    "FtpCategoryRange": {
+      "additionalProperties": true,
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        }
+      },
+      "title": "FtpCategoryRange",
+      "type": "object"
+    },
+    "FtpClassification": {
+      "additionalProperties": true,
+      "properties": {
+        "w_per_kg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "W Per Kg"
+        },
+        "age_group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Age Group"
+        },
+        "sex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sex"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "category_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FtpCategoryRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "next_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Category"
+        },
+        "delta_to_next": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta To Next"
+        }
+      },
+      "title": "FtpClassification",
+      "type": "object"
+    },
     "FuelingAnalysis": {
       "additionalProperties": true,
       "properties": {
@@ -1048,6 +1181,17 @@
           "default": null,
           "title": "Ftp"
         },
+        "ftp_classification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FtpClassification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "rolling_ftp": {
           "anyOf": [
             {
@@ -1313,20 +1457,16 @@
           ],
           "default": null
         },
-        "vo2max": {
+        "vo2max_classification": {
           "anyOf": [
             {
-              "type": "number"
-            },
-            {
-              "type": "integer"
+              "$ref": "#/$defs/Vo2MaxClassification"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Vo2Max"
+          "default": null
         }
       },
       "title": "Metrics",
@@ -1692,6 +1832,79 @@
           ],
           "default": null,
           "title": "Period Days"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type"
+        },
+        "type_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type Key"
+        },
+        "heuristic_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Heuristic Score"
+        },
+        "type_scores": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type Scores"
+        },
+        "type_method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type Method"
         }
       },
       "title": "PowerProfile",
@@ -1877,6 +2090,102 @@
         }
       },
       "title": "TrainingPlanEntry",
+      "type": "object"
+    },
+    "Vo2MaxClassification": {
+      "additionalProperties": true,
+      "properties": {
+        "ml_per_kg_min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ml Per Kg Min"
+        },
+        "age_group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Age Group"
+        },
+        "sex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sex"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "category_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FtpCategoryRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "next_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Category"
+        },
+        "delta_to_next": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta To Next"
+        }
+      },
+      "title": "Vo2MaxClassification",
       "type": "object"
     },
     "Weather": {

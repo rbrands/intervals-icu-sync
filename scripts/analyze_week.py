@@ -134,6 +134,25 @@ def _classify_decoupling(value: float) -> str:
     return "significant limitation"
 
 
+def _get_zone_distribution(activity: dict) -> dict:
+    """Compute Z1+2 / Z3+4 / Z5+ percentage breakdown from icu_zone_times."""
+    zone_times = activity.get("icu_zone_times") or []
+    if not zone_times:
+        return {"z1_z2_pct": None, "z3_z4_pct": None, "z5_plus_pct": None}
+    secs_by_id = {z["id"]: z["secs"] for z in zone_times if "id" in z and "secs" in z}
+    total = sum(secs_by_id.values())
+    if total == 0:
+        return {"z1_z2_pct": None, "z3_z4_pct": None, "z5_plus_pct": None}
+    z1_z2 = secs_by_id.get("Z1", 0) + secs_by_id.get("Z2", 0)
+    z3_z4 = secs_by_id.get("Z3", 0) + secs_by_id.get("Z4", 0)
+    z5_plus = sum(v for k, v in secs_by_id.items() if k in ("Z5", "Z6", "Z7"))
+    return {
+        "z1_z2_pct": round(z1_z2 / total * 100, 1),
+        "z3_z4_pct": round(z3_z4 / total * 100, 1),
+        "z5_plus_pct": round(z5_plus / total * 100, 1),
+    }
+
+
 def _classify_ride(activity: dict) -> str:
     raw = activity.get("interval_summary") or ""
     summary = " ".join(raw) if isinstance(raw, list) else raw
@@ -294,9 +313,10 @@ def compute_metrics(activities: list) -> dict:
     decouplings = [
         float(a["decoupling"])
         for a in activities
-        if a.get("decoupling") is not None
+        if a.get("decoupling") is not None and (_get_zone_distribution(a).get("z1_z2_pct") or 0) >= 80
     ]
     avg_decoupling = sum(decouplings) / len(decouplings) if decouplings else 0.0
+    avg_decoupling_label = _classify_decoupling(avg_decoupling) if decouplings else "no durability data"
     high_decoupling = sum(1 for d in decouplings if d >= 8)
 
     return {
@@ -309,7 +329,7 @@ def compute_metrics(activities: list) -> dict:
         "long_ride_sessions": long_ride_sessions,
         "endurance_sessions": endurance_sessions,
         "avg_decoupling": avg_decoupling,
-        "avg_decoupling_label": _classify_decoupling(avg_decoupling),
+        "avg_decoupling_label": avg_decoupling_label,
         "high_decoupling_rides": high_decoupling,
     }
 

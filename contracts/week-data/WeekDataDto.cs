@@ -179,6 +179,45 @@ public class DayConstraintDto
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
+public class FtpCategoryRangeDto
+{
+    [JsonPropertyName("min")]
+    public double? Min { get; set; }
+
+    [JsonPropertyName("max")]
+    public double? Max { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public class FtpClassificationDto
+{
+    [JsonPropertyName("w_per_kg")]
+    public double? WPerKg { get; set; }
+
+    [JsonPropertyName("age_group")]
+    public string? AgeGroup { get; set; }
+
+    [JsonPropertyName("sex")]
+    public string? Sex { get; set; }
+
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
+
+    [JsonPropertyName("category_range")]
+    public FtpCategoryRangeDto? CategoryRange { get; set; }
+
+    [JsonPropertyName("next_category")]
+    public string? NextCategory { get; set; }
+
+    [JsonPropertyName("delta_to_next")]
+    public double? DeltaToNext { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
 public class FuelingAnalysisDto
 {
     [JsonPropertyName("week_starting")]
@@ -307,6 +346,9 @@ public class MetricsDto
     [JsonPropertyName("ftp")]
     public double? Ftp { get; set; }
 
+    [JsonPropertyName("ftp_classification")]
+    public FtpClassificationDto? FtpClassification { get; set; }
+
     [JsonPropertyName("rolling_ftp")]
     public double? RollingFtp { get; set; }
 
@@ -364,8 +406,8 @@ public class MetricsDto
     [JsonPropertyName("power_profile")]
     public PowerProfileDto? PowerProfile { get; set; }
 
-    [JsonPropertyName("vo2max")]
-    public double? Vo2max { get; set; }
+    [JsonPropertyName("vo2max_classification")]
+    public Vo2MaxClassificationDto? Vo2maxClassification { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
@@ -475,6 +517,21 @@ public class PowerProfileDto
     [JsonPropertyName("period_days")]
     public int? PeriodDays { get; set; }
 
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    [JsonPropertyName("type_key")]
+    public string? TypeKey { get; set; }
+
+    [JsonPropertyName("heuristic_score")]
+    public double? HeuristicScore { get; set; }
+
+    [JsonPropertyName("type_scores")]
+    public Dictionary<string, double>? TypeScores { get; set; }
+
+    [JsonPropertyName("type_method")]
+    public string? TypeMethod { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
@@ -525,6 +582,33 @@ public class TrainingPlanEntryDto
 
     [JsonPropertyName("day_constraints")]
     public List<DayConstraintDto>? DayConstraints { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public class Vo2MaxClassificationDto
+{
+    [JsonPropertyName("ml_per_kg_min")]
+    public double? MlPerKgMin { get; set; }
+
+    [JsonPropertyName("age_group")]
+    public string? AgeGroup { get; set; }
+
+    [JsonPropertyName("sex")]
+    public string? Sex { get; set; }
+
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
+
+    [JsonPropertyName("category_range")]
+    public FtpCategoryRangeDto? CategoryRange { get; set; }
+
+    [JsonPropertyName("next_category")]
+    public string? NextCategory { get; set; }
+
+    [JsonPropertyName("delta_to_next")]
+    public double? DeltaToNext { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

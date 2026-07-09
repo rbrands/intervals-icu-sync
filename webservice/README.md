@@ -10,6 +10,7 @@ MCP server for Azure App Service. Exposes tools over SSE transport, with credent
 | `get_latest_activities` | Runs a slim pipeline and returns a compact, latest-first activity list (`date`, `name`, `duration_hours`, `training_load`, `avg_hr`, `max_hr`, `rpe`, `tags`) to avoid client-side truncation on large payloads. |
 | `list_library_workouts` | Lists the authenticated caller's own workout library with key fields (`folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
 | `list_standard_library_workouts` | Lists shared workouts of the configured standard library athlete (`STANDARD_LIBRARY_ATHLETE_ID`) with key fields (`shared_from`, `folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
+| `validate_week_plan` | Validates plan JSON against `contracts/week-plan/week-plan.schema.json` and returns structured validation results (`valid`/`invalid`) before upload. |
 | `upload_week_plan` | Uploads a JSON training plan to intervals.icu as planned workout events. Accepts `dry_run` and `clear` flags. |
 
 ## Prompts

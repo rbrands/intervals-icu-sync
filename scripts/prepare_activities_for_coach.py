@@ -259,7 +259,25 @@ def filter_activities(activities: list) -> list:
     ]
 
 
-def _classify_decoupling(value: float) -> str:
+def _classify_decoupling(value: float, z1_z2_pct: float | None = None) -> str | None:
+    """Classify HR/power decoupling based on zone distribution.
+    
+    Z1+Z2 >= 80%: full validity — classify normally
+    Z1+Z2 >= 60%: limited validity — return "limited durability signal"
+    Z1+Z2 < 60%: not applicable — return None
+    """
+    if z1_z2_pct is None:
+        return None
+    
+    if z1_z2_pct < 60:
+        # Not an endurance ride, no durability signal
+        return None
+    
+    if z1_z2_pct < 80:
+        # Marginal endurance ride, limited signal
+        return "limited durability signal"
+    
+    # Full endurance ride, classify normally
     if value < 3:
         return "excellent durability"
     if value < 5:
@@ -407,7 +425,13 @@ def extract_fields(
         "interval_summary": interval_summary,
         "interval_hr_analysis": interval_hr_analysis,
         "decoupling": activity.get("decoupling"),
-        "decoupling_label": _classify_decoupling(float(activity["decoupling"])) if activity.get("decoupling") is not None else None,
+        "decoupling_label": (
+            _classify_decoupling(
+                float(activity["decoupling"]),
+                z1_z2_pct=zone_dist["z1_z2_pct"]
+            )
+            if activity.get("decoupling") is not None else None
+        ),
         "rpe": activity.get("icu_rpe"),
         "carbs_used_g": activity.get("carbs_used"),
         "carbs_ingested_g": activity.get("carbs_ingested"),

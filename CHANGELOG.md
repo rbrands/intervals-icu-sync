@@ -7,6 +7,37 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+## [0.6.6] - 2026-07-09
+
+### Changed
+
+- Removed `ride_type` from the generated training-plan JSON contract in `prompts/system_prompt.md` and `foundry-agent/agent.yaml`; ride intent is now derived from workout tags downstream.
+- Simplified the generated plan contract to require only a non-empty `tags` array; a single tag must now also be emitted as a one-item `tags` list.
+- Updated `scripts/fueling_planner.py` to derive the primary fueling ride type from workout tags when `ride_type` is absent, while still honoring legacy payloads that include `ride_type`.
+- Updated documentation (`README.md`, `docs/gen_ai_setup_step_by_step.md`, `coach-logic/decision-process.md`) to match the tag-only plan format and the tag-derived ride-type behavior.
+- Updated decoupling (aerobic durability) classification to be zone-distribution aware instead of duration/ride-type based: only classifies durability for rides with Z1+Z2 ≥ 80% (full validity); shows `"limited durability signal"` for rides with Z1+Z2 60–80% (marginal endurance); returns `null` for rides with Z1+Z2 < 60% (not applicable).
+- Updated `scripts/prepare_activities_for_coach.py` to pass `z1_z2_pct` to `_classify_decoupling()` and use zone distribution instead of duration/ride classification.
+- Updated `scripts/analyze_week.py` to filter decoupling values to only include rides with Z1+Z2 ≥ 80% when computing weekly average; shows `"no durability data"` if no eligible rides exist.
+- Updated documentation (`README.md`, `coach-logic/interpretation-rules.md`) to reflect zone-based decoupling validity thresholds.
+- Added `metrics.ftp_classification` in `scripts/get_metrics.py` based on FTP W/kg, age group, and sex (including `w_per_kg`, `category_range`, `next_category`, and `delta_to_next`).
+- Updated week-data contracts and schema models (`src/intervals_icu/week_data_schema.py`, `contracts/week-data/week-data.schema.json`, `contracts/week-data/WeekDataDto.cs`) to include `metrics.ftp_classification` and keep FTP W/kg only inside `ftp_classification.w_per_kg`.
+- Updated documentation (`README.md`, `coach-logic/input-schema.md`) to describe FTP W/kg as part of `ftp_classification`.
+- Added regression coverage in `tests/test_get_metrics_ftp_classification.py` for FTP classification mapping.
+
+### Added
+
+- Added regression coverage in `tests/test_workout_tag_conventions.py` for tag-based fueling-plan inference, including multi-tag sessions.
+- Added upload-plan JSON Schema at `contracts/week-plan/week-plan.schema.json`, covering both accepted input shapes (`[...]` and `{ "week": "...", "workouts": [...] }`) and workout/step fields used by `scripts/upload_plan.py`.
+- Added `scripts/validate_plan.py` to validate plan JSON files against `contracts/week-plan/week-plan.schema.json` before running `upload_plan.py`.
+- Documented the validation step and new script usage in `README.md`.
+- Added MCP tool `validate_week_plan` in both local and webservice MCP servers to validate plan JSON against the upload schema before `upload_week_plan`.
+- Added `metrics.vo2max_classification` in `scripts/get_metrics.py` based on VO2Max (ml/kg/min), age group (teen 13–19, adult 20–29, master 30–39, 40–49, grand master 50–59, senior 60+), and sex (male/female). Classification categories: *very poor*, *poor*, *average*, *good*, *very good*, *excellent*. Includes `ml_per_kg_min`, `age_group`, `sex`, `category`, `category_range` (min/max), `next_category`, and `delta_to_next`.
+- Updated week-data contracts and schema models (`src/intervals_icu/week_data_schema.py`, `contracts/week-data/week-data.schema.json`, `contracts/week-data/WeekDataDto.cs`) to include `metrics.vo2max_classification`.
+- Updated documentation (`README.md`, `coach-logic/input-schema.md`) to describe VO2Max classification.
+- Added regression coverage in `tests/test_get_metrics_vo2max_classification.py` for VO2Max classification mapping across all age groups and sex combinations.
+
 ## [0.6.5] - 2026-07-05
 
 ### Changed

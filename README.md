@@ -96,7 +96,8 @@ Run the Python scripts locally and exchange JSON files with your AI coaching too
 1. Run `prepare_week_for_coach.py` to pull all data from intervals.icu and produce a single coaching input file.
 2. Upload or paste that file into your AI assistant (ChatGPT, Claude, etc.) along with the system prompt.
 3. Discuss the week with your coach, receive a JSON training plan, save it locally.
-4. Run `upload_plan.py` to push the plan to intervals.icu.
+4. Run `validate_plan.py` to validate the plan JSON against the upload schema.
+5. Run `upload_plan.py` to push the plan to intervals.icu.
 
 **Best for:** Users who want full control, prefer no external dependencies, or want to understand the tooling in detail.
 
@@ -139,6 +140,7 @@ intervals-icu-sync/
 │   ├── prepare_planned_workouts_for_coach.py  # Format planned workouts → data/processed/
 │   ├── fueling_analysis.py         # Analyze carbohydrate fueling quality
 │   ├── fueling_planner.py          # Generate carbohydrate targets per session
+│   ├── validate_plan.py            # Validate week_plan JSON against upload schema
 │   ├── upload_plan.py              # Upload JSON training plan to intervals.icu
 │   ├── wbal_analysis.py            # Compute W'bal time series from power stream
 │   ├── prepare_week_for_coach.py   # Run all scripts in sequence
@@ -388,8 +390,12 @@ Output: `data/raw/activities_{date}.json`
 
 ### `get_metrics.py`
 
-Fetches athlete performance metrics: FTP, eFTP, W', weight, CTL, ATL, resting HR, HRV, best 5-minute power, and calculated VO2Max.
+Fetches athlete performance metrics: FTP, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
+
+**Power Profile Type**: Adds a heuristic rider type estimate to `metrics.power_profile` using the 42-day power curve (`p15s`, `p1min`, `p5min`, `p20min`, `curve_slope`). Exposed fields are `type`, `type_key`, `heuristic_score`, `type_scores`, and `type_method` (currently `heuristic_v1`).
+
+**VO2Max Classification**: Classification by age group (13–19, 20–29, 30–39, 40–49, 50–59, 60+) and sex (male/female). Categories: *very poor*, *poor*, *average*, *good*, *very good*, *excellent*. Includes delta to next category and thresholds for range.
 
 ```bash
 python scripts/get_metrics.py
@@ -401,7 +407,7 @@ Output: `data/processed/metrics_{date}.json`
 
 ### `analyze_week.py`
 
-Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies sessions (VO2max / Threshold / Endurance), computes aerobic decoupling, and prints a coaching interpretation.
+Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies sessions (VO2max / Threshold / Endurance), computes aerobic decoupling (for Base/Pyramidal/Threshold rides ≥ 90 min only), and prints a coaching interpretation.
 
 Also computes **Form %** based on CTL (fitness) and ATL (fatigue):
 
@@ -420,7 +426,7 @@ Output: console + `data/processed/week_summary_{monday}.json`
 
 ### `prepare_activities_for_coach.py`
 
-Exports a simplified JSON of rides in the active lookback window (`LOOKBACK_DAYS`, default: `7`) for sharing with a coach or ChatGPT. Includes duration, training load, power, HR (avg/max), RPE, interval summary, compact interval HR analysis (`interval_hr_analysis` with `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, `hr_power_decoupling`), decoupling, and carbohydrate intake. The HR interval summary is computed only from eligible WORK intervals (minimum 120 seconds and minimum 95% FTP intensity).
+Exports a simplified JSON of rides in the active lookback window (`LOOKBACK_DAYS`, default: `7`) for sharing with a coach or ChatGPT. Includes duration, training load, power, HR (avg/max), RPE, interval summary, compact interval HR analysis (`interval_hr_analysis` with `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, `hr_power_decoupling`), decoupling, and carbohydrate intake. The HR interval summary is computed only from eligible WORK intervals (minimum 120 seconds and minimum 95% FTP intensity). Decoupling labels are only classified for Base/Pyramidal/Threshold rides ≥ 90 min; shorter or high-intensity rides show `"limited durability signal"`.
 Activities in the exported list are sorted by date/time with the newest ride first.
 
 ```bash
@@ -445,8 +451,8 @@ Output: console report + `data/processed/fueling_analysis_{monday}.json`
 
 ### `fueling_planner.py`
 
-Generates per-session carbohydrate intake targets based on ride type, duration, and current fatigue (Form %).
-Reads from `coach_input_{monday}.json` (specifically `activities[].fueling`, which carries the fueling classification fields including `ride_type`).
+Generates per-session carbohydrate intake targets based on tag-derived ride type, duration, and current fatigue (Form %).
+Reads from `coach_input_{monday}.json` (specifically `activities[].fueling` plus workout `tags`; if a legacy `ride_type` is present it is still honored).
 
 Target ranges by ride type:
 
@@ -622,9 +628,11 @@ Each entry in the JSON file must have:
 
 Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `steps` (structured workout intervals → uploaded as a ZWO file).
 
+Plan JSON Schema: `contracts/week-plan/week-plan.schema.json` (supports both accepted top-level formats: bare workout array or `{ "week": "...", "workouts": [...] }`).
+
 Field limits on upload: `name` is truncated to 127 characters and `description`/notes to 512 characters.
 
-Tag handling: multiple tags per workout are supported. For backward compatibility, a legacy single `tag` string is also accepted and internally treated as a one-item `tags` list.
+Tag handling: the plan format should always use `tags`, including for a single tag. For backward compatibility, `upload_plan.py` still accepts a legacy single `tag` string and internally treats it as a one-item `tags` list.
 
 Duplicate handling: before creating events, the script fetches existing WORKOUT events for the date range and indexes them by `(name, date)`. If a match is found the existing event is updated (`PUT`); otherwise a new event is created (`POST`). Re-running the script is safe and will never produce duplicates.
 
@@ -646,6 +654,31 @@ Output: one `Created` or `Updated` line per workout, summary of counts.
 
 ---
 
+### `validate_plan.py`
+
+Validates a plan JSON file against the upload schema before calendar upload.
+
+Default inputs:
+- Plan: `data/plans/week_plan.json`
+- Schema: `contracts/week-plan/week-plan.schema.json`
+
+```bash
+# Validate default plan file
+python scripts/validate_plan.py
+
+# Validate a custom plan file
+python scripts/validate_plan.py --plan data/plans/my_plan.json
+
+# Print more than 10 validation errors
+python scripts/validate_plan.py --max-errors 25
+```
+
+Exit code behavior:
+- `0` when the plan is valid
+- `1` when the plan/schema file is missing, JSON is invalid, or validation fails
+
+---
+
 
 ## Notebook
 
@@ -654,9 +687,9 @@ Output: one `Created` or `Updated` line per workout, summary of counts.
 Interactive Jupyter notebook that loads the consolidated `coach_input_{monday}.json` and displays a structured overview of the current training week:
 
 - **Athlete Metrics**: FTP, eFTP, VO2Max, W\', CTL/ATL, HRV, weight — FTP values shown in W and W/kg
-- **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling
+- **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling (only from rides ≥ 90 min; shows `"no durability data"` if no eligible rides exist)
 - **Form & Fatigue Analysis**: CTL, ATL, Form (absolute and % relative to fitness), Form Zone, HRV — with coaching interpretation based on form zone
-- **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling, and carbohydrate data
+- **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling (labeled only for Base/Pyramidal/Threshold rides ≥ 90 min), and carbohydrate data
 - **Zone Distribution Chart**: bar charts per activity showing Z1+2 / Z3+4 / Z5+ split
 - **Integrated Fatigue & Fueling Analysis**: combines Form % and weekly fueling quality into a single coaching interpretation with recommendation
 - **Fueling Analysis**: per-ride fueling status, carbs/h, fueling ratio, and weekly recommendations
