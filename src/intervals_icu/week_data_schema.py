@@ -40,6 +40,11 @@ class PowerProfile(_SchemaModel):
     p20min: PowerProfilePoint | None = None
     curve_slope: float | int | None = None
     period_days: int | None = None
+    type: str | None = None
+    type_key: str | None = None
+    heuristic_score: float | int | None = None
+    type_scores: dict[str, float | int] | None = None
+    type_method: str | None = None
 
 
 class FtpCategoryRange(_SchemaModel):

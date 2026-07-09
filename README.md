@@ -390,8 +390,10 @@ Output: `data/raw/activities_{date}.json`
 
 ### `get_metrics.py`
 
-Fetches athlete performance metrics: FTP, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', weight, CTL, ATL, resting HR, HRV, and best 5-minute power.
+Fetches athlete performance metrics: FTP, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
+
+**Power Profile Type**: Adds a heuristic rider type estimate to `metrics.power_profile` using the 42-day power curve (`p15s`, `p1min`, `p5min`, `p20min`, `curve_slope`). Exposed fields are `type`, `type_key`, `heuristic_score`, `type_scores`, and `type_method` (currently `heuristic_v1`).
 
 **VO2Max Classification**: Classification by age group (13–19, 20–29, 30–39, 40–49, 50–59, 60+) and sex (male/female). Categories: *very poor*, *poor*, *average*, *good*, *very good*, *excellent*. Includes delta to next category and thresholds for range.
 

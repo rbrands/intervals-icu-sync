@@ -1,6 +1,7 @@
 """Fetch current athlete performance metrics from intervals.icu and save to data/processed/metrics_{date}.json."""
 
 import json
+import math
 import os
 import sys
 from datetime import date, timedelta
@@ -202,6 +203,69 @@ _POWER_PROFILE_TARGETS: dict[int, str] = {
     180: "p3min",
     300: "p5min",
     1200: "p20min",
+}
+
+_POWER_PROFILE_TYPE_LABELS: dict[str, str] = {
+    "all_rounder": "All Rounder",
+    "puncheur": "Puncheur",
+    "sprinter": "Sprinter",
+    "climber": "Climber",
+    "time_trialist": "Time Trialist",
+}
+
+# Heuristic archetypes for a simple rider-type estimate from power profile features.
+_POWER_PROFILE_TYPE_PROTOTYPES: dict[str, dict[str, float]] = {
+    "all_rounder": {
+        "sprint_ratio": 1.9,
+        "anaerobic_ratio": 1.34,
+        "punch_ratio": 1.18,
+        "p20_wkg": 3.3,
+        "curve_slope": -0.54,
+    },
+    "puncheur": {
+        "sprint_ratio": 2.05,
+        "anaerobic_ratio": 1.45,
+        "punch_ratio": 1.22,
+        "p20_wkg": 3.5,
+        "curve_slope": -0.5,
+    },
+    "sprinter": {
+        "sprint_ratio": 2.25,
+        "anaerobic_ratio": 1.6,
+        "punch_ratio": 1.3,
+        "p20_wkg": 3.2,
+        "curve_slope": -0.46,
+    },
+    "climber": {
+        "sprint_ratio": 1.55,
+        "anaerobic_ratio": 1.2,
+        "punch_ratio": 1.14,
+        "p20_wkg": 4.3,
+        "curve_slope": -0.6,
+    },
+    "time_trialist": {
+        "sprint_ratio": 1.65,
+        "anaerobic_ratio": 1.18,
+        "punch_ratio": 1.12,
+        "p20_wkg": 4.0,
+        "curve_slope": -0.62,
+    },
+}
+
+_POWER_PROFILE_FEATURE_WEIGHTS: dict[str, float] = {
+    "sprint_ratio": 1.2,
+    "anaerobic_ratio": 1.2,
+    "punch_ratio": 1.0,
+    "p20_wkg": 0.35,
+    "curve_slope": 0.8,
+}
+
+_POWER_PROFILE_FEATURE_SCALES: dict[str, float] = {
+    "sprint_ratio": 0.30,
+    "anaerobic_ratio": 0.22,
+    "punch_ratio": 0.12,
+    "p20_wkg": 1.25,
+    "curve_slope": 0.12,
 }
 
 _FTP_BANDS: dict[str, dict[str, dict[str, float | None]]] = {
@@ -466,7 +530,9 @@ def fetch_power_profile() -> dict:
     Returns a dict with keys p15s, p30s, p1min, p3min, p5min, p20min.
     Each value is a dict with 'watts' (int) and 'w_per_kg' (float).
     Also includes 'period_days' (int) and 'curve_slope' (float) for the modelled
-    power-over-time slope on a log-log scale (less negative = more anaerobic).
+    power-over-time slope on a log-log scale (less negative = more anaerobic),
+    and a heuristic rider type estimate under: 'type', 'type_key',
+    'heuristic_score', 'type_scores', and 'type_method'.
     """
     r = requests.get(
         f"{BASE_URL}/athlete/{ATHLETE_ID}/power-curves",
@@ -503,7 +569,81 @@ def fetch_power_profile() -> dict:
     profile["curve_slope"] = round(slope, 4) if slope is not None else None
     profile["period_days"] = curve.get("days")
 
+    profile_type = _build_power_profile_type(profile)
+    if profile_type:
+        profile.update(profile_type)
+
     return profile
+
+
+def _safe_ratio(numerator: float | int | None, denominator: float | int | None) -> float | None:
+    num = _to_float(numerator)
+    den = _to_float(denominator)
+    if num is None or den is None or den <= 0:
+        return None
+    return round(num / den, 4)
+
+
+def _build_power_profile_type(power_profile: dict) -> dict | None:
+    p15 = ((power_profile.get("p15s") or {}).get("watts"))
+    p1 = ((power_profile.get("p1min") or {}).get("watts"))
+    p5 = ((power_profile.get("p5min") or {}).get("watts"))
+    p20 = ((power_profile.get("p20min") or {}).get("watts"))
+    p20_wkg = ((power_profile.get("p20min") or {}).get("w_per_kg"))
+    slope = _to_float(power_profile.get("curve_slope"))
+
+    features: dict[str, float] = {
+        "sprint_ratio": _safe_ratio(p15, p20),
+        "anaerobic_ratio": _safe_ratio(p1, p20),
+        "punch_ratio": _safe_ratio(p5, p20),
+        "p20_wkg": _to_float(p20_wkg),
+        "curve_slope": slope,
+    }
+
+    available_feature_count = sum(1 for value in features.values() if value is not None)
+    if available_feature_count < 3:
+        return None
+
+    similarities: dict[str, float] = {}
+    for type_key, prototype in _POWER_PROFILE_TYPE_PROTOTYPES.items():
+        weighted_distance = 0.0
+        total_weight = 0.0
+        for feature_name, target_value in prototype.items():
+            value = features.get(feature_name)
+            if value is None:
+                continue
+            scale = _POWER_PROFILE_FEATURE_SCALES[feature_name]
+            weight = _POWER_PROFILE_FEATURE_WEIGHTS[feature_name]
+            weighted_distance += weight * abs(value - target_value) / scale
+            total_weight += weight
+
+        if total_weight <= 0:
+            continue
+
+        normalized_distance = weighted_distance / total_weight
+        similarities[type_key] = math.exp(-normalized_distance)
+
+    if not similarities:
+        return None
+
+    similarity_sum = sum(similarities.values())
+    if similarity_sum <= 0:
+        return None
+
+    probabilities = {
+        key: round(value / similarity_sum, 3)
+        for key, value in similarities.items()
+    }
+    winner_key = max(probabilities, key=probabilities.get)
+    winner_label = _POWER_PROFILE_TYPE_LABELS.get(winner_key, winner_key)
+
+    return {
+        "type": winner_label,
+        "type_key": winner_key,
+        "heuristic_score": probabilities[winner_key],
+        "type_scores": probabilities,
+        "type_method": "heuristic_v1",
+    }
 
 
 def calc_vo2max_from_power(p5min_watts: float, weight_kg: float) -> float:
@@ -779,6 +919,12 @@ def main() -> None:
         if w:
             print(f"  {label:>5}: {w} W  ({wkg} w/kg)")
     print(f"  Slope:  {power_profile.get('curve_slope')} (log-log, less negative = more anaerobic)")
+    if power_profile.get("type"):
+        print(
+            "  Type:   "
+            f"{power_profile.get('type')} "
+            f"(heuristic_score {power_profile.get('heuristic_score')})"
+        )
     print(f"Saved to:     {output_file}")
 
 
