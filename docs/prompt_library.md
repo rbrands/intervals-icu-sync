@@ -299,6 +299,15 @@ Lies die aktuellen Daten aus intervals über prepare_week_data und fasse die akt
 - VO2max (aktuell und Trend)
 - W' (anaerobe Kapazität)
 - CTL (Fitness), ATL (Ermüdung), Form (TSB) – absolut und in %
+- Fahrertyp aus `metrics.power_profile` auf Basis der Felder `type`, `type_key`, `heuristic_score`, `type_scores`, `type_method` (heuristische Einordnung; bei knappen Scores Unsicherheit benennen)
+
+Nutze fuer den Fahrertyp diese feste Ausgabevorlage:
+`Powerprofil: <type> (<Sicherheitsgrad>, Aehnlichkeit <heuristic_score>). <Kurzinterpretation in 1-2 Saetzen auf Basis von p15s/p30s/p1min/p3min/p5min/p20min und curve_slope>.`
+
+Regel fuer Sicherheitsgrad:
+- `hoch` bei `heuristic_score >= 0.45`
+- `moderat` bei `heuristic_score >= 0.30` und `< 0.45`
+- `niedrig` bei `< 0.30`
 
 **Wellness**
 - HRV: aktueller Wert und Trend (letzte 7 Tage)
@@ -324,6 +333,15 @@ Fetch the current data from intervals via prepare_week_data and summarize the cu
 - VO2max (current value and trend)
 - W' (anaerobic capacity)
 - CTL (fitness), ATL (fatigue), form (TSB) — absolute and as %
+- Rider type from `metrics.power_profile` based on `type`, `type_key`, `heuristic_score`, `type_scores`, and `type_method` (heuristic classification; explicitly mention uncertainty when scores are close)
+
+Use this fixed rider-type output template:
+`Power profile: <type> (<confidence_level>, similarity <heuristic_score>). <Short interpretation in 1-2 sentences based on p15s/p30s/p1min/p3min/p5min/p20min and curve_slope>.`
+
+Confidence level rule:
+- `high` when `heuristic_score >= 0.45`
+- `moderate` when `heuristic_score >= 0.30` and `< 0.45`
+- `low` when `< 0.30`
 
 **Wellness**
 - HRV: current value and trend (last 7 days)
