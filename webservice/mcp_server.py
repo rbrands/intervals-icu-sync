@@ -855,6 +855,14 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
         if p.get("sport_type") == "Ride"
     ]
 
+    def _copy_target_fields(entry: dict, target: dict) -> None:
+        load_target = target.get("load_target")
+        time_target_hours = target.get("time_target_hours")
+        if load_target is not None:
+            entry["weekly_load_target"] = load_target
+        if time_target_hours is not None:
+            entry["weekly_time_target_hours"] = time_target_hours
+
     def _build(
         targets_key: str,
         constraints_key: str,
@@ -874,7 +882,7 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
             entry.update({k: p.get(k) for k in ("plan_name", "phase", "start", "end")})
         if targets:
             t = targets[0]
-            entry["weekly_load_target"] = t.get("load_target")
+            _copy_target_fields(entry, t)
             entry["week_type"] = t.get("week_type", "NORMAL")
             if t.get("week_note"):
                 entry["week_note"] = t["week_note"]
@@ -890,7 +898,7 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
         "next_week_load_targets",
         "next_week_day_constraints",
         monday + timedelta(weeks=1),
-        next_phases or phases,
+        next_phases,
     )
     if nxt:
         result.append(nxt)
