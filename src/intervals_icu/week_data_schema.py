@@ -128,6 +128,7 @@ class TrainingPlanEntry(_SchemaModel):
     phase_start: str | None = None
     phase_end: str | None = None
     weekly_load_target: float | int | None = None
+    weekly_time_target_hours: float | int | None = None
     week_type: str | None = None
     week_note: str | None = None
     day_constraints: list[DayConstraint] | None = None

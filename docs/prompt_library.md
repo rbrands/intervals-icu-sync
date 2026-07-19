@@ -188,14 +188,14 @@ Hole die aktuellen Daten von intervals.icu per prepare_week_data. Erstelle mir b
 
 Entnimm die Planungsgrundlage direkt aus den intervals.icu-Daten:
 - Trainingsphase und Wochentyp: aus `next_week_active_phases` und `next_week_load_targets.week_type` (NORMAL / RECOVERY / RACE)
-- Wöchentliches Belastungsziel: aus `next_week_load_targets.load_target` (TSS)
+- Wochenziel: aus `next_week_load_targets.load_target` (TSS). Falls zusätzlich `time_target_hours` vorhanden ist, ist das nur eine obere Zeitgrenze. Falls `load_target` `null` ist, dann ist `time_target_hours` das Wochenziel.
 - Verfügbare Tage: aus `next_week_day_constraints` – Tage mit `training_allowed: false` entfallen, Tage mit `training_allowed: true` und Typ LIMITED nur für kurze, lockere Einheiten
 - Bereits geplante Einheiten: aus den `planned_workouts` der nächsten Woche – diese als Ankerpunkte übernehmen, nicht ersetzen
 - Berücksichtige aktuelle Form (TSB) und Ermüdung (ATL)
 
 Planungslogik:
 1. Schlüsseleinheiten passend zur Trainingsphase zuerst platzieren (VO2max, Schwelle, Lange Ausfahrt)
-2. Gesamtbelastung auf das TSS-Ziel ausrichten – je Einheit geschätzten TSS ausweisen
+2. Gesamtumfang am Wochenziel ausrichten: bei vorhandenem `load_target` immer nach TSS planen und `time_target_hours` nur als zusätzliche Obergrenze behandeln. Nur wenn `load_target` `null` ist, nach `time_target_hours` planen. Geschätzten TSS je Einheit trotzdem ausweisen.
 3. Fueling-Strategie für intensive Einheiten berücksichtigen
 4. Regenerationstage explizit einplanen
 5. Keine Dopplung bereits absolvierter Schlüsselreize
@@ -210,14 +210,14 @@ Fetch the current data from intervals.icu via prepare_week_data. Based on the we
 
 Derive the planning parameters directly from the intervals.icu data:
 - Training phase and week type: from `next_week_active_phases` and `next_week_load_targets.week_type` (NORMAL / RECOVERY / RACE)
-- Weekly load target: from `next_week_load_targets.load_target` (TSS)
+- Weekly target: from `next_week_load_targets.load_target` (TSS). If `time_target_hours` is also present, treat it as an upper time cap. Only if `load_target` is `null`, use `time_target_hours` as the weekly target.
 - Available days: from `next_week_day_constraints` — days with `training_allowed: false` are unavailable, days with `training_allowed: true` and type LIMITED only get short, easy sessions
 - Already planned sessions: from `planned_workouts` for next week — treat as anchors, do not replace
 - Consider current form (TSB) and fatigue (ATL)
 
 Planning logic:
 1. Place key sessions matched to the training phase first (VO2max, threshold, long ride)
-2. Align total load to the TSS target — show estimated TSS per session
+2. Align total volume to the weekly target: use TSS when `load_target` is present and treat `time_target_hours` as an additional upper bound. Only if `load_target` is `null`, use total planned time when `time_target_hours` is present. Still show estimated TSS per session.
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli

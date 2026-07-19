@@ -574,6 +574,9 @@ public class TrainingPlanEntryDto
     [JsonPropertyName("weekly_load_target")]
     public double? WeeklyLoadTarget { get; set; }
 
+    [JsonPropertyName("weekly_time_target_hours")]
+    public double? WeeklyTimeTargetHours { get; set; }
+
     [JsonPropertyName("week_type")]
     public string? WeekType { get; set; }
 

@@ -87,6 +87,16 @@ def find_active_phases(events: list, today: date) -> list:
     return result
 
 
+def find_week_phases(events: list, monday: date) -> list:
+    """Return the phase that applies to a planning week.
+
+    Use Tuesday as the representative day for the week so a phase ending on the
+    boundary Monday is treated as belonging to the previous week instead of
+    leaking into the next week's planning data.
+    """
+    return find_active_phases(events, monday + timedelta(days=1))
+
+
 def find_week_note(events: list, monday: date) -> str | None:
     """Return the name of a week-type NOTE event for the given week.
 
@@ -109,7 +119,7 @@ def find_week_note(events: list, monday: date) -> str | None:
 def find_weekly_load_targets(events: list, monday: date) -> list:
     """Return all load targets for the ISO week starting on monday (one per sport type).
 
-    Each entry: {load_target, sport_type, week_type, week_note}
+    Each entry: {load_target, time_target_hours, sport_type, week_type, week_note}
     week_type is derived from a NOTE event name (e.g. 'Recovery Week' → 'RECOVERY'),
     falling back to 'NORMAL'.
     """
@@ -125,15 +135,19 @@ def find_weekly_load_targets(events: list, monday: date) -> list:
         ev_date = ev.get("start_date_local", "")[:10]
         if week_start <= ev_date <= week_end:
             load_target = ev.get("load_target")
-            if load_target is not None:
-                entry = {
-                    "load_target": load_target,
-                    "sport_type": ev.get("type"),
-                    "week_type": note_week_type or "NORMAL",
-                }
-                if week_note:
-                    entry["week_note"] = week_note
-                result.append(entry)
+            time_target = ev.get("time_target")
+            if load_target is None and time_target is None:
+                continue
+            entry = {
+                "load_target": load_target,
+                "sport_type": ev.get("type"),
+                "week_type": note_week_type or "NORMAL",
+            }
+            if time_target is not None:
+                entry["time_target_hours"] = round(time_target / 3600, 1)
+            if week_note:
+                entry["week_note"] = week_note
+            result.append(entry)
     return result
 
 
@@ -229,7 +243,7 @@ def main() -> None:
     active_phases = find_active_phases(phase_events, today)
     monday = today - timedelta(days=today.weekday())
     next_monday = monday + timedelta(weeks=1)
-    next_week_active_phases = find_active_phases(phase_events, next_monday)
+    next_week_active_phases = find_week_phases(phase_events, next_monday)
     load_targets = find_weekly_load_targets(phase_events, monday)
     next_week_load_targets = find_weekly_load_targets(phase_events, next_monday)
     day_constraints = find_day_constraints(phase_events, monday)

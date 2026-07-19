@@ -9,6 +9,13 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+## [0.6.7] - 2026-07-19
+
+### Changed
+
+- Updated weekly training-plan target handling so TSS remains the primary goal when present, while time targets act as an upper cap and time-only targets use `weekly_time_target_hours`.
+- Clarified the phase summary so boundary-week phases are not inherited into the next week when no active next-week phase exists.
+
 ## [0.6.6] - 2026-07-11
 
 ### Changed

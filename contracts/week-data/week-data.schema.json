@@ -2049,6 +2049,21 @@
           "default": null,
           "title": "Weekly Load Target"
         },
+        "weekly_time_target_hours": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weekly Time Target Hours"
+        },
         "week_type": {
           "anyOf": [
             {

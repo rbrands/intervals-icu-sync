@@ -31,6 +31,29 @@ def load_metrics() -> dict:
     return json.loads(files[-1].read_text())
 
 
+def _copy_target_fields(entry: dict, target: dict) -> None:
+    load_target = target.get("load_target")
+    time_target_hours = target.get("time_target_hours")
+    if load_target is not None:
+        entry["weekly_load_target"] = load_target
+    if time_target_hours is not None:
+        entry["weekly_time_target_hours"] = time_target_hours
+
+
+def _format_weekly_target(entry: dict | None) -> str | None:
+    if not isinstance(entry, dict):
+        return None
+    load_target = entry.get("weekly_load_target")
+    time_target_hours = entry.get("weekly_time_target_hours")
+    if load_target is not None:
+        if time_target_hours is not None:
+            return f"{load_target} TSS, capped at {time_target_hours:.1f} h"
+        return f"{load_target} TSS"
+    if time_target_hours is not None:
+        return f"{time_target_hours:.1f} h"
+    return None
+
+
 def load_training_plan(today: date) -> list[dict] | None:
     path = OUTPUT_DIR / f"training_plan_{today.isoformat()}.json"
     if not path.exists():
@@ -58,7 +81,7 @@ def load_training_plan(today: date) -> list[dict] | None:
             entry["phase_end"] = p.get("end")
         if targets:
             t = targets[0]
-            entry["weekly_load_target"] = t.get("load_target")
+            _copy_target_fields(entry, t)
             entry["week_type"] = t.get("week_type", "NORMAL")
             entry["training_availability"] = t.get("training_availability", "NORMAL")
             if t.get("week_note"):
@@ -69,7 +92,7 @@ def load_training_plan(today: date) -> list[dict] | None:
     current = _build_entry("weekly_load_targets", monday, phases)
     if current:
         result.append(current)
-    next_week = _build_entry("next_week_load_targets", monday + timedelta(weeks=1), next_week_phases or phases)
+    next_week = _build_entry("next_week_load_targets", monday + timedelta(weeks=1), next_week_phases)
     if next_week:
         result.append(next_week)
     return result or None
@@ -234,13 +257,13 @@ def analyse_fueling_form(form_pct: float, fueling_data: dict, activities: list, 
     # Override for Recovery Week
     current_week = (training_plan or [{}])[0]
     week_type = current_week.get("week_type", "NORMAL")
-    load_target = current_week.get("weekly_load_target")
+    target_label = _format_weekly_target(current_week)
     if week_type == "RECOVERY":
         interpretation = "Recovery week — reduced load is intentional"
         recommendation = (
-            f"Stick to the recovery week plan (target: {load_target} TSS). "
+            f"Stick to the recovery week plan (target: {target_label}). "
             "Avoid adding load; focus on regeneration."
-            if load_target
+            if target_label
             else "Stick to the recovery week plan. Avoid adding load; focus on regeneration."
         )
     long_ride_advice: str | None = None
@@ -340,14 +363,13 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
         current = training_plan[0]
         plan_name = current.get("plan_name") or "Training Plan"
         phase = current.get("phase")
-        load_target = current.get("weekly_load_target")
         phase_str = f"#{phase}" if phase else "(no phase)"
-        target_str = f"{load_target} TSS" if load_target is not None else "(none)"
+        target_str = _format_weekly_target(current) or "(none)"
         next_str = ""
         if len(training_plan) > 1:
-            next_load = training_plan[1].get("weekly_load_target")
-            if next_load is not None:
-                next_str = f"  |  Next week: {next_load} TSS"
+            next_target = _format_weekly_target(training_plan[1])
+            if next_target is not None:
+                next_str = f"  |  Next week: {next_target}"
         print(f"Plan:                {plan_name}  |  Phase: {phase_str}  |  Weekly target: {target_str}{next_str}")
     print()
     print("=== Weekly Training Summary ===")

@@ -449,6 +449,14 @@ def prepare_week_data(lookback_days: int = 7) -> str:
     plan_data = _load_json_file(PROCESSED_DIR / f"training_plan_{today.isoformat()}.json")
     planned_workouts_data = _load_json_file(PROCESSED_DIR / f"planned_workouts_{monday_str}.json")
 
+    def _copy_target_fields(entry: dict, target: dict) -> None:
+        load_target = target.get("load_target")
+        time_target_hours = target.get("time_target_hours")
+        if load_target is not None:
+            entry["weekly_load_target"] = load_target
+        if time_target_hours is not None:
+            entry["weekly_time_target_hours"] = time_target_hours
+
     # Embed Ride training plan info
     if plan_data:
         phases = [p for p in (plan_data.get("active_phases") or []) if p.get("sport_type") == "Ride"]
@@ -460,7 +468,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
                 "next_week_load_targets",
                 "next_week_day_constraints",
                 monday + timedelta(weeks=1),
-                next_phases or phases,
+                next_phases,
             ),
         ]:
             targets = [t for t in (plan_data.get(targets_key) or []) if t.get("sport_type") == "Ride"]
@@ -473,7 +481,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
                 entry.update({k: p.get(k) for k in ("plan_name", "phase", "start", "end")})
             if targets:
                 t = targets[0]
-                entry["weekly_load_target"] = t.get("load_target")
+                _copy_target_fields(entry, t)
                 entry["week_type"] = t.get("week_type", "NORMAL")
                 if t.get("week_note"):
                     entry["week_note"] = t["week_note"]
