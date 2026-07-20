@@ -9,6 +9,12 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+## [0.6.8] - 2026-07-20
+
+### Changed
+
+- Fixed week phase inheritance in the webservice MCP path so next-week planning no longer reuses the previous week's phase when intervals.icu has no active phase for the current week.
+
 ## [0.6.7] - 2026-07-19
 
 ### Changed

@@ -240,9 +240,9 @@ def main() -> None:
     phase_start = today - timedelta(weeks=LOOKBACK_WEEKS)
 
     phase_events = fetch_all_events(phase_start.isoformat(), end_date.isoformat())
-    active_phases = find_active_phases(phase_events, today)
     monday = today - timedelta(days=today.weekday())
     next_monday = monday + timedelta(weeks=1)
+    active_phases = find_week_phases(phase_events, monday)
     next_week_active_phases = find_week_phases(phase_events, next_monday)
     load_targets = find_weekly_load_targets(phase_events, monday)
     next_week_load_targets = find_weekly_load_targets(phase_events, next_monday)

@@ -92,6 +92,32 @@ class TrainingPlanPhaseRegressionTests(unittest.TestCase):
 
         self.assertEqual(next_week_phases, [])
 
+    def test_current_week_phase_lookup_excludes_phase_ending_on_boundary_monday(self):
+        events = [
+            {
+                "category": "PLAN",
+                "name": "TdF Alpen",
+                "tags": ["Peak"],
+                "type": "Ride",
+                "start_date_local": "2026-06-15T00:00:00",
+                "end_date_local": "2026-07-20T00:00:00",
+            }
+        ]
+
+        current_week_phases = get_training_plan.find_week_phases(events, date(2026, 7, 13))
+
+        self.assertEqual(current_week_phases, [{
+            "plan_name": "TdF Alpen",
+            "phase": "Peak",
+            "sport_type": "Ride",
+            "start": "2026-06-15",
+            "end": "2026-07-20",
+        }])
+
+        boundary_week_phases = get_training_plan.find_week_phases(events, date(2026, 7, 20))
+
+        self.assertEqual(boundary_week_phases, [])
+
     def test_next_week_without_phase_does_not_inherit_current_phase_in_summary(self):
         monday = date(2026, 7, 13)
         plan_data = {
