@@ -63,7 +63,7 @@ Before passing the prompt to the coach, copy the contents of the matching `disci
 
 This keeps the base prompt stable while allowing the athlete profile to be swapped out per use.
 
-**`coach-logic/`** — Modular documentation of the coaching domain knowledge:
+**`coach-logic/`** — Modular dxocumentation of the coaching domain knowledge:
 
 | File | Content |
 |---|---|
@@ -82,6 +82,8 @@ The combination of:
 creates a lightweight but powerful coaching system. The full system prompt is maintained in [`prompts/system_prompt.md`](prompts/system_prompt.md).
 
 ## How to Use
+
+![alt text](docs/tiers-square.png)
 
 The tools in this project can be used in three different ways, depending on your technical comfort level and setup preferences.
 
