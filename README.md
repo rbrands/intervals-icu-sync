@@ -120,11 +120,11 @@ Use the publicly hosted MCP server at `intervals-mcp.training-architect.com`. No
 
 **Step-by-step guide:** [docs/gen_ai_setup_step_by_step.md](docs/gen_ai_setup_step_by_step.md)
 
-### Option 3 – "Integrated Web App" *(coming soon)*
+### Option 3 – "Integrated Web App"
 
-A web application that combines the full coaching workflow into a single interface — no local setup, no manual file exchange.
+Use the live web app at [training-architect.com](https://training-architect.com) for an end-to-end coaching workflow in one interface — no local setup and no manual file exchange.
 
-*Details to follow.*
+Project repository: [github.com/rbrands/training-architect](https://github.com/rbrands/training-architect)
 
 ---
 
