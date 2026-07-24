@@ -100,7 +100,7 @@ def _fetch_wbal_summary(activity: dict) -> dict | None:
     is available.
     """
     act_id = activity.get("id")
-    w_prime = activity.get("icu_w_prime")
+    w_prime = _activity_w_prime(activity)
     ftp = activity.get("icu_ftp")
     if not w_prime or not ftp:
         return None
@@ -117,6 +117,18 @@ def _fetch_wbal_summary(activity: dict) -> dict | None:
         return None
     wbal = compute_wbal(watts, float(w_prime), float(ftp))
     return summarize_wbal(wbal, float(w_prime))
+
+
+def _activity_w_prime(activity: dict) -> int | float | None:
+    """Return ride-level W' with fallback to rolling value.
+
+    If the athlete has not set W' (missing or 0), use icu_rolling_w_prime.
+    """
+    w_prime = activity.get("icu_w_prime")
+    rolling_w_prime = activity.get("icu_rolling_w_prime")
+    if not w_prime and rolling_w_prime is not None:
+        return rolling_w_prime
+    return w_prime
 
 
 def _fetch_interval_hr_analysis(activity: dict) -> dict | None:
@@ -402,6 +414,8 @@ def extract_fields(
     interval_hr_analysis: dict | None = None,
 ) -> dict:
     avg_hr, max_hr = _extract_heart_rate(activity)
+    w_prime = _activity_w_prime(activity)
+    max_wbal_depletion = activity.get("icu_max_wbal_depletion")
     interval_summary = activity.get("interval_summary")
     zone_dist = _zone_distribution(activity.get("icu_zone_times") or [])
     ride_class = classify_ride(
@@ -435,16 +449,16 @@ def extract_fields(
         "rpe": activity.get("icu_rpe"),
         "carbs_used_g": activity.get("carbs_used"),
         "carbs_ingested_g": activity.get("carbs_ingested"),
-        "w_prime_j": activity.get("icu_w_prime"),
-        "w_prime_bal_drop_j": activity.get("icu_max_wbal_depletion"),
+        "w_prime_j": w_prime,
+        "w_prime_bal_drop_j": max_wbal_depletion,
         "w_prime_bal_min_j": (
-            activity["icu_w_prime"] - activity["icu_max_wbal_depletion"]
-            if activity.get("icu_w_prime") is not None and activity.get("icu_max_wbal_depletion") is not None
+            w_prime - max_wbal_depletion
+            if w_prime is not None and max_wbal_depletion is not None
             else None
         ),
         "w_prime_usage_pct": (
-            round(activity["icu_max_wbal_depletion"] / activity["icu_w_prime"] * 100, 1)
-            if activity.get("icu_w_prime") and activity.get("icu_max_wbal_depletion") is not None
+            round(max_wbal_depletion / w_prime * 100, 1)
+            if w_prime and max_wbal_depletion is not None
             else None
         ),
         "tags": activity.get("tags") or [],

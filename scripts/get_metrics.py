@@ -184,11 +184,16 @@ def fetch_metrics_from_activities() -> dict:
 
     for activity in activities:
         if activity.get("icu_ftp"):
+            w_prime = activity.get("icu_w_prime")
+            rolling_w_prime = activity.get("icu_rolling_w_prime")
+            if not w_prime and rolling_w_prime is not None:
+                w_prime = rolling_w_prime
+
             return {
                 "ftp": activity.get("icu_ftp"),
                 "rolling_ftp": activity.get("icu_rolling_ftp"),
-                "w_prime": activity.get("icu_w_prime"),
-                "rolling_w_prime": activity.get("icu_rolling_w_prime"),
+                "w_prime": w_prime,
+                "rolling_w_prime": rolling_w_prime,
                 "rolling_p_max": activity.get("icu_rolling_p_max"),
                 "lthr": activity.get("lthr"),
                 "max_hr": activity.get("athlete_max_hr"),

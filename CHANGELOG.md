@@ -9,6 +9,14 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+## [0.6.9] - 2026-07-24
+
+### Changed
+
+- Updated `scripts/get_metrics.py` so `metrics.w_prime` falls back to `icu_rolling_w_prime` when `icu_w_prime` is missing or `0`.
+- Updated `scripts/prepare_activities_for_coach.py` to apply the same fallback for ride-level W' fields (`w_prime_j`, `w_prime_bal_min_j`, `w_prime_usage_pct`) and for W'bal computation.
+- Updated `README.md` to document the ride-level W' fallback behavior.
+
 ## [0.6.8] - 2026-07-20
 
 ### Changed

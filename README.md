@@ -429,6 +429,7 @@ Output: console + `data/processed/week_summary_{monday}.json`
 ### `prepare_activities_for_coach.py`
 
 Exports a simplified JSON of rides in the active lookback window (`LOOKBACK_DAYS`, default: `7`) for sharing with a coach or ChatGPT. Includes duration, training load, power, HR (avg/max), RPE, interval summary, compact interval HR analysis (`interval_hr_analysis` with `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, `hr_power_decoupling`), decoupling, and carbohydrate intake. The HR interval summary is computed only from eligible WORK intervals (minimum 120 seconds and minimum 95% FTP intensity). Decoupling labels are only classified for Base/Pyramidal/Threshold rides ≥ 90 min; shorter or high-intensity rides show `"limited durability signal"`.
+Ride-level W' fields use `icu_w_prime`; if that value is missing or `0`, the scripts automatically fall back to `icu_rolling_w_prime`.
 Activities in the exported list are sorted by date/time with the newest ride first.
 
 ```bash
