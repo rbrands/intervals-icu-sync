@@ -143,7 +143,6 @@ class WeekSummary(_SchemaModel):
     longest_ride_hours: float | int | None = None
     vo2_sessions: int | None = None
     threshold_sessions: int | None = None
-    long_ride_sessions: int | None = None
     endurance_sessions: int | None = None
     avg_decoupling: float | int | None = None
     avg_decoupling_label: str | None = None

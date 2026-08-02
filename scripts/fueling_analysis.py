@@ -233,7 +233,7 @@ def print_report(activities: list, analyses: list, summary: dict) -> None:
         print()
 
     print("-" * 40)
-    print("Weekly Summary (long rides > 2 h):")
+    print("Weekly Summary (long rides >= 2.5 h):")
     print(f"  Long rides:           {summary['number_of_long_rides']}")
     print(f"  Avg carbs/h:          {summary['avg_carbs_per_hour']:.0f} g")
     if summary["avg_fueling_ratio"] is not None:
@@ -258,7 +258,7 @@ def _build_recommendations(analyses: list, summary: dict) -> list:
         if summary["number_of_underfueled_sessions"] > 0:
             recommendations.append("Increase fueling on long rides — target at least 60 g/h.")
         if any("underfueled long ride" in a["flags"] for a in analyses):
-            recommendations.append("Target 80–90 g/h on long rides (> 2 h).")
+            recommendations.append("Target 80–90 g/h on long rides (>= 2.5 h).")
         if any("decoupling likely caused by low fueling" in a["flags"] for a in analyses):
             recommendations.append("Fueling likely limiting aerobic durability — address carbohydrate intake on longer sessions.")
         short_rides = [a for a in analyses if a["duration_hours"] < 1.5]

@@ -658,9 +658,6 @@ public class WeekSummaryDto
     [JsonPropertyName("threshold_sessions")]
     public int? ThresholdSessions { get; set; }
 
-    [JsonPropertyName("long_ride_sessions")]
-    public int? LongRideSessions { get; set; }
-
     [JsonPropertyName("endurance_sessions")]
     public int? EnduranceSessions { get; set; }
 

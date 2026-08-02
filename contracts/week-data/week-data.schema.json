@@ -2363,18 +2363,6 @@
           "default": null,
           "title": "Threshold Sessions"
         },
-        "long_ride_sessions": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Long Ride Sessions"
-        },
         "endurance_sessions": {
           "anyOf": [
             {

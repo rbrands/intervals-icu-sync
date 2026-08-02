@@ -411,6 +411,7 @@ Output: `data/processed/metrics_{date}.json`
 ### `analyze_week.py`
 
 Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies sessions (VO2max / Threshold / Endurance), computes aerobic decoupling (for Base/Pyramidal/Threshold rides ≥ 90 min only), and prints a coaching interpretation.
+The weekly summary keeps training-distribution fields focused on these three categories; long-ride counting for fueling decisions is handled in `fueling_analysis.weekly_summary.number_of_long_rides`.
 
 Also computes **Form %** based on CTL (fitness) and ATL (fatigue), and writes `ctl`/`atl` alongside form fields into `week_summary`:
 
@@ -418,6 +419,17 @@ Also computes **Form %** based on CTL (fitness) and ATL (fatigue), and writes `c
 - `form_pct = (CTL − ATL) / CTL` — relative to current fitness level
 - Form zones: `fresh` (> 0%) · `transition` (0 to −10%) · `optimal` (−10 to −30%) · `high_risk` (< −30%)
 - Coaching recommendations adapt based on form zone (combined with HRV if available)
+
+Session distribution semantics in `week_summary`:
+
+- `vo2_sessions`: sessions classified as VO2max.
+- `threshold_sessions`: sessions classified as threshold.
+- `endurance_sessions`: catch-all bucket for sessions that are neither VO2max nor threshold.
+    This includes long steady rides that are not classified as VO2max/threshold.
+
+Long-ride counting for fueling is tracked separately in
+`fueling_analysis.weekly_summary.number_of_long_rides`.
+Current rule: duration `>= 2.5 h` and no structured intervals.
 
 ```bash
 python scripts/analyze_week.py
@@ -443,7 +455,7 @@ Output: `data/processed/coach_input_{monday}.json`
 
 ### `fueling_analysis.py`
 
-Analyzes carbohydrate fueling quality per activity and for the active lookback window (`LOOKBACK_DAYS`, default: `7`). Classifies fueling based on duration (no fueling needed / optional / required), computes carbs/h and fueling ratio, detects underfueled sessions, and generates coaching recommendations.
+Analyzes carbohydrate fueling quality per activity and for the active lookback window (`LOOKBACK_DAYS`, default: `7`). Classifies fueling based on duration (no fueling needed / optional / required), computes carbs/h and fueling ratio, detects underfueled sessions, and generates coaching recommendations. Long rides in this context are counted with the script's long-ride rule and surfaced as `weekly_summary.number_of_long_rides`.
 
 ```bash
 python scripts/fueling_analysis.py

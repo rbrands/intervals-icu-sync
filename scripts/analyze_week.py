@@ -322,7 +322,6 @@ def compute_metrics(activities: list) -> dict:
 
     vo2_sessions = 0
     threshold_sessions = 0
-    long_ride_sessions = 0
     endurance_sessions = 0
     for a in activities:
         category = _classify_ride(a)
@@ -330,8 +329,6 @@ def compute_metrics(activities: list) -> dict:
             vo2_sessions += 1
         elif category == "threshold":
             threshold_sessions += 1
-        elif category == "long_ride":
-            long_ride_sessions += 1
         else:
             endurance_sessions += 1
 
@@ -351,7 +348,6 @@ def compute_metrics(activities: list) -> dict:
         "longest_ride_hours": longest,
         "vo2_sessions": vo2_sessions,
         "threshold_sessions": threshold_sessions,
-        "long_ride_sessions": long_ride_sessions,
         "endurance_sessions": endurance_sessions,
         "avg_decoupling": avg_decoupling,
         "avg_decoupling_label": avg_decoupling_label,
@@ -383,7 +379,6 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
     print("Distribution:")
     print(f"  VO2max sessions:     {m['vo2_sessions']}")
     print(f"  Threshold sessions:  {m['threshold_sessions']}")
-    print(f"  Long ride sessions:  {m['long_ride_sessions']}")
     print(f"  Endurance sessions:  {m['endurance_sessions']}")
     print()
     print("Decoupling:")
