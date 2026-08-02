@@ -566,7 +566,7 @@ Output: table or JSON to stdout
 
 ### `get_training_plan.py`
 
-Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Exports active phase(s), current and next-week TSS or time targets, and day-level constraints (e.g. Sick/Travel/Unavailable) derived from calendar NOTE and availability markers.
+Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Exports active phase(s), current and next-week TSS or time targets, and day-level constraints (e.g. Sick/Travel/Unavailable) derived from calendar NOTE and availability markers. For NOTE events, explicit `training_availability` values (for example `LIMITED`) take precedence over label keyword inference.
 
 ```bash
 python scripts/get_training_plan.py

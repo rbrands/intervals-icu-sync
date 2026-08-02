@@ -9,6 +9,17 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+## [0.6.10] - 2026-08-02
+
+### Changed
+
+- Fixed day-constraint derivation in `scripts/get_training_plan.py`: for `NOTE` events, explicit `training_availability` (for example `LIMITED`) now takes precedence over keyword-based label classification (for example `Reisetag`/`Abreise`).
+- Updated `README.md` to document the precedence rule for NOTE-based day constraints.
+
+### Added
+
+- Added regression coverage in `tests/test_training_plan_phase_regressions.py` to ensure NOTE constraints prefer explicit availability over label keyword inference.
+
 ## [0.6.9] - 2026-07-24
 
 ### Changed

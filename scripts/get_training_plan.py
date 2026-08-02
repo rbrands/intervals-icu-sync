@@ -179,17 +179,17 @@ def find_day_constraints(events: list, monday: date) -> list[dict]:
 
         category = ev.get("category")
         name = ev.get("name")
+        availability_raw = (ev.get("training_availability") or "").strip().upper()
 
         if category == "NOTE":
-            classified = _classify_note_constraint(name)
-            if classified:
-                constraint_type, training_allowed = classified
-            else:
-                availability_raw = (ev.get("training_availability") or "").strip().upper()
-                mapped = _AVAILABILITY_TO_CONSTRAINT.get(availability_raw)
-                if not mapped:
-                    continue
+            mapped = _AVAILABILITY_TO_CONSTRAINT.get(availability_raw)
+            if mapped:
                 constraint_type, training_allowed = mapped
+            else:
+                classified = _classify_note_constraint(name)
+                if not classified:
+                    continue
+                constraint_type, training_allowed = classified
             key = (ev_date, constraint_type, category)
             constraints_by_key[key] = {
                 "date": ev_date,
@@ -200,7 +200,6 @@ def find_day_constraints(events: list, monday: date) -> list[dict]:
             }
             continue
 
-        availability_raw = (ev.get("training_availability") or "").strip().upper()
         if availability_raw in {"", "NORMAL"}:
             continue
         mapped = _AVAILABILITY_TO_CONSTRAINT.get(availability_raw)

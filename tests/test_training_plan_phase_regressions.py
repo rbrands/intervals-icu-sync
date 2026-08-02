@@ -43,6 +43,31 @@ get_training_plan = _load_module(
 
 
 class TrainingPlanPhaseRegressionTests(unittest.TestCase):
+    def test_note_constraints_prefer_explicit_availability_over_label_keywords(self):
+        events = [
+            {
+                "category": "NOTE",
+                "name": "Reisetag",
+                "start_date_local": "2026-08-07T00:00:00",
+                "training_availability": "LIMITED",
+            }
+        ]
+
+        constraints = get_training_plan.find_day_constraints(events, date(2026, 8, 3))
+
+        self.assertEqual(
+            constraints,
+            [
+                {
+                    "date": "2026-08-07",
+                    "type": "LIMITED",
+                    "training_allowed": True,
+                    "source_category": "NOTE",
+                    "source_name": "Reisetag",
+                }
+            ],
+        )
+
     def test_weekly_target_prefers_tss_and_shows_time_as_cap(self):
         entry = {
             "weekly_load_target": 300,
