@@ -15,6 +15,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Updated `scripts/get_training_plan.py` so day constraints include the per-day training time cap when provided by intervals.icu.
 - Updated planning docs/prompts to enforce `max_training_time_hours` as a hard daily duration cap on constrained days.
+- Removed `metrics.w_prime_wellness` from exported week data (`scripts/get_metrics.py`) and aligned schema/contracts/docs accordingly.
 
 ## [0.6.10] - 2026-08-02
 

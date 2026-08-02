@@ -163,7 +163,6 @@ def fetch_wellness() -> dict:
         "resting_hr": today_entry.get("restingHR"),
         "hrv": today_entry.get("hrv"),
         "eftp": sport_info.get("eftp"),
-        "w_prime_wellness": sport_info.get("wPrime"),
         "sleep_secs": today_entry.get("sleepSecs"),
         "sleep_quality": _SLEEP_QUALITY_LABELS.get(raw_sleep_quality, raw_sleep_quality),
         "wellness_trends": _build_wellness_trends(entries),

@@ -394,9 +394,6 @@ public class MetricsDto
     [JsonPropertyName("eftp")]
     public double? Eftp { get; set; }
 
-    [JsonPropertyName("w_prime_wellness")]
-    public double? WPrimeWellness { get; set; }
-
     [JsonPropertyName("sleep_secs")]
     public int? SleepSecs { get; set; }
 

@@ -1411,21 +1411,6 @@
           "default": null,
           "title": "Eftp"
         },
-        "w_prime_wellness": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "W Prime Wellness"
-        },
         "sleep_secs": {
           "anyOf": [
             {

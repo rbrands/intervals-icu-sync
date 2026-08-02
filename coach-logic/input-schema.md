@@ -41,8 +41,7 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `ftp_classification`: age- and sex-adjusted FTP category based on FTP
   W/kg, including `w_per_kg`, `category`, `category_range`,
   `next_category`, and `delta_to_next`.
-- `w_prime` / `rolling_w_prime` / `w_prime_wellness`: set W' (J); 42-day
-  rolling estimate; wellness-model estimate (HRV/sleep-based).
+- `w_prime` / `rolling_w_prime`: set W' (J) and 42-day rolling estimate.
 - `rolling_p_max`: rolling max 1-second power (42-day).
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)

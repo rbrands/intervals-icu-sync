@@ -90,7 +90,6 @@ class Metrics(_SchemaModel):
     resting_hr: float | int | None = None
     hrv: float | int | None = None
     eftp: float | int | None = None
-    w_prime_wellness: float | int | None = None
     sleep_secs: int | None = None
     sleep_quality: str | None = None
     wellness_trends: WellnessTrends | None = None
