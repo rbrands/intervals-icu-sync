@@ -2,7 +2,7 @@ requests
 python-dotenv
 pandas
 matplotlib
-mcp[cli]
+mcp[cli]>=1,<2
 jsonschema>=4.23,<5
 uvicorn[standard]
 azure-monitor-opentelemetry

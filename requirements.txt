@@ -4,7 +4,7 @@ pandas
 matplotlib
 jupyter
 ipykernel
-mcp[cli]
+mcp[cli]>=1,<2
 pydantic>=2,<3
 jsonschema>=4.23,<5
 pre-commit

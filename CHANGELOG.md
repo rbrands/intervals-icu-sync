@@ -21,6 +21,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Updated `README.md` to document the precedence rule for NOTE-based day constraints.
 - Removed `metrics.w_prime_wellness` from exported week data (`scripts/get_metrics.py`) and aligned schema/contracts/docs accordingly.
 - Moved readiness snapshot fields `ctl` and `atl` from top-level `metrics` to `week_summary` in consolidated `coach_input` payloads (no duplicated values); aligned generation scripts, schema/contracts, notebook, and docs.
+- Pinned `mcp[cli]` to `<2` in dependency files to keep compatibility with `from mcp.server.fastmcp import FastMCP` used by the MCP server entrypoints.
 
 ## [0.6.9] - 2026-07-24
 
