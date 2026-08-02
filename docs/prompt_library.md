@@ -189,7 +189,7 @@ Hole die aktuellen Daten von intervals.icu per prepare_week_data. Erstelle mir b
 Entnimm die Planungsgrundlage direkt aus den intervals.icu-Daten:
 - Trainingsphase und Wochentyp: aus `next_week_active_phases` und `next_week_load_targets.week_type` (NORMAL / RECOVERY / RACE)
 - Wochenziel: aus `next_week_load_targets.load_target` (TSS). Falls zusätzlich `time_target_hours` vorhanden ist, ist das nur eine obere Zeitgrenze. Falls `load_target` `null` ist, dann ist `time_target_hours` das Wochenziel.
-- Verfügbare Tage: aus `next_week_day_constraints` – Tage mit `training_allowed: false` entfallen, Tage mit `training_allowed: true` und Typ LIMITED nur für kurze, lockere Einheiten
+- Verfügbare Tage: aus `next_week_day_constraints` – Tage mit `training_allowed: false` entfallen, Tage mit `training_allowed: true` und Typ LIMITED nur für kurze, lockere Einheiten. Falls `max_training_time_hours` gesetzt ist, darf die geplante Dauer an diesem Tag diesen Wert nicht überschreiten.
 - Bereits geplante Einheiten: aus den `planned_workouts` der nächsten Woche – diese als Ankerpunkte übernehmen, nicht ersetzen
 - Berücksichtige aktuelle Form (TSB) und Ermüdung (ATL)
 
@@ -211,7 +211,7 @@ Fetch the current data from intervals.icu via prepare_week_data. Based on the we
 Derive the planning parameters directly from the intervals.icu data:
 - Training phase and week type: from `next_week_active_phases` and `next_week_load_targets.week_type` (NORMAL / RECOVERY / RACE)
 - Weekly target: from `next_week_load_targets.load_target` (TSS). If `time_target_hours` is also present, treat it as an upper time cap. Only if `load_target` is `null`, use `time_target_hours` as the weekly target.
-- Available days: from `next_week_day_constraints` — days with `training_allowed: false` are unavailable, days with `training_allowed: true` and type LIMITED only get short, easy sessions
+- Available days: from `next_week_day_constraints` — days with `training_allowed: false` are unavailable, days with `training_allowed: true` and type LIMITED only get short, easy sessions. If `max_training_time_hours` is present, planned duration on that day must not exceed this value.
 - Already planned sessions: from `planned_workouts` for next week — treat as anchors, do not replace
 - Consider current form (TSB) and fatigue (ATL)
 

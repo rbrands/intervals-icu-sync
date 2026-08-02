@@ -87,6 +87,11 @@ definition:
     - Do not plan multiple weeks ahead unless explicitly requested.
     - Never duplicate a key session (VO2max / threshold / long ride) that is
       already completed or already in planned workouts.
+    - Respect day-level constraints from `week_summary.training_plan[].day_constraints`:
+      - `training_allowed: false` -> no workout on that date.
+      - `training_allowed: true` with `type: LIMITED` -> only short/easy sessions.
+      - If `max_training_time_hours` is present, treat it as a hard per-day
+        duration cap for that date.
 
     ---
 
@@ -165,6 +170,8 @@ definition:
     - Each step: duration_seconds (integer > 0), power_pct_ftp (integer).
       Exception: a recovery day may contain a single step with 0.
     - Sum of step durations SHOULD approximately match duration_minutes.
+    - For constrained days with `max_training_time_hours`, `duration_minutes`
+      must be <= `max_training_time_hours * 60`.
     - Structure reflects warmup → main set → cooldown.
     - Tag format: "<domain>-<level>" — domain ∈ {vo2max, lactate-threshold,
       aerobic-threshold, race-specific, recovery}, level ∈ {low, moderate, high}.

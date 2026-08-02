@@ -169,6 +169,9 @@ public class DayConstraintDto
     [JsonPropertyName("training_allowed")]
     public bool? TrainingAllowed { get; set; }
 
+    [JsonPropertyName("max_training_time_hours")]
+    public double? MaxTrainingTimeHours { get; set; }
+
     [JsonPropertyName("source_category")]
     public string? SourceCategory { get; set; }
 

@@ -50,6 +50,7 @@ class TrainingPlanPhaseRegressionTests(unittest.TestCase):
                 "name": "Reisetag",
                 "start_date_local": "2026-08-07T00:00:00",
                 "training_availability": "LIMITED",
+                "max_training_time": 9000,
             }
         ]
 
@@ -62,6 +63,7 @@ class TrainingPlanPhaseRegressionTests(unittest.TestCase):
                     "date": "2026-08-07",
                     "type": "LIMITED",
                     "training_allowed": True,
+                    "max_training_time_hours": 2.5,
                     "source_category": "NOTE",
                     "source_name": "Reisetag",
                 }

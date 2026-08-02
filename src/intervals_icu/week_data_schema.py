@@ -115,6 +115,7 @@ class DayConstraint(_SchemaModel):
     date: str | None = None
     type: str | None = None
     training_allowed: bool | None = None
+    max_training_time_hours: float | int | None = None
     source_category: str | None = None
     source_name: str | None = None
 

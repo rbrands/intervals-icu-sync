@@ -73,7 +73,7 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `training_plan[].day_constraints`: day-level constraints extracted from NOTE
   and non-NORMAL availability events in the calendar (e.g. Sick/Travel/
   Unavailable). Each entry includes `date`, `type`, `training_allowed`,
-  `source_category` and `source_name`.
+  optional `max_training_time_hours`, `source_category` and `source_name`.
 
 ---
 

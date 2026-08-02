@@ -9,6 +9,13 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added optional `day_constraints[].max_training_time_hours` export derived from intervals.icu `max_training_time` for constrained days.
+
+### Changed
+
+- Updated `scripts/get_training_plan.py` so day constraints include the per-day training time cap when provided by intervals.icu.
+- Updated planning docs/prompts to enforce `max_training_time_hours` as a hard daily duration cap on constrained days.
+
 ## [0.6.10] - 2026-08-02
 
 ### Changed

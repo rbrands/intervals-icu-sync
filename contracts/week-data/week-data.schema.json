@@ -560,6 +560,21 @@
           "default": null,
           "title": "Training Allowed"
         },
+        "max_training_time_hours": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Training Time Hours"
+        },
         "source_category": {
           "anyOf": [
             {

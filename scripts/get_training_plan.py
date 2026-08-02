@@ -161,6 +161,18 @@ def _classify_note_constraint(note_name: str | None) -> tuple[str, bool | None] 
     return None
 
 
+def _hours_from_seconds(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError):
+        return None
+    if seconds < 0:
+        return None
+    return round(seconds / 3600, 2)
+
+
 def find_day_constraints(events: list, monday: date) -> list[dict]:
     """Return day-level constraints for one ISO week.
 
@@ -180,6 +192,7 @@ def find_day_constraints(events: list, monday: date) -> list[dict]:
         category = ev.get("category")
         name = ev.get("name")
         availability_raw = (ev.get("training_availability") or "").strip().upper()
+        max_training_time_hours = _hours_from_seconds(ev.get("max_training_time"))
 
         if category == "NOTE":
             mapped = _AVAILABILITY_TO_CONSTRAINT.get(availability_raw)
@@ -191,13 +204,16 @@ def find_day_constraints(events: list, monday: date) -> list[dict]:
                     continue
                 constraint_type, training_allowed = classified
             key = (ev_date, constraint_type, category)
-            constraints_by_key[key] = {
+            constraint = {
                 "date": ev_date,
                 "type": constraint_type,
                 "training_allowed": training_allowed,
                 "source_category": category,
                 "source_name": name,
             }
+            if max_training_time_hours is not None:
+                constraint["max_training_time_hours"] = max_training_time_hours
+            constraints_by_key[key] = constraint
             continue
 
         if availability_raw in {"", "NORMAL"}:
@@ -207,13 +223,16 @@ def find_day_constraints(events: list, monday: date) -> list[dict]:
             continue
         constraint_type, training_allowed = mapped
         key = (ev_date, constraint_type, category or "UNKNOWN")
-        constraints_by_key[key] = {
+        constraint = {
             "date": ev_date,
             "type": constraint_type,
             "training_allowed": training_allowed,
             "source_category": category,
             "source_name": name,
         }
+        if max_training_time_hours is not None:
+            constraint["max_training_time_hours"] = max_training_time_hours
+        constraints_by_key[key] = constraint
 
     constraints = list(constraints_by_key.values())
     constraints.sort(key=lambda c: (c["date"], c["type"], c.get("source_category") or ""))
