@@ -5,28 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.0.0] - 2026-08-02
 
 ### Added
 
 - Added optional `day_constraints[].max_training_time_hours` export derived from intervals.icu `max_training_time` for constrained days.
+- Added regression test `tests/test_week_summary_readiness_fields.py` to enforce that consolidated `coach_input` keeps `ctl`/`atl` under `week_summary` (and not under `metrics`).
+- Added regression coverage in `tests/test_training_plan_phase_regressions.py` to ensure NOTE constraints prefer explicit availability over label keyword inference.
 
 ### Changed
 
 - Updated `scripts/get_training_plan.py` so day constraints include the per-day training time cap when provided by intervals.icu.
-- Updated planning docs/prompts to enforce `max_training_time_hours` as a hard daily duration cap on constrained days.
-- Removed `metrics.w_prime_wellness` from exported week data (`scripts/get_metrics.py`) and aligned schema/contracts/docs accordingly.
-
-## [0.6.10] - 2026-08-02
-
-### Changed
-
 - Fixed day-constraint derivation in `scripts/get_training_plan.py`: for `NOTE` events, explicit `training_availability` (for example `LIMITED`) now takes precedence over keyword-based label classification (for example `Reisetag`/`Abreise`).
+- Updated planning docs/prompts to enforce `max_training_time_hours` as a hard daily duration cap on constrained days.
 - Updated `README.md` to document the precedence rule for NOTE-based day constraints.
-
-### Added
-
-- Added regression coverage in `tests/test_training_plan_phase_regressions.py` to ensure NOTE constraints prefer explicit availability over label keyword inference.
+- Removed `metrics.w_prime_wellness` from exported week data (`scripts/get_metrics.py`) and aligned schema/contracts/docs accordingly.
+- Moved readiness snapshot fields `ctl` and `atl` from top-level `metrics` to `week_summary` in consolidated `coach_input` payloads (no duplicated values); aligned generation scripts, schema/contracts, notebook, and docs.
 
 ## [0.6.9] - 2026-07-24
 

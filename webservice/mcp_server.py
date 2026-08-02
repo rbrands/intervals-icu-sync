@@ -1115,7 +1115,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
 
     Pipeline steps:
     1. get_activities               – fetch Garmin/manual rides
-    2. get_metrics                  – fetch CTL, ATL, TSB, HRV, VO2max
+    2. get_metrics                  – fetch daily athlete metrics (including CTL/ATL, HRV, VO2max)
     3. get_training_plan            – fetch active training plan and weekly targets
     4. prepare_activities_for_coach – enrich activities with zone data and W'bal
     5. prepare_planned_workouts_for_coach – add upcoming planned workouts
@@ -1221,10 +1221,22 @@ def prepare_week_data(lookback_days: int = 7) -> str:
                 tmp_proc_path / f"planned_workouts_{monday_str}.json"
             )
 
+            # Keep readiness metrics in week_summary only (no duplication in metrics).
+            ctl = None
+            atl = None
+            if isinstance(metrics, dict):
+                ctl = metrics.pop("ctl", None)
+                atl = metrics.pop("atl", None)
+
+            if not isinstance(week_data, dict):
+                week_data = {}
+            if week_data.get("ctl") is None and ctl is not None:
+                week_data["ctl"] = ctl
+            if week_data.get("atl") is None and atl is not None:
+                week_data["atl"] = atl
+
             ride_plan = _extract_ride_plan_summary(plan_data, monday)
             if ride_plan:
-                if not isinstance(week_data, dict):
-                    week_data = {}
                 week_data["training_plan"] = ride_plan
 
             activities = (

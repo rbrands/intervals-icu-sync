@@ -379,12 +379,6 @@ public class MetricsDto
     [JsonPropertyName("sex")]
     public string? Sex { get; set; }
 
-    [JsonPropertyName("ctl")]
-    public double? Ctl { get; set; }
-
-    [JsonPropertyName("atl")]
-    public double? Atl { get; set; }
-
     [JsonPropertyName("resting_hr")]
     public double? RestingHr { get; set; }
 
@@ -639,6 +633,12 @@ public class WeekSummaryDto
 
     [JsonPropertyName("current_date")]
     public string? CurrentDate { get; set; }
+
+    [JsonPropertyName("ctl")]
+    public double? Ctl { get; set; }
+
+    [JsonPropertyName("atl")]
+    public double? Atl { get; set; }
 
     [JsonPropertyName("total_training_load")]
     public double? TotalTrainingLoad { get; set; }

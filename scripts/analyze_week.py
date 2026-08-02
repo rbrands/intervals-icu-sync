@@ -305,6 +305,8 @@ def compute_form(ctl: float | None, atl: float | None) -> dict:
         form_zone = "high_risk"
 
     return {
+        "ctl": round(ctl, 1),
+        "atl": round(atl, 1),
         "form_absolute": round(form_absolute, 1),
         "form_pct": round(form_pct, 4),
         "form_percent_display": round(form_pct * 100, 1),

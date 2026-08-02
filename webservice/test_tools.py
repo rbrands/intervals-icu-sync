@@ -52,10 +52,10 @@ def test_prepare_week() -> None:
             print(f"current_date   : {data.get('current_date')}")
             acts = data.get("activities") or []
             print(f"activities     : {len(acts)}")
-            metrics = data.get("metrics") or {}
-            print(f"ctl            : {metrics.get('ctl')}")
-            print(f"atl            : {metrics.get('atl')}")
-            print(f"tsb            : {metrics.get('tsb')}")
+            week_summary = data.get("week_summary") or {}
+            print(f"ctl            : {week_summary.get('ctl')}")
+            print(f"atl            : {week_summary.get('atl')}")
+            print(f"tsb            : {week_summary.get('form_absolute')}")
             print("\nFull JSON written to: /tmp/coach_input_test.json")
             Path("/tmp/coach_input_test.json").write_text(
                 json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"

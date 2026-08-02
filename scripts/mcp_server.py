@@ -393,7 +393,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
 
     This tool runs the full pipeline:
     1. get_activities – fetches Garmin/manual rides from intervals.icu
-    2. get_metrics    – fetches athlete performance metrics (CTL, ATL, form)
+    2. get_metrics    – fetches athlete performance metrics (including CTL/ATL)
     3. get_training_plan – fetches the active training plan and weekly targets
     4. prepare_activities_for_coach – enriches activities with zone data
     5. prepare_planned_workouts_for_coach – adds upcoming planned workouts
@@ -449,6 +449,20 @@ def prepare_week_data(lookback_days: int = 7) -> str:
     plan_data = _load_json_file(PROCESSED_DIR / f"training_plan_{today.isoformat()}.json")
     planned_workouts_data = _load_json_file(PROCESSED_DIR / f"planned_workouts_{monday_str}.json")
 
+    # Keep readiness metrics in week_summary only (no duplication in metrics).
+    ctl = None
+    atl = None
+    if isinstance(metrics, dict):
+        ctl = metrics.pop("ctl", None)
+        atl = metrics.pop("atl", None)
+
+    if not isinstance(week_data, dict):
+        week_data = {}
+    if week_data.get("ctl") is None and ctl is not None:
+        week_data["ctl"] = ctl
+    if week_data.get("atl") is None and atl is not None:
+        week_data["atl"] = atl
+
     def _copy_target_fields(entry: dict, target: dict) -> None:
         load_target = target.get("load_target")
         time_target_hours = target.get("time_target_hours")
@@ -489,8 +503,6 @@ def prepare_week_data(lookback_days: int = 7) -> str:
                 entry["day_constraints"] = week_constraints
             ride_plan.append(entry)
         if ride_plan:
-            if not isinstance(week_data, dict):
-                week_data = {}
             week_data["training_plan"] = ride_plan
 
     activities = activities_data if isinstance(activities_data, list) else (activities_data or {}).get("activities")
@@ -530,7 +542,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
 def get_coach_input(monday: str = "") -> str:
     """Return the consolidated weekly coach input as JSON.
 
-    Contains activities, metrics (CTL/ATL/form), fueling analysis, week summary,
+    Contains activities, metrics, week summary (including CTL/ATL/form), fueling analysis,
     and planned workouts for the specified week.
 
     Args:

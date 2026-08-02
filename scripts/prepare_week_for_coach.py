@@ -189,11 +189,23 @@ def consolidate() -> None:
     plan_data = _load_json(PROCESSED_DIR / f"training_plan_{today.isoformat()}.json")
     planned_workouts_data = _load_json(PROCESSED_DIR / f"planned_workouts_{monday_str}.json")
 
+    # Keep readiness metrics in week_summary only (no duplication in metrics).
+    ctl = None
+    atl = None
+    if isinstance(metrics, dict):
+        ctl = metrics.pop("ctl", None)
+        atl = metrics.pop("atl", None)
+
+    if not isinstance(week_data, dict):
+        week_data = {}
+    if week_data.get("ctl") is None and ctl is not None:
+        week_data["ctl"] = ctl
+    if week_data.get("atl") is None and atl is not None:
+        week_data["atl"] = atl
+
     # Embed Ride training plan info into week_summary
     ride_plan = _extract_ride_plan_summary(plan_data, monday)
     if ride_plan:
-        if not isinstance(week_data, dict):
-            week_data = {}
         week_data["training_plan"] = ride_plan
 
     # coach_input is currently a flat list of activities

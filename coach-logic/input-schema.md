@@ -60,11 +60,15 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   - `avg_7d`: mean of the last 7 days.
   - `avg_prev_7d`: mean of days 8–14 before the latest point.
   - `trend_7d`: `up`, `down`, or `stable` based on `avg_7d` vs `avg_prev_7d`.
+- `ctl`/`atl` are intentionally not part of `metrics` in consolidated
+  `coach_input`; they are grouped in `week_summary` with form fields.
 
 ---
 
 ## week_summary — non-obvious fields
 
+- `ctl` / `atl`: current fitness/fatigue snapshot copied from daily metrics to
+  keep readiness (`ctl`, `atl`, `form_*`) together in one section.
 - `form_absolute` / `form_pct` / `form_zone`: CTL−ATL, its ratio, the zone
   label (thresholds in interpretation-rules.md).
 - `training_plan[].week_type`: from an intervals.icu NOTE event

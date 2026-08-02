@@ -393,6 +393,7 @@ Output: `data/raw/activities_{date}.json`
 ### `get_metrics.py`
 
 Fetches athlete performance metrics: FTP, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile.
+In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 
 **Power Profile Type**: Adds a heuristic rider type estimate to `metrics.power_profile` using the 42-day power curve (`p15s`, `p1min`, `p5min`, `p20min`, `curve_slope`). Exposed fields are `type`, `type_key`, `heuristic_score`, `type_scores`, and `type_method` (currently `heuristic_v1`).
@@ -411,7 +412,7 @@ Output: `data/processed/metrics_{date}.json`
 
 Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies sessions (VO2max / Threshold / Endurance), computes aerobic decoupling (for Base/Pyramidal/Threshold rides ≥ 90 min only), and prints a coaching interpretation.
 
-Also computes **Form %** based on CTL (fitness) and ATL (fatigue):
+Also computes **Form %** based on CTL (fitness) and ATL (fatigue), and writes `ctl`/`atl` alongside form fields into `week_summary`:
 
 - `form_absolute = CTL − ATL`
 - `form_pct = (CTL − ATL) / CTL` — relative to current fitness level
@@ -689,9 +690,9 @@ Exit code behavior:
 
 Interactive Jupyter notebook that loads the consolidated `coach_input_{monday}.json` and displays a structured overview of the current training week:
 
-- **Athlete Metrics**: FTP, eFTP, VO2Max, W\', CTL/ATL, HRV, weight — FTP values shown in W and W/kg
+- **Athlete Metrics**: FTP, eFTP, VO2Max, W\', HRV, weight — FTP values shown in W and W/kg
 - **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling (only from rides ≥ 90 min; shows `"no durability data"` if no eligible rides exist)
-- **Form & Fatigue Analysis**: CTL, ATL, Form (absolute and % relative to fitness), Form Zone, HRV — with coaching interpretation based on form zone
+- **Form & Fatigue Analysis**: CTL, ATL, Form (absolute and % relative to fitness), Form Zone, HRV — with coaching interpretation based on form zone (`ctl`/`atl` are read from `week_summary`)
 - **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling (labeled only for Base/Pyramidal/Threshold rides ≥ 90 min), and carbohydrate data
 - **Zone Distribution Chart**: bar charts per activity showing Z1+2 / Z3+4 / Z5+ split
 - **Integrated Fatigue & Fueling Analysis**: combines Form % and weekly fueling quality into a single coaching interpretation with recommendation

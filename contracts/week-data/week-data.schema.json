@@ -1336,36 +1336,6 @@
           "default": null,
           "title": "Sex"
         },
-        "ctl": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ctl"
-        },
-        "atl": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Atl"
-        },
         "resting_hr": {
           "anyOf": [
             {
@@ -2281,6 +2251,36 @@
           ],
           "default": null,
           "title": "Current Date"
+        },
+        "ctl": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ctl"
+        },
+        "atl": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Atl"
         },
         "total_training_load": {
           "anyOf": [

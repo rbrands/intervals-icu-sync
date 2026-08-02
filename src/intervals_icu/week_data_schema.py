@@ -85,8 +85,6 @@ class Metrics(_SchemaModel):
     weight: float | int | None = None
     age: int | None = None
     sex: str | None = None
-    ctl: float | int | None = None
-    atl: float | int | None = None
     resting_hr: float | int | None = None
     hrv: float | int | None = None
     eftp: float | int | None = None
@@ -137,6 +135,8 @@ class TrainingPlanEntry(_SchemaModel):
 class WeekSummary(_SchemaModel):
     week_starting: str | None = None
     current_date: str | None = None
+    ctl: float | int | None = None
+    atl: float | int | None = None
     total_training_load: float | int | None = None
     number_of_rides: int | None = None
     total_time_hours: float | int | None = None
