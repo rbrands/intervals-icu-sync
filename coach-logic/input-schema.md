@@ -27,6 +27,7 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 
 - Durations: activities → hours; planned steps → minutes; output → seconds.
 - Power: always relative to FTP (%).
+- Weight in `metrics.weight` and `metrics.wellness_trends.weight.*` is always kilograms (kg).
 - Tags override interval detection and automatic classification.
 - Planned workouts take precedence over new planning.
 - Activities are ordered newest-first.

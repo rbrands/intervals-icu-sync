@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-08-03
+
+### Changed
+
+- Updated `scripts/get_metrics.py` to normalize athlete weight to kilograms (kg) when intervals.icu reports `weight_pref_lb=true`.
+- Updated `scripts/get_metrics.py` to apply the same lbs→kg normalization to `metrics.wellness_trends.weight` values (`current`, `avg_7d`, `avg_prev_7d`).
+- Updated `README.md` and `coach-logic/input-schema.md` to document that exported weight values are always in kg.
+
 ## [1.0.0] - 2026-08-02
 
 ### Added

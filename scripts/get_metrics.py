@@ -15,13 +15,31 @@ import requests
 BASE_URL = "https://intervals.icu/api/v1"
 _DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
+LB_TO_KG = 0.45359237
 
 
-def fetch_athlete_info() -> dict:
+def _to_float(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _weight_to_kg(value: object, weight_pref_lb: bool) -> float | None:
+    weight = _to_float(value)
+    if weight is None:
+        return None
+    return round(weight * LB_TO_KG, 2) if weight_pref_lb else round(weight, 2)
+
+
+def fetch_athlete_info() -> tuple[dict, bool]:
     r = requests.get(f"{BASE_URL}/athlete/{ATHLETE_ID}", auth=("API_KEY", API_KEY), timeout=10)
     r.raise_for_status()
     data = r.json()
-    result = {"weight": data.get("icu_weight")}
+    weight_pref_lb = bool(data.get("weight_pref_lb"))
+    result = {"weight": _weight_to_kg(data.get("icu_weight"), weight_pref_lb)}
     dob_str = data.get("icu_date_of_birth")
     if dob_str:
         from datetime import date as _date
@@ -32,16 +50,7 @@ def fetch_athlete_info() -> dict:
         result["age"] = None
     sex_raw = data.get("sex")
     result["sex"] = {"M": "Male", "F": "Female"}.get(sex_raw) if sex_raw else None
-    return result
-
-
-def _to_float(value: object) -> float | None:
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+    return result, weight_pref_lb
 
 
 def _entry_date(entry: dict) -> date | None:
@@ -137,7 +146,7 @@ def _build_wellness_trends(entries: list[dict]) -> dict:
     return trends
 
 
-def fetch_wellness() -> dict:
+def fetch_wellness(weight_pref_lb: bool = False) -> dict:
     today = date.today()
     # Fetch last 30 days to find most recent values that may not be set today
     r = requests.get(
@@ -148,6 +157,11 @@ def fetch_wellness() -> dict:
     )
     r.raise_for_status()
     entries = r.json()
+
+    if weight_pref_lb:
+        for entry in entries:
+            if "weight" in entry:
+                entry["weight"] = _weight_to_kg(entry.get("weight"), True)
 
     # Use today's entry for day-specific readiness metrics and derive trends
     # from the full 30-day wellness history.
@@ -864,8 +878,9 @@ def main() -> None:
     today = date.today()
     metrics = {"date": today.isoformat()}
     metrics.update(fetch_metrics_from_activities())
-    metrics.update(fetch_athlete_info())
-    metrics.update(fetch_wellness())
+    athlete_info, weight_pref_lb = fetch_athlete_info()
+    metrics.update(athlete_info)
+    metrics.update(fetch_wellness(weight_pref_lb=weight_pref_lb))
 
     ftp_wkg = _calc_wkg(metrics.get("ftp"), metrics.get("weight"))
     metrics["ftp_classification"] = _build_ftp_classification(

@@ -395,6 +395,7 @@ Output: `data/raw/activities_{date}.json`
 Fetches athlete performance metrics: FTP, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile.
 In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
+Weight values are normalized to kilograms (kg). If the athlete account stores weight in pounds, `get_metrics.py` converts it to kg before writing outputs.
 
 **Power Profile Type**: Adds a heuristic rider type estimate to `metrics.power_profile` using the 42-day power curve (`p15s`, `p1min`, `p5min`, `p20min`, `curve_slope`). Exposed fields are `type`, `type_key`, `heuristic_score`, `type_scores`, and `type_method` (currently `heuristic_v1`).
 
