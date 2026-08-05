@@ -210,8 +210,6 @@ definition:
       required: true
       schema:
         type: string
-  temperature: 0.4
-  top_p: 1
   tools:
     - type: mcp
       server_label: intervals-icu-sync
