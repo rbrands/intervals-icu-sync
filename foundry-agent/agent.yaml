@@ -2,7 +2,7 @@ name: training-architect-agent
 description: "Cycling coach agent (Joe Friel based) for intervals.icu data via MCP and coach-logic knowledge."
 definition:
   kind: prompt
-  model: gpt-4.1-mini
+  model: gpt-5.6-luna
   # The discipline is a runtime structured input ({{discipline}}). The
   # "<<INSERT DISCIPLINE PROFILES HERE>>" placeholder is filled at deploy time
   # with all discipline blocks from prompts/discipline_*.md; the agent then
