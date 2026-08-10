@@ -9,7 +9,10 @@ Summarize and assess:
 - Wellness data: sleep, HRV, resting heart rate, weight
 
 **Load Balance**
-- Total load (TSS, hours) compared to the previous week
+- Assess target achievement and actual Ride load across the four completed
+  weeks in `training_load_history`
+- Distinguish a single-week outlier from a repeated over- or under-target pattern
+- Compare the current week's load (TSS, hours) with the recent pattern
 - Development of CTL, ATL, and form (TSB)
 - Assessment: Was the week overdone, appropriate, or too light?
 

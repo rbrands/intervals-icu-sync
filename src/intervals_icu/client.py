@@ -202,6 +202,38 @@ def get_activities(api_key: str, athlete_id: str, start_date: str, end_date: str
     return response.json()
 
 
+def get_athlete_summary(
+    api_key: str,
+    athlete_id: str,
+    start_date: str,
+    end_date: str,
+) -> dict:
+    """Fetch the athlete's server-side summary for a date range."""
+    url = f"{BASE_URL}/athlete/{athlete_id}/athlete-summary.json"
+    response = requests.get(
+        url,
+        auth=("API_KEY", api_key),
+        params={"start": start_date, "end": end_date},
+        timeout=30,
+    )
+    _raise_for_status_with_context(response, "get_athlete_summary")
+
+    summaries = response.json()
+    if not isinstance(summaries, list):
+        raise ValueError("get_athlete_summary returned a non-list response")
+    summary = next(
+        (
+            summary
+            for summary in summaries
+            if str(summary.get("athlete_id")) == str(athlete_id)
+        ),
+        None,
+    )
+    if summary is None:
+        raise ValueError(f"get_athlete_summary returned no data for athlete {athlete_id}")
+    return summary
+
+
 def create_activity(
     api_key: str,
     athlete_id: str,

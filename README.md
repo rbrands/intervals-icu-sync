@@ -414,7 +414,7 @@ Output: `data/processed/metrics_{date}.json`
 Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies sessions (VO2max / Threshold / Endurance), computes aerobic decoupling (for Base/Pyramidal/Threshold rides ≥ 90 min only), and prints a coaching interpretation.
 The weekly summary keeps training-distribution fields focused on these three categories; long-ride counting for fueling decisions is handled in `fueling_analysis.weekly_summary.number_of_long_rides`.
 
-Also computes **Form %** based on CTL (fitness) and ATL (fatigue), and writes `ctl`/`atl` alongside form fields into `week_summary`:
+Also computes **Form %** based on CTL (fitness) and ATL (fatigue), and writes `ctl`/`atl` alongside form fields into `week_summary`, including weeks with no qualifying rides yet:
 
 - `form_absolute = CTL − ATL`
 - `form_pct = (CTL − ATL) / CTL` — relative to current fitness level
@@ -581,6 +581,8 @@ Output: table or JSON to stdout
 ### `get_training_plan.py`
 
 Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Exports active phase(s), current and next-week TSS or time targets, and day-level constraints (e.g. Sick/Travel/Unavailable) derived from calendar NOTE and availability markers. For NOTE events, explicit `training_availability` values (for example `LIMITED`) take precedence over label keyword inference. If a constrained day has a max duration in intervals.icu, it is exported as `day_constraints[].max_training_time_hours`.
+
+The consolidated coach input also includes a top-level `training_load_history` array for the last four completed calendar weeks. Each entry contains `week_starting`, the Ride `weekly_load_target` when available, server-aggregated Ride `total_training_load`, and `achievement_pct`. The current week is excluded because its target and actual load already belong to `week_summary`. Historical load is queried directly from the intervals.icu athlete-summary API and does not depend on older local export files.
 
 ```bash
 python scripts/get_training_plan.py

@@ -1917,6 +1917,62 @@
       "title": "PowerProfilePoint",
       "type": "object"
     },
+    "TrainingLoadHistoryEntry": {
+      "additionalProperties": true,
+      "properties": {
+        "week_starting": {
+          "title": "Week Starting",
+          "type": "string"
+        },
+        "weekly_load_target": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weekly Load Target"
+        },
+        "total_training_load": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Total Training Load"
+        },
+        "achievement_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Achievement Pct"
+        }
+      },
+      "required": [
+        "week_starting",
+        "total_training_load"
+      ],
+      "title": "TrainingLoadHistoryEntry",
+      "type": "object"
+    },
     "TrainingPlanEntry": {
       "additionalProperties": true,
       "properties": {
@@ -2706,6 +2762,21 @@
         }
       ],
       "default": null
+    },
+    "training_load_history": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/TrainingLoadHistoryEntry"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Training Load History"
     },
     "activities": {
       "anyOf": [

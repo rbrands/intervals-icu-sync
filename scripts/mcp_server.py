@@ -525,6 +525,11 @@ def prepare_week_data(lookback_days: int = 7) -> str:
         "current_date": today.isoformat(),
         "metrics": metrics,
         "week_summary": week_data,
+        "training_load_history": (
+            plan_data.get("training_load_history")
+            if isinstance(plan_data, dict)
+            else []
+        ),
         "activities": activities,
         "fueling_analysis": fueling_data,
         "planned_workouts": planned_workouts_data,

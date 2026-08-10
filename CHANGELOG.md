@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-08-10
+
+### Added
+
+- Added top-level `training_load_history` to coach input payloads with target load, actual Ride load, and achievement percentage for the last four completed calendar weeks.
+- Added server-side weekly load aggregation through the intervals.icu athlete-summary API, without relying on historical local exports.
+
+### Changed
+
+- Updated weekly analysis and automatic planning guidance to use the four-week load history as secondary context, identify repeated target deviations, and never compensate for missed historical load.
+
 ## [1.0.1] - 2026-08-03
 
 ### Changed

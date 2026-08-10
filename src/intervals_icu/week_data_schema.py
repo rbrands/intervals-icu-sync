@@ -271,6 +271,13 @@ class PlannedWorkouts(_SchemaModel):
     next_week: PlannedWorkoutsWeek | None = None
 
 
+class TrainingLoadHistoryEntry(_SchemaModel):
+    week_starting: str
+    weekly_load_target: float | int | None = None
+    total_training_load: float | int
+    achievement_pct: float | int | None = None
+
+
 class WeekData(_SchemaModel):
     """Consolidated `prepare_week_data` response model."""
 
@@ -280,6 +287,7 @@ class WeekData(_SchemaModel):
     current_date: str
     metrics: Metrics | None = None
     week_summary: WeekSummary | None = None
+    training_load_history: list[TrainingLoadHistoryEntry] | None = None
     activities: list[Activity] | None = None
     fueling_analysis: FuelingAnalysis | None = None
     planned_workouts: PlannedWorkouts | dict[str, Any] | None = None

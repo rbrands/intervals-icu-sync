@@ -13,7 +13,7 @@ unit, and how it is derived.
 ## Top-Level Structure
 
 schema_version, week_starting, lookback_days, current_date, metrics, week_summary,
-activities, fueling_analysis, planned_workouts
+training_load_history, activities, fueling_analysis, planned_workouts
 
 - `week_starting` / `current_date` (YYYY-MM-DD) are the ONLY authoritative
 dates. Derive all dates from these (see system prompt, Date Handling).
@@ -78,6 +78,20 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   and non-NORMAL availability events in the calendar (e.g. Sick/Travel/
   Unavailable). Each entry includes `date`, `type`, `training_allowed`,
   optional `max_training_time_hours`, `source_category` and `source_name`.
+
+---
+
+## training_load_history
+
+- Top-level array containing the last four completed ISO calendar weeks, oldest first.
+- `weekly_load_target`: Ride load target from the intervals.icu TARGET event;
+  null when no target exists for that week.
+- `total_training_load`: server-side aggregated Ride training load from the
+  intervals.icu athlete summary; zero when the week has no Ride load.
+- `achievement_pct`: `total_training_load / weekly_load_target * 100`, rounded
+  to one decimal; null when no positive target exists.
+- The current, incomplete week is intentionally excluded because its load and
+  target are already available in `week_summary`.
 
 ---
 

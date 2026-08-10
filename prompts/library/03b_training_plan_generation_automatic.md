@@ -7,10 +7,13 @@ Derive the planning parameters directly from the intervals.icu data:
 - Available days: from `next_week_day_constraints` — days with `training_allowed: false` are unavailable, days with `training_allowed: true` and type LIMITED only get short, easy sessions. If `max_training_time_hours` is present, planned duration on that day must not exceed this value.
 - Already planned sessions: from `planned_workouts` for next week — treat as anchors, do not replace
 - Consider current form (TSB) and fatigue (ATL)
+- Recent load pattern: use `training_load_history` to distinguish isolated from
+  repeated target deviations. Treat it as secondary context behind current
+  readiness and never add missed historical load to the coming week.
 
 Planning logic:
 1. Place key sessions matched to the training phase first (VO2max, threshold, long ride)
-2. Align total volume to the weekly target: use TSS when `load_target` is present and treat `time_target_hours` as an additional upper bound. Only if `load_target` is `null`, use total planned time when `time_target_hours` is present. Still show estimated TSS per session.
+2. Align total volume to the weekly target: use TSS when `load_target` is present and treat `time_target_hours` as an additional upper bound. Only if `load_target` is `null`, use total planned time when `time_target_hours` is present. Still show estimated TSS per session. Keep the provided target authoritative unless repeated historical deviation and current readiness together justify a safer reduction.
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli

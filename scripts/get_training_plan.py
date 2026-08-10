@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import requests
 
+from intervals_icu.client import get_athlete_summary
 from intervals_icu.config import API_KEY, ATHLETE_ID
 
 BASE_URL = "https://intervals.icu/api/v1"
@@ -25,6 +26,7 @@ _DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "process
 OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
 LOOKAHEAD_WEEKS = 6
 LOOKBACK_WEEKS = 16  # How far back to search for PLAN events that started before today
+TRAINING_LOAD_HISTORY_WEEKS = 4
 
 _DAY_CONSTRAINT_KEYWORDS: list[tuple[str, tuple[str, ...], bool | None]] = [
     ("SICK", ("sick", "krank", "ill", "illness", "injury", "injured", "fever", "grippe"), False),
@@ -151,6 +153,45 @@ def find_weekly_load_targets(events: list, monday: date) -> list:
     return result
 
 
+def build_training_load_history(
+    events: list,
+    weekly_summaries: dict[str, dict],
+    current_monday: date,
+) -> list[dict]:
+    """Build target-versus-actual load for the last completed weeks."""
+    history: list[dict] = []
+    for weeks_ago in range(TRAINING_LOAD_HISTORY_WEEKS, 0, -1):
+        week_start = current_monday - timedelta(weeks=weeks_ago)
+        summary = weekly_summaries.get(week_start.isoformat()) or {}
+        ride_summary = next(
+            (
+                category
+                for category in (summary.get("byCategory") or [])
+                if category.get("category") == "Ride"
+            ),
+            {},
+        )
+        total_training_load = ride_summary.get("training_load") or 0
+        ride_targets = [
+            target
+            for target in find_weekly_load_targets(events, week_start)
+            if target.get("sport_type") == "Ride"
+        ]
+        weekly_load_target = ride_targets[0].get("load_target") if ride_targets else None
+        achievement_pct = (
+            round(total_training_load / weekly_load_target * 100, 1)
+            if weekly_load_target
+            else None
+        )
+        history.append({
+            "week_starting": week_start.isoformat(),
+            "weekly_load_target": weekly_load_target,
+            "total_training_load": total_training_load,
+            "achievement_pct": achievement_pct,
+        })
+    return history
+
+
 def _classify_note_constraint(note_name: str | None) -> tuple[str, bool | None] | None:
     if not note_name:
         return None
@@ -266,6 +307,21 @@ def main() -> None:
     next_week_load_targets = find_weekly_load_targets(phase_events, next_monday)
     day_constraints = find_day_constraints(phase_events, monday)
     next_week_day_constraints = find_day_constraints(phase_events, next_monday)
+    weekly_summaries: dict[str, dict] = {}
+    for weeks_ago in range(TRAINING_LOAD_HISTORY_WEEKS, 0, -1):
+        week_start = monday - timedelta(weeks=weeks_ago)
+        week_end = week_start + timedelta(days=6)
+        weekly_summaries[week_start.isoformat()] = get_athlete_summary(
+            API_KEY,
+            ATHLETE_ID,
+            week_start.isoformat(),
+            week_end.isoformat(),
+        )
+    training_load_history = build_training_load_history(
+        phase_events,
+        weekly_summaries,
+        monday,
+    )
 
     # Build a lookup: sport_type → (load_target, week_type) for easy merging
     load_by_type = {lt["sport_type"]: lt["load_target"] for lt in load_targets}
@@ -313,6 +369,7 @@ def main() -> None:
         "next_week_load_targets": next_week_load_targets,
         "weekly_day_constraints": day_constraints,
         "next_week_day_constraints": next_week_day_constraints,
+        "training_load_history": training_load_history,
         "range_start": today.isoformat(),
         "range_end": end_date.isoformat(),
         "workouts": workouts,

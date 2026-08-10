@@ -116,6 +116,14 @@ Session fueling strategy (write into the workout description):
 
 - Increase load only if fatigue is low/optimal AND fueling is adequate.
 - Reduce load if fatigue is high, HRV is low, or performance is declining.
+- Use `training_load_history` to distinguish a one-week outlier from a repeated
+   pattern of over- or under-achieving weekly Ride load targets.
+- Treat the four-week history as secondary context. Current form, ATL, HRV,
+   recovery, and performance signals take precedence.
+- Never compensate for missed historical load by adding it to the current or
+   next week.
+- Keep the provided next-week target authoritative unless repeated historical
+   deviation and current readiness together justify a safer adjustment.
 
 ---
 

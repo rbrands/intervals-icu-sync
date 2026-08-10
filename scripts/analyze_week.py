@@ -476,8 +476,12 @@ def main() -> None:
     training_plan = load_training_plan(date.today())
     if not rides:
         print("No qualifying rides found.")
+        athlete_metrics = load_metrics()
+        form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
         if training_plan:
-            save_json({}, None, monday, training_plan)
+            save_json(form, None, monday, training_plan)
+        else:
+            save_json(form, None, monday)
         sys.exit(0)
     athlete_metrics = load_metrics()
     fueling_data = load_fueling(monday)

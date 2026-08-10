@@ -25,6 +25,9 @@ public class WeekDataDto
     [JsonPropertyName("week_summary")]
     public WeekSummaryDto? WeekSummary { get; set; }
 
+    [JsonPropertyName("training_load_history")]
+    public List<TrainingLoadHistoryEntryDto>? TrainingLoadHistory { get; set; }
+
     [JsonPropertyName("activities")]
     public List<ActivityDto>? Activities { get; set; }
 
@@ -537,6 +540,24 @@ public class PowerProfilePointDto
 
     [JsonPropertyName("w_per_kg")]
     public double? WPerKg { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public class TrainingLoadHistoryEntryDto
+{
+    [JsonPropertyName("week_starting")]
+    public string WeekStarting { get; set; }
+
+    [JsonPropertyName("weekly_load_target")]
+    public double? WeeklyLoadTarget { get; set; }
+
+    [JsonPropertyName("total_training_load")]
+    public double TotalTrainingLoad { get; set; }
+
+    [JsonPropertyName("achievement_pct")]
+    public double? AchievementPct { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

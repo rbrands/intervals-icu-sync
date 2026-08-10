@@ -1,6 +1,7 @@
 import importlib.util
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +43,25 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
         self.assertNotIn("atl", metric_fields)
         self.assertIn("ctl", summary_fields)
         self.assertIn("atl", summary_fields)
+
+    def test_main_saves_form_when_week_has_no_rides(self):
+        with (
+            patch.object(analyze_week, "load_data", return_value=[]),
+            patch.object(analyze_week, "filter_activities", return_value=[]),
+            patch.object(analyze_week, "load_training_plan", return_value=[]),
+            patch.object(analyze_week, "load_metrics", return_value={"ctl": 60.0, "atl": 75.0}),
+            patch.object(analyze_week, "save_json") as save_json,
+            self.assertRaises(SystemExit),
+        ):
+            analyze_week.main()
+
+        saved_form = save_json.call_args.args[0]
+        self.assertEqual(saved_form["ctl"], 60.0)
+        self.assertEqual(saved_form["atl"], 75.0)
+        self.assertEqual(saved_form["form_absolute"], -15.0)
+        self.assertEqual(saved_form["form_pct"], -0.25)
+        self.assertEqual(saved_form["form_percent_display"], -25.0)
+        self.assertEqual(saved_form["form_zone"], "optimal")
 
 
 if __name__ == "__main__":
