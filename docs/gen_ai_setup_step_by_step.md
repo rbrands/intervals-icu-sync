@@ -161,21 +161,29 @@ Claude and other MCP-capable AI tools open the login form automatically. Enter y
 
 **1 — Enable Developer Mode**
 
-Go to **Settings → Apps → Advanced Settings** and enable **Developer Mode**.
+Open the [ChatGPT web app](https://chatgpt.com) in your browser. In the relevant workspace, open **Workspace settings** and enable **Developer mode**.
 
-**2 — Create a connector**
+> Developer mode may not be shown in the ChatGPT desktop app. Its availability in the web app can also depend on your ChatGPT plan, workspace role, and workspace policy.
 
-Select **"Create App"**, then fill in the fields:
+**2 — Add the MCP server as a plugin**
 
-| Field | Value |
-|-------|-------|
-| Name | e.g. `intervals-icu-sync` |
-| URL | `https://intervals-mcp.training-architect.com/mcp` |
-| Authentication | OAuth 2.0 |
+Open [ChatGPT Plugins](https://chatgpt.com/plugins), select **+**, and enter a user-facing name and description. Under **Connection**, choose the public MCP server option and enter:
+
+```
+https://intervals-mcp.training-architect.com/mcp
+```
+
+Create the connection and review the tools discovered from the server.
 
 **3 — Authenticate**
 
 ChatGPT opens the login form automatically. Enter your intervals.icu **Athlete ID** and **API Key** (found under *Settings → Developer Settings* in intervals.icu).
+
+**4 — Enable the plugin in a chat**
+
+Start a new conversation and add `intervals-icu-sync` from the **Tools** menu before asking ChatGPT to call `prepare_week_data` or another tool.
+
+> **Terminology:** OpenAI now manages MCP connections through **Plugins**. You do not need to build or submit a packaged ChatGPT plugin to use this existing MCP server in developer mode. The ChatGPT Project still holds the coach instructions and knowledge files from Section 01; the plugin supplies the live intervals.icu tools.
 
 ---
 
