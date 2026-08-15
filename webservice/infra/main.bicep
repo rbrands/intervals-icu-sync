@@ -22,9 +22,6 @@ param oauthTokenSecret string = ''
 @description('OAuth access token lifetime in days. Default is 30.')
 param oauthAccessTokenLifetimeDays string = '30'
 
-@description('Athlete ID whose shared workout library is exposed as standard library. Leave empty to disable.')
-param standardLibraryAthleteId string = ''
-
 @description('Enable MCP response JSON preview tracing. Keep false in normal production operation.')
 param mcpTraceResponseJson string = 'false'
 
@@ -50,7 +47,6 @@ module appservice 'modules/appservice.bicep' = {
     customDomain: customDomain
     oauthTokenSecret: oauthTokenSecret
     oauthAccessTokenLifetimeDays: oauthAccessTokenLifetimeDays
-    standardLibraryAthleteId: standardLibraryAthleteId
     mcpTraceResponseJson: mcpTraceResponseJson
     mcpTraceResponsePreviewLimit: mcpTraceResponsePreviewLimit
     mcpRpcEventLogLevel: mcpRpcEventLogLevel

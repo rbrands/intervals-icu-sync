@@ -9,7 +9,6 @@ MCP server for Azure App Service. Exposes tools over SSE transport, with credent
 | `prepare_week_data` | Runs the full data pipeline (activities, metrics, training plan, fueling, week analysis) and returns the consolidated coach input as JSON. Supports optional `lookback_days` (default `7`) for activity/fueling windows while keeping `week_summary` anchored to calendar week. Nothing is stored on the server. |
 | `get_latest_activities` | Runs a slim pipeline and returns a compact, latest-first activity list (`date`, `name`, `duration_hours`, `training_load`, `avg_hr`, `max_hr`, `rpe`, `tags`) to avoid client-side truncation on large payloads. |
 | `list_library_workouts` | Lists the authenticated caller's own workout library with key fields (`folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
-| `list_standard_library_workouts` | Lists shared workouts of the configured standard library athlete (`STANDARD_LIBRARY_ATHLETE_ID`) with key fields (`shared_from`, `folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
 | `validate_week_plan` | Validates plan JSON against `contracts/week-plan/week-plan.schema.json` and returns structured validation results (`valid`/`invalid`) before upload. |
 | `upload_week_plan` | Uploads a JSON training plan to intervals.icu as planned workout events. Accepts `dry_run` and `clear` flags. |
 
@@ -86,7 +85,6 @@ Environment variables:
 | `FASTMCP_HOST` | `0.0.0.0` | Bind address |
 | `FASTMCP_PORT` | `8000` | Port |
 | `FASTMCP_ALLOWED_HOST` | *(empty)* | Additional hostname for the `allowed_hosts` security check (e.g. the App Service hostname) |
-| `STANDARD_LIBRARY_ATHLETE_ID` | *(empty)* | Athlete ID used by MCP method `list_standard_library_workouts` to return shared standard-library workouts |
 | `OAUTH_TOKEN_SECRET` | *(empty)* | Fernet key for stateless OAuth tokens. Generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. If not set, an ephemeral key is generated at startup and tokens are lost on restart. |
 | `OAUTH_ACCESS_TOKEN_LIFETIME_DAYS` | `30` | Access-token lifetime in days. Increase this as a first mitigation when clients fail to refresh reliably. |
 | `OAUTH_CLIENT_STORAGE_ACCOUNT` | *(empty)* | Existing Storage Account for persistent OAuth dynamic client registrations. If empty, registrations remain in-memory only. |
@@ -174,7 +172,6 @@ is excluded from source control via `.gitignore` and must **never** be committed
 | `OAuthAccessTokenLifetimeDays` | `OAUTH_ACCESS_TOKEN_LIFETIME_DAYS` | Access-token lifetime in days (default `30`). Useful workaround when a client's refresh flow is unreliable. |
 | `OAuthClientStorageAccountName` | `OAUTH_CLIENT_STORAGE_ACCOUNT` | Existing Storage Account for persistent OAuth client registrations (default: `stbrandsadvisorycentral`). |
 | `OAuthClientTableName` | `OAUTH_CLIENT_TABLE_NAME` | Azure Table name for persistent OAuth client registrations (default: `mcpoauthclients`). |
-| `StandardLibraryAthleteId` | `STANDARD_LIBRARY_ATHLETE_ID` | Athlete ID whose shared library is exposed by MCP method `list_standard_library_workouts` (e.g. `i57401`). |
 | `McpTraceResponseJson` | `MCP_TRACE_RESPONSE_JSON` | Controls MCP response preview tracing (`true`/`false`). Recommended: `false` in normal production operation. |
 | `McpTraceResponsePreviewLimit` | `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | Max UTF-8 bytes captured as response preview when tracing is enabled (e.g. `4096`). |
 | `McpRpcEventLogLevel` | `MCP_RPC_EVENT_LOG_LEVEL` | Log level for structured MCP RPC events (`INFO`, `WARNING`, `ERROR`). Recommended default: `INFO`. |
@@ -300,7 +297,6 @@ athlete data and increase telemetry volume.
 | `OAUTH_ACCESS_TOKEN_LIFETIME_DAYS` | Access-token lifetime in days (default `30`) |
 | `OAUTH_CLIENT_STORAGE_ACCOUNT` | Existing Storage Account name for OAuth client persistence (default from Bicep: `stbrandsadvisorycentral`) |
 | `OAUTH_CLIENT_TABLE_NAME` | Azure Table name for OAuth client persistence (default from Bicep: `mcpoauthclients`) |
-| `STANDARD_LIBRARY_ATHLETE_ID` | Athlete ID for MCP method `list_standard_library_workouts` (from GitHub Secret `STANDARD_LIBRARY_ATHLETE_ID`) |
 | `MCP_TRACE_RESPONSE_JSON` | `false` (recommended) or `true` for temporary payload debugging |
 | `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | `4096` |
 | `MCP_RPC_EVENT_LOG_LEVEL` | `INFO` |

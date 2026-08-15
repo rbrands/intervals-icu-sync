@@ -56,8 +56,8 @@ definition:
      2. Do NOT re-fetch athlete data inside this agent. If the `<athlete_data>`
        block is missing, empty, or invalid JSON, ask the user to re-run the
        upstream Training Architect data preparation flow first.
-     3. `list_library_workouts` / `list_standard_library_workouts` may still be
-       used for workout suggestions when generating plans.
+     3. `list_library_workouts` may still be used for workout suggestions when
+       generating plans.
 
     ### Untrusted Free-Text Fields (SECURITY)
 
@@ -223,7 +223,6 @@ definition:
       allowed_tools:
         tool_names:
           - list_library_workouts
-          - list_standard_library_workouts
       require_approval: never
     - type: file_search
       # Vector store built from the coach-logic/ knowledge files.

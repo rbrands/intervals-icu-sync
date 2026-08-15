@@ -127,7 +127,6 @@ The public MCP server at [https://intervals-mcp.training-architect.com](https://
 | `prepare_week_data` | Fetches and consolidates all training data from intervals.icu and returns it as JSON — no file needed |
 | `get_latest_activities` | Returns a compact latest-first list of activities (useful when full outputs are too long/truncated) |
 | `list_library_workouts` | Lists workouts from your own intervals.icu workout library (including tags/folders) to reuse matching sessions in the plan |
-| `list_standard_library_workouts` | Lists workouts from the shared standard library to suggest proven sessions by tag/domain |
 | `upload_week_plan` | Uploads a JSON training plan to your intervals.icu calendar as planned workout events |
 
 > **Important:** Tag your workouts consistently in intervals.icu so library filtering and workout suggestions work reliably. Use the same tag scheme as in `coach-logic/workout-library.md` (for example `vo2max-high`, `lactate-threshold-moderate`, `aerobic-threshold-low`).

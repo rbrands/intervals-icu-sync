@@ -6,7 +6,6 @@ Exposes MCP tools over SSE transport:
                                 window controlled by lookback_days)
     - get_latest_activities   – returns a compact list of latest rides
     - list_library_workouts   – lists the caller's own workout library entries
-    - list_standard_library_workouts – lists shared workouts of configured standard library athlete
     - validate_week_plan      – validates plan JSON against upload schema
     - upload_week_plan        – uploads a JSON training plan to intervals.icu
 
@@ -399,7 +398,6 @@ mcp = FastMCP(
 # ---------------------------------------------------------------------------
 
 _DEV_MODE: bool = bool(os.environ.get("INTERVALS_DEV_MODE"))
-_STANDARD_LIBRARY_ATHLETE_ID: str = os.environ.get("STANDARD_LIBRARY_ATHLETE_ID", "").strip()
 
 # Matches URL-embedded credentials: /{athlete_id}/{api_key}/{mcp|sse|messages...}
 # Allows clients that cannot set custom headers to pass credentials via the path.
@@ -651,7 +649,6 @@ class AuthHeaderMiddleware:
         <tr><td><code>prepare_week_data</code></td><td>Runs the full pipeline and returns consolidated coach input JSON. Supports optional <code>lookback_days</code> (default: 7) for the activity/fueling window while <code>week_summary</code> stays calendar-week based.</td></tr>
         <tr><td><code>get_latest_activities</code></td><td>Returns a compact latest-first activity list to avoid large payload truncation.</td></tr>
         <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
-        <tr><td><code>list_standard_library_workouts</code></td><td>Lists shared workouts of STANDARD_LIBRARY_ATHLETE_ID with duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
         <tr><td><code>validate_week_plan</code></td><td>Validates plan JSON against <code>contracts/week-plan/week-plan.schema.json</code> and returns structured validation results.</td></tr>
         <tr><td><code>upload_week_plan</code></td><td>Uploads a JSON training plan to intervals.icu (supports dry-run and clear).</td></tr>
     </table>
@@ -994,58 +991,6 @@ def _apply_workout_filters(
         filtered = filtered[:limit]
 
     return filtered, prefixes
-
-
-def _is_shared_outgoing_folder(folder: dict) -> bool:
-    visibility = (folder.get("visibility") or "").upper()
-    shared_with_count = int(folder.get("sharedWithCount") or 0)
-    has_share_token = bool(folder.get("shareToken"))
-    return visibility == "PUBLIC" or shared_with_count > 0 or has_share_token
-
-
-def _owner_label(folder: dict, fallback_athlete_id: str) -> str:
-    owner = folder.get("owner")
-    if isinstance(owner, dict):
-        return owner.get("name") or owner.get("id") or fallback_athlete_id
-    return fallback_athlete_id
-
-
-def _collect_shared_outgoing_workouts(nodes: list, athlete_id: str, parent_path: str = "", shared_context: dict | None = None) -> list[dict]:
-    results: list[dict] = []
-    for node in nodes or []:
-        if not isinstance(node, dict):
-            continue
-
-        node_type = node.get("type")
-        if node_type in {"FOLDER", "PLAN"}:
-            name = node.get("name") or f"Folder {node.get('id')}"
-            path = f"{parent_path} / {name}" if parent_path else name
-
-            current_shared = shared_context
-            if _is_shared_outgoing_folder(node):
-                current_shared = {
-                    "shared_from": _owner_label(node, athlete_id),
-                    "folder_path": path,
-                }
-
-            children = node.get("children") or []
-            results.extend(_collect_shared_outgoing_workouts(children, athlete_id, path, current_shared))
-            continue
-
-        if shared_context and node.get("id") is not None:
-            results.append(
-                {
-                    "shared_from": shared_context["shared_from"],
-                    "folder": shared_context["folder_path"],
-                    "name": node.get("name") or "(unnamed)",
-                    "duration": _format_duration(node.get("moving_time")),
-                    "duration_seconds": int(node.get("moving_time") or 0),
-                    "tss": node.get("icu_training_load") or 0,
-                    "tags": node.get("tags") or [],
-                }
-            )
-
-    return results
 
 
 # ---------------------------------------------------------------------------
@@ -1446,80 +1391,6 @@ def list_library_workouts(
                 "schema_version": _SCHEMA_VERSION,
                 "athlete_id": athlete_id,
                 "total_workouts": len(normalized),
-                "returned": len(filtered),
-                "filters": {
-                    "tag_prefixes": normalized_prefixes,
-                    "match_mode": match_mode,
-                    "include_untagged": include_untagged,
-                    "limit": limit,
-                },
-                "workouts": filtered,
-            },
-            ensure_ascii=False,
-        )
-
-
-@mcp.tool()
-def list_standard_library_workouts(
-    tag_prefixes: list[str] | str | None = None,
-    match_mode: str = "any",
-    include_untagged: bool = False,
-    limit: int = 500,
-) -> str:
-    """List shared workouts of the configured standard library athlete.
-
-    Uses env var STANDARD_LIBRARY_ATHLETE_ID as source athlete id.
-
-    Args:
-        tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-threshold-", "lactate-threshold-"]).
-        match_mode: "any" (default) or "all" when multiple prefixes are provided.
-        include_untagged: Include workouts without tags when tag_prefixes is set.
-        limit: Maximum number of rows to return (1-5000).
-    """
-    with _tool_span("mcp.tool/list_standard_library_workouts") as span:
-        span.set_attribute("match_mode", match_mode)
-        span.set_attribute("include_untagged", include_untagged)
-        span.set_attribute("limit", limit)
-
-        err = _check_credentials()
-        if err:
-            span.set_status(_ERROR, "missing credentials")
-            return err
-
-        if match_mode not in {"any", "all"}:
-            span.set_status(_ERROR, "invalid match_mode")
-            return json.dumps({"error": "match_mode must be 'any' or 'all'"}, ensure_ascii=False)
-        if limit < 1 or limit > 5000:
-            span.set_status(_ERROR, "invalid limit")
-            return json.dumps({"error": "limit must be between 1 and 5000"}, ensure_ascii=False)
-
-        if not _STANDARD_LIBRARY_ATHLETE_ID:
-            span.set_status(_ERROR, "missing standard library athlete id")
-            return json.dumps(
-                {
-                    "error": "STANDARD_LIBRARY_ATHLETE_ID is not configured on the server.",
-                },
-                ensure_ascii=False,
-            )
-
-        _, api_key = _get_credentials()
-        folders = get_library_folders(api_key, _STANDARD_LIBRARY_ATHLETE_ID)
-        rows = _collect_shared_outgoing_workouts(folders, _STANDARD_LIBRARY_ATHLETE_ID)
-        rows.sort(key=lambda row: (row["shared_from"], row["folder"], row["name"].lower()))
-        filtered, normalized_prefixes = _apply_workout_filters(
-            rows,
-            tag_prefixes,
-            match_mode,
-            include_untagged,
-            limit,
-        )
-
-        span.set_status(_OK)
-        return json.dumps(
-            {
-                "schema_version": _SCHEMA_VERSION,
-                "standard_library_athlete_id": _STANDARD_LIBRARY_ATHLETE_ID,
-                "total_workouts": len(rows),
                 "returned": len(filtered),
                 "filters": {
                     "tag_prefixes": normalized_prefixes,

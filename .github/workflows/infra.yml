@@ -46,7 +46,6 @@ jobs:
                 oauthAccessTokenLifetimeDays="${{ secrets.OAUTH_ACCESS_TOKEN_LIFETIME_DAYS || '30' }}" \
                 oauthClientStorageAccountName="stbrandsadvisorycentral" \
                 oauthClientTableName="mcpoauthclients" \
-                standardLibraryAthleteId="${{ secrets.STANDARD_LIBRARY_ATHLETE_ID }}" \
                 mcpTraceResponseJson="${{ secrets.MCP_TRACE_RESPONSE_JSON }}" \
                 mcpTraceResponsePreviewLimit="${{ secrets.MCP_TRACE_RESPONSE_PREVIEW_LIMIT }}" \
                 mcpRpcEventLogLevel="${{ secrets.MCP_RPC_EVENT_LOG_LEVEL }}"

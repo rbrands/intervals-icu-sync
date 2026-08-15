@@ -20,9 +20,6 @@ param oauthTokenSecret string = ''
 @description('OAuth access token lifetime in days. Default is 30.')
 param oauthAccessTokenLifetimeDays string = '30'
 
-@description('Athlete ID whose shared workout library is exposed as standard library. Leave empty to disable.')
-param standardLibraryAthleteId string = ''
-
 @description('Enable MCP response JSON preview tracing. Keep false in normal production operation.')
 param mcpTraceResponseJson string = 'false'
 
@@ -67,14 +64,6 @@ var oauthTokenSettings = oauthTokenSecret != '' ? [
   {
     name: 'OAUTH_TOKEN_SECRET'
     value: oauthTokenSecret
-  }
-] : []
-
-// Standard library athlete setting (empty array when not configured).
-var standardLibrarySettings = standardLibraryAthleteId != '' ? [
-  {
-    name: 'STANDARD_LIBRARY_ATHLETE_ID'
-    value: standardLibraryAthleteId
   }
 ] : []
 
@@ -142,7 +131,7 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: true
       healthCheckPath: '/health'
-      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, standardLibrarySettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           // Comma-separated: azurewebsites.net hostname + optional custom domain.
@@ -217,7 +206,7 @@ resource stagingSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
       healthCheckPath: '/health'
-      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, standardLibrarySettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-staging.azurewebsites.net'
@@ -244,7 +233,7 @@ resource devSlot 'Microsoft.Web/sites/slots@2023-01-01' = {
       appCommandLine: 'python -m uvicorn webservice.mcp_server:app --host 0.0.0.0 --port 8000'
       alwaysOn: false
       healthCheckPath: '/health'
-      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, standardLibrarySettings, [
+      appSettings: union(commonAppSettings, appInsightsSettings, oauthTokenSettings, [
         {
           name: 'FASTMCP_ALLOWED_HOST'
           value: '${appName}-dev.azurewebsites.net'

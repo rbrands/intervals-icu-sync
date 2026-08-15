@@ -26,8 +26,8 @@ If `intervals-icu-sync` MCP tools are available, fetch current data
 BEFORE responding:
 1. `prepare_week_data` — fetch live data (skip if user says data is current)
 2. `get_latest_activities` — compact, latest-first activity summary
-3. `list_library_workouts` / `list_standard_library_workouts` —
-   use as suggestions when tags match goal, limiter, or requested type
+3. `list_library_workouts` — use as suggestions when tags match goal, limiter,
+  or requested type
 
 After the user approves a plan:
 4. `upload_week_plan` — push the JSON plan to the calendar

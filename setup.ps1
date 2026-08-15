@@ -64,9 +64,6 @@ if ($GitHub -or $All) {
     if ($config.PSObject.Properties.Name -contains 'OAuthClientTableName' -and $config.OAuthClientTableName) {
         gh secret set OAUTH_CLIENT_TABLE_NAME --body $config.OAuthClientTableName
     }
-    if ($config.StandardLibraryAthleteId) {
-        gh secret set STANDARD_LIBRARY_ATHLETE_ID --body $config.StandardLibraryAthleteId
-    }
     if ($config.McpTraceResponseJson) {
         gh secret set MCP_TRACE_RESPONSE_JSON --body $config.McpTraceResponseJson
     }
@@ -133,7 +130,6 @@ param appServicePlanName = '$($config.AppServicePlanName)'
 param appInsightsName    = '$($config.AppInsightsName)'
 param customDomain       = '$($config.CustomDomain)'
 param oauthAccessTokenLifetimeDays = '$($config.OAuthAccessTokenLifetimeDays)'
-param standardLibraryAthleteId = '$($config.StandardLibraryAthleteId)'
 param oauthClientStorageAccountName = '$oauthClientStorageAccountName'
 param oauthClientTableName = '$oauthClientTableName'
 param mcpTraceResponseJson = '$($config.McpTraceResponseJson)'

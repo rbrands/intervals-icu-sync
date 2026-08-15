@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] - 2026-08-15
+
+### Removed
+
+- Removed the unsupported shared workout library script and MCP tool because intervals.icu does not expose shared folder workouts through its public API.
+- Removed the corresponding Foundry agent tool registration, prompts, deployment configuration, and documentation.
+
 ## [1.1.0] - 2026-08-10
 
 ### Added

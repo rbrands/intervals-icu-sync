@@ -54,10 +54,6 @@ $config = @{
     # OAuth access token lifetime in days (default behavior is 30 days).
     OAuthAccessTokenLifetimeDays = "30"
 
-    # Athlete ID whose shared workout library should be exposed as
-    # "standard library" by MCP method list_standard_library_workouts.
-    StandardLibraryAthleteId = "__STANDARD_LIBRARY_ATHLETE_ID__"
-
     # Existing Storage Account that should host persistent OAuth client registrations.
     OAuthClientStorageAccountName = "stbrandsadvisorycentral"
 

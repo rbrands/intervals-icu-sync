@@ -29,7 +29,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import TransportSecuritySettings
 import upload_plan as _upload_plan  # direct import – no subprocess overhead
 from intervals_icu.client import get_library_folders, get_library_workouts
-from intervals_icu.config import API_KEY, ATHLETE_ID, STANDARD_LIBRARY_ATHLETE_ID
+from intervals_icu.config import API_KEY, ATHLETE_ID
 from intervals_icu.prompt_templates import render_coach_prompt
 PROCESSED_DIR = _ROOT / "data" / "processed"
 PLANS_DIR = _ROOT / "data" / "plans"
@@ -272,58 +272,6 @@ def _apply_workout_filters(
         filtered = filtered[:limit]
 
     return filtered, prefixes
-
-
-def _is_shared_outgoing_folder(folder: dict) -> bool:
-    visibility = (folder.get("visibility") or "").upper()
-    shared_with_count = int(folder.get("sharedWithCount") or 0)
-    has_share_token = bool(folder.get("shareToken"))
-    return visibility == "PUBLIC" or shared_with_count > 0 or has_share_token
-
-
-def _owner_label(folder: dict, fallback_athlete_id: str) -> str:
-    owner = folder.get("owner")
-    if isinstance(owner, dict):
-        return owner.get("name") or owner.get("id") or fallback_athlete_id
-    return fallback_athlete_id
-
-
-def _collect_shared_outgoing_workouts(nodes: list, athlete_id: str, parent_path: str = "", shared_context: dict | None = None) -> list[dict]:
-    results: list[dict] = []
-    for node in nodes or []:
-        if not isinstance(node, dict):
-            continue
-
-        node_type = node.get("type")
-        if node_type in {"FOLDER", "PLAN"}:
-            name = node.get("name") or f"Folder {node.get('id')}"
-            path = f"{parent_path} / {name}" if parent_path else name
-
-            current_shared = shared_context
-            if _is_shared_outgoing_folder(node):
-                current_shared = {
-                    "shared_from": _owner_label(node, athlete_id),
-                    "folder_path": path,
-                }
-
-            children = node.get("children") or []
-            results.extend(_collect_shared_outgoing_workouts(children, athlete_id, path, current_shared))
-            continue
-
-        if shared_context and node.get("id") is not None:
-            results.append(
-                {
-                    "shared_from": shared_context["shared_from"],
-                    "folder": shared_context["folder_path"],
-                    "name": node.get("name") or "(unnamed)",
-                    "duration": _format_duration(node.get("moving_time")),
-                    "duration_seconds": int(node.get("moving_time") or 0),
-                    "tss": node.get("icu_training_load") or 0,
-                    "tags": node.get("tags") or [],
-                }
-            )
-
-    return results
 
 
 # ---------------------------------------------------------------------------
@@ -640,67 +588,6 @@ def list_library_workouts(
             "schema_version": _SCHEMA_VERSION,
             "athlete_id": ATHLETE_ID,
             "total_workouts": len(normalized),
-            "returned": len(filtered),
-            "filters": {
-                "tag_prefixes": normalized_prefixes,
-                "match_mode": match_mode,
-                "include_untagged": include_untagged,
-                "limit": limit,
-            },
-            "workouts": filtered,
-        },
-        ensure_ascii=False,
-    )
-
-
-@mcp.tool()
-def list_standard_library_workouts(
-    tag_prefixes: list[str] | str | None = None,
-    match_mode: str = "any",
-    include_untagged: bool = False,
-    limit: int = 500,
-) -> str:
-    """List workouts shared by STANDARD_LIBRARY_ATHLETE_ID.
-
-    Uses the optional config value STANDARD_LIBRARY_ATHLETE_ID from .env.
-
-    Args:
-        tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-threshold-", "lactate-threshold-"]).
-        match_mode: "any" (default) or "all" when multiple prefixes are provided.
-        include_untagged: Include workouts without tags when tag_prefixes is set.
-        limit: Maximum number of rows to return (1-5000).
-    """
-    if match_mode not in {"any", "all"}:
-        return json.dumps({"error": "match_mode must be 'any' or 'all'"}, ensure_ascii=False)
-    if limit < 1 or limit > 5000:
-        return json.dumps({"error": "limit must be between 1 and 5000"}, ensure_ascii=False)
-
-    standard_athlete_id = STANDARD_LIBRARY_ATHLETE_ID.strip()
-    if not standard_athlete_id:
-        return json.dumps(
-            {
-                "error": "STANDARD_LIBRARY_ATHLETE_ID is not set in .env",
-                "hint": "Set STANDARD_LIBRARY_ATHLETE_ID to the athlete id whose shared library should be listed.",
-            },
-            ensure_ascii=False,
-        )
-
-    folders = get_library_folders(API_KEY, standard_athlete_id)
-    shared_rows = _collect_shared_outgoing_workouts(folders, standard_athlete_id)
-    shared_rows.sort(key=lambda row: (row["shared_from"], row["folder"], row["name"].lower()))
-    filtered, normalized_prefixes = _apply_workout_filters(
-        shared_rows,
-        tag_prefixes,
-        match_mode,
-        include_untagged,
-        limit,
-    )
-
-    return json.dumps(
-        {
-            "schema_version": _SCHEMA_VERSION,
-            "standard_library_athlete_id": standard_athlete_id,
-            "total_workouts": len(shared_rows),
             "returned": len(filtered),
             "filters": {
                 "tag_prefixes": normalized_prefixes,

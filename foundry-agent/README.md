@@ -105,7 +105,7 @@ in `agent.yaml`:
 
 - `server_url`: `https://intervals-mcp.training-architect.com/mcp`
 - `allowed_tools`: `prepare_week_data`, `get_latest_activities`,
-  `list_library_workouts`, `list_standard_library_workouts`, `upload_week_plan`
+  `list_library_workouts`, `upload_week_plan`
 
 ### Per-request credentials (no stored connection)
 
