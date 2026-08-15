@@ -218,6 +218,7 @@ def _normalize_library_workouts(workouts: list, folder_map: dict[int, str]) -> l
             continue
         rows.append(
             {
+                "library_workout_id": workout.get("id"),
                 "folder": folder_map.get(workout.get("folder_id"), "-"),
                 "name": workout.get("name") or "(unnamed)",
                 "duration": _format_duration(workout.get("moving_time")),
@@ -558,7 +559,7 @@ def list_library_workouts(
 ) -> str:
     """List own library workouts for the configured athlete (ATHLETE_ID).
 
-    Returns folder, name, duration, TSS and tags for each workout.
+    Returns library_workout_id, folder, name, duration, TSS and tags for each workout.
 
     Args:
         tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-threshold-", "lactate-threshold-"]).
@@ -612,6 +613,8 @@ def save_week_plan(plan_json: str) -> str:
         plan_json: The training plan as a JSON string. Must be a JSON array of
                    workout objects or an object with a "workouts" array. Each
                    workout must have "date", "name", and "duration_minutes".
+                   Set "library_workout_id" to schedule the exact stored library
+                   workout instead of generating structure from "steps".
                    Example:
                    [
                      {
@@ -742,8 +745,9 @@ def upload_week_plan(dry_run: bool = False, clear: bool = False) -> str:
     """Upload the saved weekly training plan to intervals.icu.
 
     Reads data/plans/week_plan.json and creates or updates WORKOUT events in
-    the intervals.icu calendar. Existing events with the same name and date are
-    updated (PUT), new ones are created (POST) — no duplicates.
+    the intervals.icu calendar. Entries with library_workout_id copy the stored
+    workout structure. Existing events with the same name and date are updated
+    (PUT), new ones are created (POST) — no duplicates.
 
     Typically called after save_week_plan has written the coach's plan.
 

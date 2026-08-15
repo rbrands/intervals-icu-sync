@@ -117,6 +117,18 @@ def get_library_workouts(api_key: str, athlete_id: str) -> list:
     return response.json()
 
 
+def get_library_workout(api_key: str, athlete_id: str, workout_id: int) -> dict:
+    """Fetch one workout from the athlete's workout library."""
+    url = f"{BASE_URL}/athlete/{athlete_id}/workouts/{workout_id}"
+    response = requests.get(
+        url,
+        auth=("API_KEY", api_key),
+        timeout=30,
+    )
+    _raise_for_status_with_context(response, "get_library_workout")
+    return response.json()
+
+
 def get_library_folders(api_key: str, athlete_id: str) -> list:
     """Fetch all workout folders and plans from the athlete's library.
 
@@ -243,6 +255,7 @@ def create_activity(
     description: str = "",
     planned: bool = True,
     workout: dict | None = None,
+    raw_workout_doc: dict | None = None,
     uid: str | None = None,
     tags: list[str] | None = None,
 ) -> dict:
@@ -262,6 +275,8 @@ def create_activity(
                  e.g. 0.95 = 95 %).  Example::
 
                      {"steps": [{"duration": 900, "power": 0.95}, ...]}
+        raw_workout_doc: Optional native intervals.icu workout document copied
+                         from a library workout. Sent unchanged when provided.
 
     Returns:
         The created event dict as returned by the API.
@@ -284,7 +299,9 @@ def create_activity(
     if tags:
         payload["tags"] = tags
 
-    if workout is not None and "steps" in workout:
+    if raw_workout_doc is not None:
+        payload["workout_doc"] = raw_workout_doc
+    elif workout is not None and "steps" in workout:
         zwo = _steps_to_zwo(name, _ascii_safe(description), workout["steps"])
         payload["file_contents_base64"] = base64.b64encode(zwo.encode()).decode()
         payload["filename"] = "workout.zwo"

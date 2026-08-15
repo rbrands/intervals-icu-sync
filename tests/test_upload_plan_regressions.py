@@ -1,11 +1,13 @@
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from src.intervals_icu.client import _steps_to_zwo
+from src.intervals_icu.client import _steps_to_zwo, create_activity
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +38,30 @@ class UploadPlanRegressionTests(unittest.TestCase):
         self.assertIn('Power="0.6"', zwo)
         self.assertIn('Duration="120"', zwo)
         self.assertIn('Power="0.95"', zwo)
+
+    @patch("src.intervals_icu.client.requests.post")
+    def test_create_activity_sends_raw_workout_doc_unchanged(self, post):
+        raw_workout_doc = {
+            "steps": [
+                {"duration": 300, "power": {"units": "%ftp", "value": 60}}
+            ]
+        }
+        post.return_value.raise_for_status.return_value = None
+        post.return_value.json.return_value = {"id": 123}
+
+        create_activity(
+            api_key="test-key",
+            athlete_id="test-athlete",
+            name="Stored workout",
+            start_date_local="2026-05-19T00:00:00",
+            duration=300,
+            raw_workout_doc=raw_workout_doc,
+        )
+
+        payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
+        self.assertEqual(payload["workout_doc"], raw_workout_doc)
+        self.assertNotIn("file_contents_base64", payload)
+        self.assertNotIn("filename", payload)
 
     def test_upload_plan_dry_run_supports_top_level_steps(self):
         module = _load_upload_plan_module()
@@ -98,6 +124,53 @@ class UploadPlanRegressionTests(unittest.TestCase):
         self.assertEqual(captured["name"], "N" * 127)
         self.assertEqual(len(captured["description"]), 512)
         self.assertEqual(captured["description"], "D" * 512)
+
+    def test_upload_plan_uses_library_workout_content(self):
+        module = _load_upload_plan_module()
+        captured: dict = {}
+        library_workout = {
+            "id": 81,
+            "name": "Stored VO2Max",
+            "type": "Ride",
+            "moving_time": 3600,
+            "description": "Stored execution notes",
+            "tags": ["vo2max-moderate"],
+            "workout_doc": {
+                "steps": [
+                    {"duration": 300, "power": {"units": "%ftp", "value": 60}}
+                ]
+            },
+        }
+
+        module.get_events = lambda *args, **kwargs: []
+        module.get_library_workout = lambda *args, **kwargs: library_workout
+
+        def _fake_create_activity(**kwargs):
+            captured.update(kwargs)
+            return {"id": "evt-1"}
+
+        module.create_activity = _fake_create_activity
+
+        plan = [
+            {
+                "date": "2026-05-19",
+                "name": "Generated placeholder",
+                "duration_minutes": 30,
+                "library_workout_id": 81,
+                "tags": ["recovery-low"],
+                "steps": [{"duration_seconds": 1800, "power_pct_ftp": 50}],
+                "fueling": {"carbs_per_hour": 90, "total_carbs": 90},
+            }
+        ]
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            module.upload_plan(plan, dry_run=False)
+
+        self.assertEqual(captured["name"], "Stored VO2Max")
+        self.assertEqual(captured["duration"], 3600)
+        self.assertEqual(captured["description"], "Stored execution notes")
+        self.assertEqual(captured["tags"], ["vo2max-moderate"])
+        self.assertEqual(captured["raw_workout_doc"], library_workout["workout_doc"])
 
 
 if __name__ == "__main__":

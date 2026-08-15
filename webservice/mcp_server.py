@@ -648,7 +648,7 @@ class AuthHeaderMiddleware:
         <tr><th>Method</th><th>Description</th></tr>
         <tr><td><code>prepare_week_data</code></td><td>Runs the full pipeline and returns consolidated coach input JSON. Supports optional <code>lookback_days</code> (default: 7) for the activity/fueling window while <code>week_summary</code> stays calendar-week based.</td></tr>
         <tr><td><code>get_latest_activities</code></td><td>Returns a compact latest-first activity list to avoid large payload truncation.</td></tr>
-        <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
+        <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with library workout ID, duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
         <tr><td><code>validate_week_plan</code></td><td>Validates plan JSON against <code>contracts/week-plan/week-plan.schema.json</code> and returns structured validation results.</td></tr>
         <tr><td><code>upload_week_plan</code></td><td>Uploads a JSON training plan to intervals.icu (supports dry-run and clear).</td></tr>
     </table>
@@ -937,6 +937,7 @@ def _normalize_library_workouts(workouts: list, folder_map: dict[int, str]) -> l
             continue
         rows.append(
             {
+                "library_workout_id": workout.get("id"),
                 "folder": folder_map.get(workout.get("folder_id"), "-"),
                 "name": workout.get("name") or "(unnamed)",
                 "duration": _format_duration(workout.get("moving_time")),
@@ -1347,7 +1348,7 @@ def list_library_workouts(
 ) -> str:
     """List own workout library entries for the authenticated caller.
 
-    Returns folder, name, duration, TSS and tags for each workout.
+    Returns library_workout_id, folder, name, duration, TSS and tags for each workout.
 
     Args:
         tag_prefixes: Optional tag prefix filter (e.g. ["aerobic-threshold-", "lactate-threshold-"]).
@@ -1511,14 +1512,16 @@ def upload_week_plan(
     Writes the plan to a temporary file, calls upload_plan.py, then discards
     the file. Nothing is retained on the server after this call.
 
-    Existing WORKOUT events with the same name and date are updated (PUT);
-    new ones are created (POST) — no duplicates.
+    Entries with library_workout_id copy the stored workout structure. Existing
+    WORKOUT events with the same name and date are updated (PUT); new ones are
+    created (POST) — no duplicates.
 
     Args:
         plan_json:  Training plan as a JSON string. Must be a JSON array of
                     workout objects or an object with a "workouts" array.
                     Each workout requires "date" (ISO 8601 datetime), "name",
-                    and "duration_minutes".
+                    and "duration_minutes". Set "library_workout_id" to copy
+                    the exact stored library workout instead of generated steps.
                     Example:
                     [
                       {

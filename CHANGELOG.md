@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
-## [1.1.1] - 2026-08-15
+## [1.2.0] - 2026-08-15
+
+### Added
+
+- Added `library_workout_id` to MCP workout-library results and week-plan uploads so the agent can select a tagged library workout and copy its stored structure to the calendar.
+- Added a deterministic workflow to the concrete planning prompts that queries the workout library once per plan after deriving all required tags, validates exact tag suitability, and falls back to generated workout steps when no match exists.
+
+### Changed
+
+- Updated manual and automatic planning prompts to calculate TSS consistently from generated workout steps, selected library workout TSS, and anchored planned workouts.
+- Added final planning self-checks for per-workout TSS consistency, manual duration limits, and automatic weekly load targets within ±10% unless constraints or fatigue justify a deviation.
+- Synchronized the executable planning prompts and all German/English examples in `docs/prompt_library.md`, while keeping workout-library orchestration out of the system prompts.
 
 ### Removed
 

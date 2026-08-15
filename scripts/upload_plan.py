@@ -33,7 +33,7 @@ if _venv_site.exists() and str(_venv_site) not in sys.path:
     sys.path.insert(0, str(_venv_site))
 
 import requests
-from intervals_icu.client import _ascii_safe, _steps_to_zwo, create_activity, delete_events_range, get_events, update_event
+from intervals_icu.client import _ascii_safe, _steps_to_zwo, create_activity, delete_events_range, get_events, get_library_workout, update_event
 from intervals_icu.config import API_KEY, ATHLETE_ID
 
 DEFAULT_PLAN = Path(__file__).resolve().parents[1] / "data" / "plans" / "week_plan.json"
@@ -111,15 +111,42 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
             skipped += 1
             continue
 
-        name = _truncate_field(str(workout["name"]), MAX_ACTIVITY_NAME_LENGTH)
+        library_workout_id = workout.get("library_workout_id")
+        library_workout = None
+        if library_workout_id is not None and not dry_run:
+            try:
+                library_workout = get_library_workout(
+                    API_KEY,
+                    ATHLETE_ID,
+                    int(library_workout_id),
+                )
+            except (TypeError, ValueError):
+                print(f"  Failed:   invalid library_workout_id {library_workout_id!r}")
+                failed += 1
+                continue
+            except requests.HTTPError as exc:
+                print(f"  Failed:   library workout {library_workout_id} — HTTP {exc.response.status_code}: {exc.response.text[:120]}")
+                failed += 1
+                continue
+            except requests.RequestException as exc:
+                print(f"  Failed:   library workout {library_workout_id} — {exc}")
+                failed += 1
+                continue
+
+        source = library_workout or workout
+        name = _truncate_field(str(source["name"]), MAX_ACTIVITY_NAME_LENGTH)
         date = workout["date"]
         # intervals.icu requires a full ISO 8601 datetime; append time if only a date was given
         if len(date) == 10:
             date = date + "T00:00:00"
-        duration_seconds = int(float(workout["duration_minutes"]) * 60)
-        raw_description = workout.get("description", "")
+        duration_seconds = (
+            int(library_workout.get("moving_time") or 0)
+            if library_workout is not None
+            else int(float(workout["duration_minutes"]) * 60)
+        )
+        raw_description = source.get("description", "")
         description = "" if raw_description is None else str(raw_description)
-        fueling = workout.get("fueling")
+        fueling = None if library_workout is not None else workout.get("fueling")
         if fueling:
             carbs_per_hour = fueling.get("carbs_per_hour")
             total_carbs = fueling.get("total_carbs")
@@ -132,13 +159,14 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                 description = f"{description}\nFueling: {', '.join(parts)}" if description else f"Fueling: {', '.join(parts)}"
         description = _truncate_field(description, MAX_ACTIVITY_DESCRIPTION_LENGTH)
         # Steps can be at the top level ("steps") or nested under a "workout" key
+        raw_library_workout_doc = library_workout.get("workout_doc") if library_workout else None
         workout_doc = workout.get("workout")
         if workout_doc is None and workout.get("steps"):
             workout_doc = {"steps": workout["steps"]}
         # Support both "tags" (list) and "tag" (single string)
-        raw_tags = workout.get("tags") or []
-        if not raw_tags and workout.get("tag"):
-            raw_tags = [workout["tag"]]
+        raw_tags = source.get("tags") or []
+        if not raw_tags and source.get("tag"):
+            raw_tags = [source["tag"]]
         tags = raw_tags
 
         if dry_run:
@@ -166,6 +194,10 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                     zwo = _steps_to_zwo(name, _ascii_safe(description), workout_doc["steps"])
                     payload["file_contents_base64"] = base64.b64encode(zwo.encode()).decode()
                     payload["filename"] = "workout.zwo"
+                if raw_library_workout_doc is not None:
+                    payload.pop("file_contents_base64", None)
+                    payload.pop("filename", None)
+                    payload["workout_doc"] = raw_library_workout_doc
                 if tags:
                     payload["tags"] = tags
                 result = update_event(API_KEY, ATHLETE_ID, existing_id, payload)
@@ -179,6 +211,7 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                     duration=duration_seconds,
                     description=description,
                     workout=workout_doc,
+                    raw_workout_doc=raw_library_workout_doc,
                     tags=tags if tags else None,
                 )
                 print(f"  Created:  {name} on {date[:10]}")

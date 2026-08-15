@@ -551,7 +551,7 @@ Output: JSON to stdout
 
 ### `list_workouts.py`
 
-Lists all workouts from the athlete's intervals.icu workout library and shows the key planning fields per workout: folder, duration, TSS, and tags. By default it prints a table to stdout; with `--json` it returns normalized JSON output.
+Lists all workouts from the athlete's intervals.icu workout library and shows the key planning fields per workout: folder, duration, TSS, and tags. By default it prints a table to stdout; with `--json` it returns normalized JSON output. The MCP equivalent additionally returns `library_workout_id` so generated plans can reference the exact stored workout.
 
 ```bash
 python scripts/list_workouts.py
@@ -629,7 +629,7 @@ Each entry in the JSON file must have:
 - `name` — display name shown in intervals.icu
 - `duration_minutes` — planned duration (integer or float)
 
-Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `steps` (structured workout intervals → uploaded as a ZWO file).
+Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `steps` (structured workout intervals → uploaded as a ZWO file), and `library_workout_id` (copies the exact stored library workout, including its `workout_doc`, instead of generated steps).
 
 Plan JSON Schema: `contracts/week-plan/week-plan.schema.json` (supports both accepted top-level formats: bare workout array or `{ "week": "...", "workouts": [...] }`).
 
@@ -789,5 +789,11 @@ Covers regression cases for `upload_plan.py` and the ZWO generation logic:
 | Test | What it checks |
 |---|---|
 | `test_steps_to_zwo_accepts_seconds_and_percent_fields` | `_steps_to_zwo` produces correct ZWO XML (`Duration`, `Power`) from `duration_seconds` / `power_pct_ftp` fields |
+| `test_create_activity_sends_raw_workout_doc_unchanged` | `create_activity` sends a native library `workout_doc` unchanged without converting it to ZWO |
 | `test_upload_plan_dry_run_supports_top_level_steps` | `upload_plan` accepts `steps` directly at the plan-entry level |
 | `test_upload_plan_dry_run_supports_nested_workout_steps` | `upload_plan` accepts `steps` nested under a `workout` key |
+| `test_upload_plan_uses_library_workout_content` | `upload_plan` resolves `library_workout_id` and copies the stored name, duration, description, tags, and workout structure |
+
+### `tests/test_library_workout_listing.py`
+
+Covers MCP library workout IDs and validation of library-backed week-plan entries without generated steps.

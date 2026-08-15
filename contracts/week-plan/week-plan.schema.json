@@ -52,6 +52,11 @@
           "exclusiveMinimum": 0,
           "description": "Planned duration in minutes."
         },
+        "library_workout_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional intervals.icu library workout ID. When set, upload uses the stored workout name, duration, description, tags, and workout_doc."
+        },
         "description": {
           "type": [
             "string",
