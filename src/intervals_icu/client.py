@@ -258,6 +258,7 @@ def create_activity(
     raw_workout_doc: dict | None = None,
     uid: str | None = None,
     tags: list[str] | None = None,
+    training_load: int | float | None = None,
 ) -> dict:
     """Create a planned workout on intervals.icu.
 
@@ -277,6 +278,8 @@ def create_activity(
                      {"steps": [{"duration": 900, "power": 0.95}, ...]}
         raw_workout_doc: Optional native intervals.icu workout document copied
                          from a library workout. Sent unchanged when provided.
+        training_load: Optional stored TSS to preserve for library workouts with
+                       no generated steps/workout_doc.
 
     Returns:
         The created event dict as returned by the API.
@@ -298,6 +301,8 @@ def create_activity(
         payload["uid"] = uid
     if tags:
         payload["tags"] = tags
+    if training_load is not None:
+        payload["icu_training_load"] = training_load
 
     if raw_workout_doc is not None:
         payload["workout_doc"] = raw_workout_doc

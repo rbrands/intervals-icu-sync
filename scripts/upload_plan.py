@@ -177,6 +177,12 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
             success += 1
             continue
 
+        library_training_load = None
+        if library_workout is not None:
+            library_training_load = library_workout.get("icu_training_load")
+        elif workout.get("training_load") is not None:
+            library_training_load = workout.get("training_load")
+
         existing_id = existing.get((name, date[:10]))
 
         try:
@@ -190,6 +196,8 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                     "moving_time": duration_seconds,
                     "description": description,
                 }
+                if library_training_load is not None:
+                    payload["icu_training_load"] = library_training_load
                 if workout_doc is not None and "steps" in workout_doc:
                     zwo = _steps_to_zwo(name, _ascii_safe(description), workout_doc["steps"])
                     payload["file_contents_base64"] = base64.b64encode(zwo.encode()).decode()
@@ -213,6 +221,7 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                     workout=workout_doc,
                     raw_workout_doc=raw_library_workout_doc,
                     tags=tags if tags else None,
+                    training_load=library_training_load,
                 )
                 print(f"  Created:  {name} on {date[:10]}")
             success += 1

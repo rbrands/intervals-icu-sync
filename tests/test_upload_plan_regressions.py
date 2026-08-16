@@ -172,6 +172,43 @@ class UploadPlanRegressionTests(unittest.TestCase):
         self.assertEqual(captured["tags"], ["vo2max-moderate"])
         self.assertEqual(captured["raw_workout_doc"], library_workout["workout_doc"])
 
+    def test_upload_plan_preserves_library_workout_tss_without_steps(self):
+        module = _load_upload_plan_module()
+        captured: dict = {}
+        library_workout = {
+            "id": 81,
+            "name": "Stored Recovery",
+            "type": "Ride",
+            "moving_time": 2700,
+            "description": "Stored execution notes",
+            "icu_training_load": 70,
+            "tags": ["recovery-low"],
+        }
+
+        module.get_events = lambda *args, **kwargs: []
+        module.get_library_workout = lambda *args, **kwargs: library_workout
+
+        def _fake_create_activity(**kwargs):
+            captured.update(kwargs)
+            return {"id": "evt-1"}
+
+        module.create_activity = _fake_create_activity
+
+        plan = [
+            {
+                "date": "2026-05-19",
+                "name": "Generated placeholder",
+                "duration_minutes": 45,
+                "library_workout_id": 81,
+            }
+        ]
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            module.upload_plan(plan, dry_run=False)
+
+        self.assertEqual(captured["training_load"], 70)
+        self.assertIsNone(captured["raw_workout_doc"])
+
 
 if __name__ == "__main__":
     unittest.main()
