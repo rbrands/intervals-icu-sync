@@ -28,7 +28,11 @@ sys.path.insert(0, str(SCRIPTS_DIR))  # allow direct import of scripts
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import TransportSecuritySettings
 import upload_plan as _upload_plan  # direct import – no subprocess overhead
-from intervals_icu.client import get_library_folders, get_library_workouts
+from intervals_icu.client import (
+    get_activity_streams_sampled as get_activity_streams_sampled_client,
+    get_library_folders,
+    get_library_workouts,
+)
 from intervals_icu.config import API_KEY, ATHLETE_ID
 from intervals_icu.prompt_templates import render_coach_prompt
 PROCESSED_DIR = _ROOT / "data" / "processed"
@@ -548,6 +552,55 @@ def get_latest_metrics() -> str:
             "error": "No metrics files found. Run the prepare_week_data tool first."
         }, ensure_ascii=False)
     return files[-1].read_text(encoding="utf-8")
+
+
+@mcp.tool()
+def get_activity_streams_sampled(
+    activity_id: str,
+    stream_types: list[str] | None = None,
+    max_points: int = 300,
+    start_time_s: int | None = None,
+    end_time_s: int | None = None,
+    start_distance_m: float | None = None,
+    end_distance_m: float | None = None,
+) -> str:
+    """Return sampled activity streams for a single activity as JSON.
+
+    Args:
+        activity_id: intervals.icu activity ID to fetch.
+        stream_types: Optional list of stream names to return, such as
+            ["time", "distance", "altitude", "heartrate", "velocity"].
+        max_points: Maximum number of points to retain after sampling.
+            Values are clamped to 1..10000.
+        start_time_s: Optional start time in seconds from the start of the activity.
+        end_time_s: Optional end time in seconds from the start of the activity.
+        start_distance_m: Optional lower distance bound in meters.
+        end_distance_m: Optional upper distance bound in meters.
+
+    Returns:
+        A compact JSON object containing the requested stream data, down-sampled
+        to a manageable size while preserving trend information for analysis.
+    """
+    if not activity_id or not str(activity_id).strip():
+        return json.dumps({"error": "activity_id is required."}, ensure_ascii=False)
+    if max_points < 1 or max_points > 10000:
+        return json.dumps({"error": "max_points must be between 1 and 10000."}, ensure_ascii=False)
+
+    try:
+        result = get_activity_streams_sampled_client(
+            API_KEY,
+            str(activity_id),
+            stream_types=stream_types,
+            max_points=max_points,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+            start_distance_m=start_distance_m,
+            end_distance_m=end_distance_m,
+        )
+    except ValueError as exc:
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+    return json.dumps(result, ensure_ascii=False)
 
 
 @mcp.tool()

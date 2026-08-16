@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] - 2026-08-16
+
+### Added
+
+- Added a new MCP tool, `get_activity_streams_sampled`, to fetch compact, down-sampled activity streams for a single activity without returning the full raw payload.
+- The new tool supports filtering by `stream_types`, `max_points`, `start_time_s`, `end_time_s`, `start_distance_m`, and `end_distance_m`, which makes it practical to inspect sub-km variations in time, distance, altitude, heart rate, and velocity.
+- Documented the tool in both MCP server entry points and the webservice README so the parameters and intended usage are clear to clients.
+
 ## [1.2.0] - 2026-08-15
 
 ### Added

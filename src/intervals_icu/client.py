@@ -368,6 +368,139 @@ def get_activity_streams(api_key: str, activity_id: str) -> list[dict]:
     return response.json()
 
 
+def _resample_series(values: list[float], max_points: int) -> list[float]:
+    """Downsample a numeric series to at most ``max_points`` points."""
+    if not values:
+        return []
+    if max_points < 1:
+        raise ValueError("max_points must be >= 1")
+    if len(values) <= max_points:
+        return values
+    if max_points == 1:
+        return [values[-1]]
+
+    indices = [round(i * (len(values) - 1) / (max_points - 1)) for i in range(max_points)]
+    deduped: list[float] = []
+    seen: set[int] = set()
+    for idx in indices:
+        if idx in seen:
+            continue
+        seen.add(idx)
+        deduped.append(values[idx])
+    return deduped
+
+
+def _apply_stream_filters(
+    stream_map: dict[str, list[float]],
+    *,
+    start_time_s: int | None,
+    end_time_s: int | None,
+    start_distance_m: float | None,
+    end_distance_m: float | None,
+) -> set[int] | None:
+    """Return the indices to keep for all selected streams, or None when no filtering is requested."""
+    if start_time_s is None and end_time_s is None and start_distance_m is None and end_distance_m is None:
+        return None
+
+    indices: set[int] | None = None
+
+    if start_time_s is not None or end_time_s is not None:
+        time_values = stream_map.get("time") or []
+        time_indices = {
+            idx
+            for idx, value in enumerate(time_values)
+            if (start_time_s is None or value >= start_time_s)
+            and (end_time_s is None or value <= end_time_s)
+        }
+        indices = time_indices if indices is None else indices & time_indices
+
+    if start_distance_m is not None or end_distance_m is not None:
+        distance_values = stream_map.get("distance") or []
+        distance_indices = {
+            idx
+            for idx, value in enumerate(distance_values)
+            if (start_distance_m is None or value >= start_distance_m)
+            and (end_distance_m is None or value <= end_distance_m)
+        }
+        indices = distance_indices if indices is None else indices & distance_indices
+
+    return indices
+
+
+def get_activity_streams_sampled(
+    api_key: str,
+    activity_id: str,
+    stream_types: list[str] | None = None,
+    max_points: int = 300,
+    start_time_s: int | None = None,
+    end_time_s: int | None = None,
+    start_distance_m: float | None = None,
+    end_distance_m: float | None = None,
+) -> dict:
+    """Fetch sampled time-series streams for a single activity.
+
+    This returns a compact subset of the raw stream payload, filtered by optional
+    time or distance bounds and down-sampled to a fixed number of points. By
+    default it includes the most useful cycling streams: time, distance,
+    altitude, heartrate, and velocity.
+    """
+    if max_points < 1:
+        raise ValueError("max_points must be >= 1")
+
+    raw_streams = get_activity_streams(api_key, activity_id)
+    stream_map = {
+        entry.get("type"): entry.get("data", [])
+        for entry in raw_streams
+        if isinstance(entry, dict) and isinstance(entry.get("type"), str)
+    }
+
+    allowed = {
+        "time",
+        "distance",
+        "altitude",
+        "heartrate",
+        "velocity",
+        "watts",
+        "cadence",
+        "grade",
+        "temp",
+    }
+    selected = [s.lower() for s in (stream_types or ["time", "distance", "altitude", "heartrate", "velocity"]) if s]
+    selected = [s for s in selected if s in allowed]
+    if not selected:
+        selected = ["time", "distance", "altitude", "heartrate", "velocity"]
+
+    filters = _apply_stream_filters(
+        stream_map,
+        start_time_s=start_time_s,
+        end_time_s=end_time_s,
+        start_distance_m=start_distance_m,
+        end_distance_m=end_distance_m,
+    )
+
+    result = {
+        "activity_id": str(activity_id),
+        "sampled": True,
+        "point_count": max_points,
+        "streams": {},
+    }
+
+    for stream_type in selected:
+        values = list(stream_map.get(stream_type, []) or [])
+        if not values:
+            continue
+        if filters is not None:
+            values = [values[idx] for idx in sorted(filters) if idx < len(values)]
+        sampled = _resample_series(values, max_points)
+        if sampled:
+            result["streams"][stream_type] = sampled
+
+    if result["streams"]:
+        result["point_count"] = max(len(v) for v in result["streams"].values())
+
+    return result
+
+
 def get_activity_intervals(api_key: str, activity_id: str) -> dict:
     """Fetch intervals/laps for a single activity.
 

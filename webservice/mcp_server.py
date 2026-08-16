@@ -112,7 +112,11 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import TransportSecuritySettings
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
-from intervals_icu.client import get_library_folders, get_library_workouts
+from intervals_icu.client import (
+    get_activity_streams_sampled as get_activity_streams_sampled_client,
+    get_library_folders,
+    get_library_workouts,
+)
 
 from context import api_key_var, athlete_id_var
 from intervals_icu.prompt_templates import render_coach_prompt
@@ -1337,6 +1341,72 @@ def get_latest_activities(limit: int = 10) -> str:
             indent=2,
             ensure_ascii=False,
         )
+
+
+@mcp.tool()
+def get_activity_streams_sampled(
+    activity_id: str,
+    stream_types: list[str] | None = None,
+    max_points: int = 300,
+    start_time_s: int | None = None,
+    end_time_s: int | None = None,
+    start_distance_m: float | None = None,
+    end_distance_m: float | None = None,
+) -> str:
+    """Return sampled activity streams for a single activity as JSON.
+
+    Args:
+        activity_id: intervals.icu activity ID to fetch.
+        stream_types: Optional list of stream names to return, such as
+            ["time", "distance", "altitude", "heartrate", "velocity"].
+        max_points: Maximum number of points to retain after sampling.
+            Values are clamped to 1..10000.
+        start_time_s: Optional start time in seconds from the start of the activity.
+        end_time_s: Optional end time in seconds from the start of the activity.
+        start_distance_m: Optional lower distance bound in meters.
+        end_distance_m: Optional upper distance bound in meters.
+
+    Returns:
+        A compact JSON object containing the requested stream data, down-sampled
+        to a manageable size while preserving trend information for analysis.
+    """
+    with _tool_span("mcp.tool/get_activity_streams_sampled") as span:
+        span.set_attribute("activity_id", activity_id)
+        span.set_attribute("max_points", max_points)
+
+        err = _check_credentials()
+        if err:
+            span.set_status(_ERROR, "missing credentials")
+            return err
+
+        if not activity_id or not str(activity_id).strip():
+            span.set_status(_ERROR, "missing activity_id")
+            return json.dumps({"error": "activity_id is required."}, ensure_ascii=False)
+        if max_points < 1 or max_points > 10000:
+            span.set_status(_ERROR, "invalid max_points")
+            return json.dumps({"error": "max_points must be between 1 and 10000."}, ensure_ascii=False)
+
+        athlete_id, api_key = _get_credentials()
+        try:
+            result = get_activity_streams_sampled_client(
+                api_key,
+                str(activity_id),
+                stream_types=stream_types,
+                max_points=max_points,
+                start_time_s=start_time_s,
+                end_time_s=end_time_s,
+                start_distance_m=start_distance_m,
+                end_distance_m=end_distance_m,
+            )
+        except ValueError as exc:
+            span.set_status(_ERROR, str(exc))
+            return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+        span.set_status(_OK)
+        return json.dumps({
+            "athlete_id": athlete_id,
+            **result,
+        }, ensure_ascii=False)
 
 
 @mcp.tool()
