@@ -10,6 +10,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Added a new MCP tool, `get_activity_streams_sampled`, to fetch compact, down-sampled activity streams for a single activity without returning the full raw payload.
+- Added the matching local entrypoint `scripts/get_activity_streams_sampled.py`, which follows the repo’s normal `python scripts/...py` workflow and accepts the same single-activity filters (`--id`, `--streams`, `--max-points`, `--start-time-s`, `--end-time-s`, `--start-distance-m`, `--end-distance-m`).
+- Added the `id` field to the compact activity list returned by `scripts/get_latest_activities.py`, so the output can be used directly as the input for the stream-sampling script.
 - The new tool supports filtering by `stream_types`, `max_points`, `start_time_s`, `end_time_s`, `start_distance_m`, and `end_distance_m`, which makes it practical to inspect sub-km variations in time, distance, altitude, heart rate, and velocity.
 - Documented the tool in both MCP server entry points and the webservice README so the parameters and intended usage are clear to clients.
 

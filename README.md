@@ -539,7 +539,7 @@ Output:
 
 Reads the most recent `coach_input_{monday}.json` (run `prepare_week_for_coach.py` first) and prints a compact JSON summary in the same format that the webservice MCP tool `get_latest_activities` returns. Useful for locally inspecting or testing the compact activity list without the full webservice stack.
 
-Returns 8 fields per activity: `date`, `name`, `duration_hours`, `training_load`, `avg_hr`, `max_hr`, `rpe`, `tags`.
+Returns 9 fields per activity: `id`, `date`, `name`, `duration_hours`, `training_load`, `avg_hr`, `max_hr`, `rpe`, `tags`.
 
 ```bash
 python scripts/get_latest_activities.py            # last 10 activities (default)
