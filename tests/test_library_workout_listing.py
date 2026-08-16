@@ -25,6 +25,15 @@ def _load_mcp_server_module():
     return module
 
 
+def _load_prepare_activities_module():
+    module_path = REPO_ROOT / "scripts" / "prepare_activities_for_coach.py"
+    spec = importlib.util.spec_from_file_location("prepare_activities_for_coach_script", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(module)
+    return module
+
+
 class LibraryWorkoutListingTests(unittest.TestCase):
     def test_normalized_workout_includes_library_workout_id(self):
         module = _load_mcp_server_module()
@@ -79,6 +88,44 @@ class LibraryWorkoutListingTests(unittest.TestCase):
         self.assertEqual(result["streams"]["distance"], [100.0, 300.0, 400.0])
         self.assertEqual(result["streams"]["altitude"], [110, 130, 140])
         self.assertEqual(result["streams"]["heartrate"], [130, 150, 160])
+
+    def test_local_activity_streams_script_exposes_cli_entrypoint(self):
+        module_path = REPO_ROOT / "scripts" / "get_activity_streams_sampled.py"
+        spec = importlib.util.spec_from_file_location(
+            "local_get_activity_streams_sampled_script",
+            module_path,
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertTrue(callable(getattr(module, "main", None)))
+
+    def test_extract_fields_includes_activity_id_only(self):
+        module = _load_prepare_activities_module()
+
+        activity = {
+            "id": "i123456",
+            "start_date_local": "2026-08-16T08:00:00",
+            "name": "Test Ride",
+            "moving_time": 3600,
+            "icu_training_load": 75,
+            "icu_average_watts": 220,
+            "icu_weighted_avg_watts": 230,
+            "icu_zone_times": [],
+            "tags": ["threshold"],
+            "description": "Ride notes",
+            "decoupling": 1.0,
+            "icu_rpe": 7,
+            "carbs_used": 90,
+            "carbs_ingested": 60,
+            "icu_w_prime": 20000,
+        }
+
+        result = module.extract_fields(activity, wbal_summary=None, power_curve=None, interval_hr_analysis=None)
+
+        self.assertEqual(result["id"], "i123456")
+        self.assertNotIn("activity_id", result)
 
     def test_week_plan_schema_accepts_library_workout_without_steps(self):
         schema = json.loads(

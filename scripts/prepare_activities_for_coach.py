@@ -422,6 +422,7 @@ def extract_fields(
         zone_dist["z1_z2_pct"], zone_dist["z3_z4_pct"], zone_dist["z5_plus_pct"]
     )
     return {
+        "id": activity.get("id"),
         "date": (activity.get("start_date_local") or "")[:10],
         "name": activity.get("name"),
         "duration_hours": round((activity.get("moving_time") or 0) / 3600, 2),

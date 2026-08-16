@@ -147,6 +147,7 @@ intervals-icu-sync/
 │   ├── wbal_analysis.py            # Compute W'bal time series from power stream
 │   ├── prepare_week_for_coach.py   # Run all scripts in sequence
 │   ├── get_latest_activities.py    # Print compact activity list (mirrors MCP get_latest_activities)
+│   ├── get_activity_streams_sampled.py  # Fetch sampled activity streams for one activity locally
 │   ├── list_workouts.py            # List workout library entries with duration, TSS and tags
 │   ├── generate_week_data_schema.py # Generate JSON Schema for consolidated week_data payload
 │   └── mcp_server.py               # FastMCP server exposing data as tools/resources
@@ -546,6 +547,19 @@ python scripts/get_latest_activities.py --limit 5  # last 5 activities
 ```
 
 Output: JSON to stdout
+
+---
+
+### `get_activity_streams_sampled.py`
+
+Fetches a single activity's time-series streams from intervals.icu, applies optional time/distance filtering, and down-samples the selected streams to a manageable size. This mirrors the MCP tool `get_activity_streams_sampled` and is designed for local testing of power/HR stream analysis without using the hosted stack.
+
+```bash
+python scripts/get_activity_streams_sampled.py --id i175554112
+python scripts/get_activity_streams_sampled.py --id i175554112 --streams time,distance,heartrate --max-points 250
+```
+
+Output: JSON to stdout with compact stream arrays under `streams`.
 
 ---
 
