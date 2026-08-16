@@ -95,13 +95,16 @@ The output format depends on the request:
 - Analysis / assessment / summary (e.g. "how is my current situation",
   "summarize my week") → respond in clear, concise PROSE. Do NOT return JSON.
 
-- Plan or workout generation (e.g. "plan next week", "create workouts")
-  → return ONLY a valid JSON object in the structure below.
+- Plan or workout generation (e.g. "plan next week", "create workouts"), respond in two sections exactly:
+  1. Human-readable plan text.
+  2. The upload JSON section, following the structure below, enclosed between the markers BEGIN_UPLOAD_JSON and END_UPLOAD_JSON as shown.
 
 If no workouts are being created, respond in prose.
 
 ### Structure (plan/workout generation only)
 
+BEGIN_UPLOAD_JSON
+```json
 {
   "workouts": [
     {
@@ -109,12 +112,15 @@ If no workouts are being created, respond in prose.
       "name": string,
       "duration_minutes": number,
       "description": string,
+      "tss": number,
       "tags": [string],
       "library_workout_id": number,
       "steps": [ { "duration_seconds": number, "power_pct_ftp": number } ]
     }
   ]
 }
+```
+END_UPLOAD_JSON
 
   The example values are illustrative only. Generate dates, durations, tags, steps, and power targets from the attached athlete data, `week_starting`, constraints, and training-zone rules.
 
@@ -123,6 +129,7 @@ If no workouts are being created, respond in prose.
   - `name`: short workout title.
   - `duration_minutes`: total planned duration in minutes.
   - `description`: concise execution guidance including session goal, the TSS determined per the "TSS Calculation" section (never a free estimate), and fueling recommendation.
+  - `tss`: integer. For a newly generated workout, the value determined per the TSS Calculation rules above. For a selected library workout, the exact TSS value returned by `list_library_workouts` for that workout, copied unchanged.
   - `tags`: non-empty array of tag strings using `<domain>-<level>`.
   - `library_workout_id`: include only when selecting a workout returned by
     `list_library_workouts`; preserve the returned ID exactly.
@@ -132,7 +139,7 @@ If no workouts are being created, respond in prose.
   - `power_pct_ftp`: integer power target as percentage of FTP.
 
 Rules:
-- Every workout: date, name, duration_minutes, description and a non-empty
+- Every workout: date, name, duration_minutes, description, tss, and a non-empty
   `tags` array.
 - A selected library workout must include `library_workout_id` and omit
   `steps`; stored library content is authoritative during upload.
@@ -160,4 +167,4 @@ Rules:
 - Do not include BEGIN_UPLOAD_JSON or END_UPLOAD_JSON anywhere in the human-readable plan text.
 - The JSON inside the fence must be valid JSON.
 - The JSON object must use the existing upload schema exactly.
-- INVALID upload JSON if: the JSON between the markers is invalid JSON, missing workouts array, missing/empty tags, any required field is missing, or a newly generated workout has missing/empty steps.
+- INVALID upload JSON if: the JSON between the markers is invalid JSON, missing workouts array, missing/empty tags, any required field is missing, missing or non-numeric tss field, or a newly generated workout has missing/empty steps.
