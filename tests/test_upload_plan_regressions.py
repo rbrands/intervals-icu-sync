@@ -24,6 +24,15 @@ def _load_upload_plan_module():
     return module
 
 
+def _load_check_plan_tss_module():
+    module_path = REPO_ROOT / "scripts" / "check_plan_tss.py"
+    spec = importlib.util.spec_from_file_location("check_plan_tss_script", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(module)
+    return module
+
+
 class UploadPlanRegressionTests(unittest.TestCase):
     def test_steps_to_zwo_accepts_seconds_and_percent_fields(self):
         zwo = _steps_to_zwo(
@@ -208,6 +217,34 @@ class UploadPlanRegressionTests(unittest.TestCase):
 
         self.assertEqual(captured["training_load"], 70)
         self.assertIsNone(captured["raw_workout_doc"])
+
+
+class CheckPlanTssRegressionTests(unittest.TestCase):
+    def test_evaluate_plan_detects_mismatch_and_target_deviation(self):
+        module = _load_check_plan_tss_module()
+        plan = [
+            {
+                "date": "2026-05-18",
+                "tss": 120,
+                "steps": [
+                    {"duration_seconds": 1800, "power_pct_ftp": 100},
+                    {"duration_seconds": 1800, "power_pct_ftp": 50},
+                ],
+            },
+            {
+                "date": "2026-05-20",
+                "tss": 30,
+                "library_workout_id": 77,
+            },
+        ]
+
+        result = module.evaluate_plan(plan, load_target=200, tolerance_pct=10)
+
+        self.assertEqual(result["week"]["total_tss"], 92)
+        self.assertFalse(result["week"]["within_tolerance"])
+        self.assertFalse(result["valid"])
+        self.assertTrue(any("Workout on 2026-05-18" in issue for issue in result["issues"]))
+        self.assertTrue(any("Weekly total 92 TSS" in issue for issue in result["issues"]))
 
 
 if __name__ == "__main__":

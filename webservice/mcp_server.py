@@ -655,6 +655,7 @@ class AuthHeaderMiddleware:
         <tr><td><code>get_activity_streams_sampled</code></td><td>Returns a compact, down-sampled stream payload for a single activity. Supports optional stream selection, time/distance windows, and a point cap to keep outputs small.</td></tr>
         <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with library workout ID, duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
         <tr><td><code>validate_week_plan</code></td><td>Validates plan JSON against <code>contracts/week-plan/week-plan.schema.json</code> and returns structured validation results.</td></tr>
+        <tr><td><code>check_plan_tss</code></td><td>Checks a generated plan's stated TSS values against deterministic step-based TSS math and weekly target tolerance.</td></tr>
         <tr><td><code>upload_week_plan</code></td><td>Uploads a JSON training plan to intervals.icu (supports dry-run and clear).</td></tr>
     </table>
   <h2>Authentication</h2>
@@ -1693,6 +1694,106 @@ def upload_week_plan(
             )
             span.set_status(_ERROR, "upload timed out")
             return json.dumps({"error": "Upload timed out after 120s"}, ensure_ascii=False)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+
+@mcp.tool()
+def check_plan_tss(
+    plan_json: str,
+    load_target: float,
+    tolerance_pct: float = 10,
+) -> str:
+    """Check whether a generated week plan matches a deterministic TSS reference.
+
+    Writes the plan to a temporary file, calls check_plan_tss.py, then discards
+    the file. Nothing is retained after this call.
+
+    Args:
+        plan_json: Training plan as a JSON string. Must be a JSON array of
+                   workout objects or an object with a "workouts" array.
+                   Each workout requires "date" and "tss". If it contains
+                   "steps", TSS is recomputed from step durations and power.
+                   If "library_workout_id" is set, the stated "tss" is kept as-is.
+                   Example:
+                   [
+                     {
+                       "date": "2026-05-19T09:00:00",
+                       "tss": 90,
+                       "steps": [
+                         {"duration_seconds": 1800, "power_pct_ftp": 80},
+                         {"duration_seconds": 1800, "power_pct_ftp": 60}
+                       ]
+                     }
+                   ]
+        load_target: Weekly TSS target used for the deviation check.
+        tolerance_pct: Allowed weekly deviation in percent; defaults to 10.
+    """
+    with _tool_span("mcp.tool/check_plan_tss") as span:
+        span.set_attribute("load_target", load_target)
+        span.set_attribute("tolerance_pct", tolerance_pct)
+
+        try:
+            json.loads(plan_json)
+        except json.JSONDecodeError as exc:
+            _emit_tool_error(
+                "check_plan_tss",
+                "invalid_json",
+                f"Invalid JSON: {exc}",
+            )
+            span.set_status(_ERROR, f"invalid plan JSON: {exc}")
+            return json.dumps({"error": f"Invalid JSON: {exc}"}, ensure_ascii=False)
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        ) as tmp:
+            tmp.write(plan_json)
+            tmp_path = Path(tmp.name)
+
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS_DIR / "check_plan_tss.py"),
+                    "--plan",
+                    str(tmp_path),
+                    "--load-target",
+                    str(load_target),
+                    "--tolerance-pct",
+                    str(tolerance_pct),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                stdin=subprocess.DEVNULL,
+                check=False,
+            )
+            output = (result.stdout or "") + (
+                f"\nSTDERR: {result.stderr}" if (result.stderr or "").strip() else ""
+            )
+            output = output.strip()
+
+            if result.returncode == 0:
+                span.set_status(_OK)
+                return output or json.dumps({"valid": False, "issues": ["No output returned."]}, ensure_ascii=False)
+
+            _emit_tool_error(
+                "check_plan_tss",
+                "check_script_failed",
+                "check_plan_tss.py returned non-zero",
+                return_code=result.returncode,
+                details=output[:2000],
+            )
+            span.set_status(_ERROR, "check script failed")
+            return output or json.dumps({"error": "check_plan_tss.py failed with no output."}, ensure_ascii=False)
+        except subprocess.TimeoutExpired:
+            _emit_tool_error(
+                "check_plan_tss",
+                "check_timeout",
+                "TSS check timed out after 30s",
+            )
+            span.set_status(_ERROR, "check timed out")
+            return json.dumps({"error": "TSS check timed out after 30s"}, ensure_ascii=False)
         finally:
             tmp_path.unlink(missing_ok=True)
 

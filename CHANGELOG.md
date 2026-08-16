@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.3] - 2026-08-16
+
+### Added
+
+- Added MCP tool `check_plan_tss` plus the local CLI `scripts/check_plan_tss.py` to validate per-workout TSS against deterministic step-based math and weekly load against a target tolerance.
+- Added the tool to the MCP landing-page method list so it is visible on the server homepage.
+- Added regression coverage to assert the checker catches mismatched workout TSS and weekly target deviations.
+
+### Changed
+
+- Updated the README usage and script list to include the new TSS-check workflow.
+
 ## [1.2.2] - 2026-08-16
 
 ### Fixed

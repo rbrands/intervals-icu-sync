@@ -143,6 +143,7 @@ intervals-icu-sync/
 │   ├── fueling_analysis.py         # Analyze carbohydrate fueling quality
 │   ├── fueling_planner.py          # Generate carbohydrate targets per session
 │   ├── validate_plan.py            # Validate week_plan JSON against upload schema
+│   ├── check_plan_tss.py           # Check plan TSS against deterministic step-based reference
 │   ├── upload_plan.py              # Upload JSON training plan to intervals.icu
 │   ├── wbal_analysis.py            # Compute W'bal time series from power stream
 │   ├── prepare_week_for_coach.py   # Run all scripts in sequence
@@ -629,6 +630,24 @@ Output: `data/processed/wbal_{activity_id}.json`
 ### `mcp_server.py`
 
 FastMCP server that exposes the training data pipeline and plan upload as MCP tools. It also offers a compact latest-activities method for clients that truncate large tool outputs and a sampled activity-stream tool for sub-km analysis. The stream tool supports optional stream selection, bounding by time or distance, and a fixed point cap (default 300) to keep outputs compact. See [MCP Server Integration](#mcp-server-integration) for setup and usage.
+
+---
+
+### `check_plan_tss.py`
+
+Checks whether a generated plan's stated TSS values match the deterministic step-based calculation and whether the weekly total is within the requested target tolerance.
+
+```bash
+# Check a generated plan file against the target load
+python scripts/check_plan_tss.py --plan /tmp/plan.json --load-target 300 --tolerance-pct 10
+
+# Use the default tolerance of 10%
+python scripts/check_plan_tss.py --plan data/plans/my_plan.json --load-target 300
+```
+
+The script accepts either a bare workout array or an object shaped like `{ "workouts": [...] }`. For workouts with `library_workout_id`, the `tss` value is kept as-is. For generated workouts with `steps`, TSS is recomputed from the step durations and power values and compared against the stated value using a ±5% tolerance floor of 2 TSS points.
+
+Output: a JSON object with `workouts`, `week`, `valid`, and `issues` keys.
 
 ---
 
