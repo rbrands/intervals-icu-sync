@@ -150,9 +150,9 @@ Rahmenbedingungen:
 Planungslogik:
 1. Schlüsseleinheiten zuerst platzieren (VO2max, Schwelle, Lange Ausfahrt)
 2. TSS strikt nach den Regeln zur TSS-Berechnung aus dem System-Prompt bestimmen:
-	bei neu erzeugten Workouts aus den Steps berechnen, bei ausgewählten
-	Library-Workouts den Library-TSS und bei verankerten geplanten Workouts den
-	dort angegebenen TSS verwenden. Den TSS je Einheit ausweisen.
+       bei neu erzeugten Workouts aus den Steps berechnen, bei ausgewählten
+       Library-Workouts den Library-TSS und bei verankerten geplanten Workouts den
+       dort angegebenen TSS verwenden. Den TSS je Einheit ausweisen.
 3. Fueling-Strategie für intensive Einheiten berücksichtigen
 4. Regenerationstage explizit einplanen
 5. Keine Dopplung bereits absolvierter Schlüsselreize
@@ -160,21 +160,21 @@ Planungslogik:
 Workout-Library (falls `list_library_workouts` verfügbar ist):
 1. Zuerst alle Einheiten und ihre vollständigen kanonischen Tags festlegen.
 2. `list_library_workouts` genau einmal mit allen unterschiedlichen Tags,
-	`match_mode="any"`, `include_untagged=false` und `limit=100` aufrufen.
+       `match_mode="any"`, `include_untagged=false` und `limit=100` aufrufen.
 3. Nur Workouts mit exakt passendem Tag und passender Dosis verwenden. Dauer
-	und TSS sind weiche Vergleichswerte; den jeweils ähnlichsten Kandidaten
-	bevorzugen. Bei Auswahl die `library_workout_id` unverändert übernehmen und
-	keine eigenen Steps erzeugen.
+       und TSS sind weiche Vergleichswerte; den jeweils ähnlichsten Kandidaten
+       bevorzugen. Bei Auswahl die `library_workout_id` unverändert übernehmen und
+       keine eigenen Steps erzeugen.
 4. Gibt es kein passend getaggtes Workout, die Einheit normal mit Steps und ohne
-	`library_workout_id` erzeugen. Die Suche nicht erweitern oder wiederholen.
+       `library_workout_id` erzeugen. Die Suche nicht erweitern oder wiederholen.
 
 Format: Tageweise mit Einheit, Dauer, Intensität (Zone), Ziel der Einheit, geschätztem TSS und Fueling-Empfehlung.
 
 Abschließender Selbstcheck vor der Ausgabe:
 1. Für jedes neu erzeugte Workout den TSS aus den finalen `steps` neu berechnen
-	und prüfen, dass er mit dem Wert in `description` übereinstimmt.
+       und prüfen, dass er mit dem Wert in `description` übereinstimmt.
 2. Prüfen, dass die gesamte geplante Dauer den manuell vorgegebenen maximalen
-	Gesamtumfang nicht überschreitet.
+       Gesamtumfang nicht überschreitet.
 Falls eine Prüfung fehlschlägt, zuerst Steps oder Planzusammenstellung korrigieren und anschließend erneut prüfen.
 ```
 
@@ -193,9 +193,9 @@ Constraints:
 Planning logic:
 1. Place key sessions first (VO2max, threshold, long ride)
 2. Calculate TSS strictly per the TSS Calculation rules from the system prompt:
-	computed from steps for generated workouts, library TSS for selected library
-	workouts, and the stated TSS for anchored planned workouts. Show estimated
-	TSS per session.
+       computed from steps for generated workouts, library TSS for selected library
+       workouts, and the stated TSS for anchored planned workouts. Show estimated
+       TSS per session.
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli
@@ -203,20 +203,20 @@ Planning logic:
 Workout library lookup (when `list_library_workouts` is available):
 1. Determine all planned sessions and their full canonical tags first.
 2. Call `list_library_workouts` exactly once with all distinct tags,
-	`match_mode="any"`, `include_untagged=false`, and `limit=100`.
+       `match_mode="any"`, `include_untagged=false`, and `limit=100`.
 3. Use a result only when its exact workout tag and dose fit the planned session.
-	Treat duration and TSS as soft ranking criteria and prefer the closest
-	candidate. Preserve its `library_workout_id` and do not recreate its steps.
+       Treat duration and TSS as soft ranking criteria and prefer the closest
+       candidate. Preserve its `library_workout_id` and do not recreate its steps.
 4. If there is no matching tagged workout, generate the session normally with
-	steps and without `library_workout_id`. Do not broaden or repeat the search.
+       steps and without `library_workout_id`. Do not broaden or repeat the search.
 
 Format: Day-by-day with session type, duration, intensity (zone), session goal, estimated TSS, and fueling recommendation.
 
 Final self-check before returning output:
 1. For every generated workout, recompute TSS from the final `steps` and
-	verify it matches the value in `description`.
+       verify it matches the value in `description`.
 2. Verify the total planned duration does not exceed the manually specified
-	maximum total volume.
+       maximum total volume.
 If a check fails, correct steps or plan composition first, then re-verify.
 ```
 
@@ -229,20 +229,20 @@ If a check fails, correct steps or plan composition first, then re-verify.
 ```
 Hole die aktuellen Daten von intervals.icu per prepare_week_data. Erstelle mir basierend auf der Wochen-Analyse einen Trainingsplan für die kommende Woche.
 
-Entnimm die Planungsgrundlage direkt aus den intervals.icu-Daten:
-- Trainingsphase und Wochentyp: aus `next_week_active_phases` und `next_week_load_targets.week_type` (NORMAL / RECOVERY / RACE)
-- Wochenziel: aus `next_week_load_targets.load_target` (TSS). Falls zusätzlich `time_target_hours` vorhanden ist, ist das nur eine obere Zeitgrenze. Falls `load_target` `null` ist, dann ist `time_target_hours` das Wochenziel.
-- Verfügbare Tage: aus `next_week_day_constraints` – Tage mit `training_allowed: false` entfallen, Tage mit `training_allowed: true` und Typ LIMITED nur für kurze, lockere Einheiten. Falls `max_training_time_hours` gesetzt ist, darf die geplante Dauer an diesem Tag diesen Wert nicht überschreiten.
-- Bereits geplante Einheiten: aus den `planned_workouts` der nächsten Woche – diese als Ankerpunkte übernehmen, nicht ersetzen
+Entnimm die Planungsgrundlage direkt aus den intervals.icu-Daten. Die Wocheneinträge stehen in `week_summary.training_plan`; verwende den Eintrag, dessen `week` dem Start der Zielwoche entspricht:
+- Trainingsphase und Wochentyp: aus `phase` und `week_type` (NORMAL / RECOVERY / RACE) dieses Eintrags. `week_note` berücksichtigen, falls vorhanden.
+- Wochenziel: aus `weekly_load_target` (TSS) dieses Eintrags. Niemals ein Ziel erfinden oder auf das Ziel einer anderen Woche zurückfallen.
+- Verfügbare Tage: aus `day_constraints` dieses Eintrags – Tage mit `training_allowed: false` entfallen, Tage mit `training_allowed: true` und Typ LIMITED nur für kurze, lockere Einheiten. Falls `max_training_time_hours` gesetzt ist, darf die geplante Dauer an diesem Tag diesen Wert nicht überschreiten.
+- Bereits geplante Einheiten: aus den `planned_workouts` der Zielwoche – diese als Ankerpunkte übernehmen, nicht ersetzen
 - Berücksichtige aktuelle Form (TSB) und Ermüdung (ATL)
 - Verlauf der Trainingsbelastung: `training_load_history` verwenden, um einzelne
-	von wiederholten Zielabweichungen zu unterscheiden. Nur als sekundären Kontext
-	hinter der aktuellen Trainingsbereitschaft nutzen und versäumte historische
-	Belastung niemals zur kommenden Woche addieren.
+       von wiederholten Zielabweichungen zu unterscheiden. Nur als sekundären Kontext
+       hinter der aktuellen Trainingsbereitschaft nutzen und versäumte historische
+       Belastung niemals zur kommenden Woche addieren.
 
 Planungslogik:
 1. Schlüsseleinheiten passend zur Trainingsphase zuerst platzieren (VO2max, Schwelle, Lange Ausfahrt)
-2. Gesamtumfang am Wochenziel ausrichten: bei vorhandenem `load_target` immer nach TSS planen und `time_target_hours` nur als zusätzliche Obergrenze behandeln. Nur wenn `load_target` `null` ist, nach `time_target_hours` planen. Geschätzten TSS je Einheit trotzdem ausweisen. Für die Wochensumme den TSS strikt nach den Regeln zur TSS-Berechnung aus dem System-Prompt summieren: bei neu erzeugten Workouts aus den Steps berechnen, bei ausgewählten Library-Workouts den Library-TSS und bei verankerten `planned_workouts` den dort angegebenen TSS verwenden. Die geplante Wochensumme soll innerhalb von ±10 % des `load_target` liegen, sofern Einschränkungen oder Ermüdung keine begründete Abweichung erfordern. Das vorgegebene Ziel bleibt maßgeblich, außer wiederholte historische Abweichungen und die aktuelle Trainingsbereitschaft rechtfertigen gemeinsam eine sicherere Reduzierung.
+2. Gesamtumfang am Wochenziel ausrichten: nach dem TSS aus `weekly_load_target` planen und den geschätzten TSS je Einheit ausweisen. Für die Wochensumme den TSS strikt nach den Regeln zur TSS-Berechnung aus dem System-Prompt summieren: bei neu erzeugten Workouts aus den Steps berechnen, bei ausgewählten Library-Workouts den Library-TSS und bei verankerten `planned_workouts` den dort angegebenen TSS verwenden. Die geplante Wochensumme soll innerhalb von ±10 % des `weekly_load_target` liegen, sofern Einschränkungen oder Ermüdung keine begründete Abweichung erfordern. Das vorgegebene Ziel bleibt maßgeblich, außer wiederholte historische Abweichungen und die aktuelle Trainingsbereitschaft rechtfertigen gemeinsam eine sicherere Reduzierung.
 3. Fueling-Strategie für intensive Einheiten berücksichtigen
 4. Regenerationstage explizit einplanen
 5. Keine Dopplung bereits absolvierter Schlüsselreize
@@ -250,20 +250,20 @@ Planungslogik:
 Workout-Library (falls `list_library_workouts` verfügbar ist):
 1. Zuerst alle Einheiten und ihre vollständigen kanonischen Tags festlegen.
 2. `list_library_workouts` genau einmal mit allen unterschiedlichen Tags,
-	`match_mode="any"`, `include_untagged=false` und `limit=100` aufrufen.
+       `match_mode="any"`, `include_untagged=false` und `limit=100` aufrufen.
 3. Nur Workouts mit exakt passendem Tag und passender Dosis verwenden. Dauer
-	und TSS sind weiche Vergleichswerte; den jeweils ähnlichsten Kandidaten
-	bevorzugen. Bei Auswahl die `library_workout_id` unverändert übernehmen und
-	keine eigenen Steps erzeugen.
+       und TSS sind weiche Vergleichswerte; den jeweils ähnlichsten Kandidaten
+       bevorzugen. Bei Auswahl die `library_workout_id` unverändert übernehmen und
+       keine eigenen Steps erzeugen.
 4. Gibt es kein passend getaggtes Workout, die Einheit normal mit Steps und ohne
-	`library_workout_id` erzeugen. Die Suche nicht erweitern oder wiederholen.
+       `library_workout_id` erzeugen. Die Suche nicht erweitern oder wiederholen.
 
 Format: Tageweise mit Einheit, Dauer, Intensität (Zone), Ziel der Einheit, geschätztem TSS und Fueling-Empfehlung.
 
 Abschließender Selbstcheck vor der Ausgabe:
 1. Für jedes neu erzeugte Workout den TSS aus den finalen `steps` neu berechnen
-	und prüfen, dass er mit dem Wert in `description` übereinstimmt.
-2. Die wöchentliche TSS-Summe gegen `load_target` prüfen (±10 %).
+       und prüfen, dass er mit dem Wert in `description` übereinstimmt.
+2. Die wöchentliche TSS-Summe gegen `weekly_load_target` prüfen (±10 %).
 Falls eine Prüfung fehlschlägt, zuerst Steps oder Planzusammenstellung korrigieren und anschließend erneut prüfen.
 ```
 
@@ -272,19 +272,19 @@ Falls eine Prüfung fehlschlägt, zuerst Steps oder Planzusammenstellung korrigi
 ```
 Fetch the current data from intervals.icu via prepare_week_data. Based on the weekly analysis, create a training plan for the coming week.
 
-Derive the planning parameters directly from the intervals.icu data:
-- Training phase and week type: from `next_week_active_phases` and `next_week_load_targets.week_type` (NORMAL / RECOVERY / RACE)
-- Weekly target: from `next_week_load_targets.load_target` (TSS). If `time_target_hours` is also present, treat it as an upper time cap. Only if `load_target` is `null`, use `time_target_hours` as the weekly target.
-- Available days: from `next_week_day_constraints` — days with `training_allowed: false` are unavailable, days with `training_allowed: true` and type LIMITED only get short, easy sessions. If `max_training_time_hours` is present, planned duration on that day must not exceed this value.
-- Already planned sessions: from `planned_workouts` for next week — treat as anchors, do not replace
+Derive the planning parameters directly from the intervals.icu data. The week entries live in `week_summary.training_plan`; use the entry whose `week` equals the target week start:
+- Training phase and week type: from `phase` and `week_type` (NORMAL / RECOVERY / RACE) of that entry. Respect `week_note` when present.
+- Weekly target: from `weekly_load_target` (TSS) of that entry. Never invent a target and never fall back to another week's target.
+- Available days: from `day_constraints` of that entry — days with `training_allowed: false` are unavailable, days with `training_allowed: true` and type LIMITED only get short, easy sessions. If `max_training_time_hours` is present, planned duration on that day must not exceed this value.
+- Already planned sessions: from `planned_workouts` for the target week — treat as anchors, do not replace
 - Consider current form (TSB) and fatigue (ATL)
 - Recent load pattern: use `training_load_history` to distinguish isolated from
-	repeated target deviations. Treat it as secondary context behind current
-	readiness and never add missed historical load to the coming week.
+       repeated target deviations. Treat it as secondary context behind current
+       readiness and never add missed historical load to the coming week.
 
 Planning logic:
 1. Place key sessions matched to the training phase first (VO2max, threshold, long ride)
-2. Align total volume to the weekly target: use TSS when `load_target` is present and treat `time_target_hours` as an additional upper bound. Only if `load_target` is `null`, use total planned time when `time_target_hours` is present. Still show estimated TSS per session. For the weekly total, sum TSS strictly per the TSS Calculation rules from the system prompt: computed from steps for generated workouts, library TSS for selected library workouts, and the stated TSS for anchored `planned_workouts`. The planned weekly total should land within ±10% of `load_target` unless constraints or fatigue clearly justify a deviation. Keep the provided target authoritative unless repeated historical deviation and current readiness together justify a safer reduction.
+2. Align total volume to the weekly target: use TSS from `weekly_load_target`. Still show estimated TSS per session. For the weekly total, sum TSS strictly per the TSS Calculation rules from the system prompt: computed from steps for generated workouts, library TSS for selected library workouts, and the stated TSS for anchored `planned_workouts`. The planned weekly total should land within ±10% of `weekly_load_target` unless constraints or fatigue clearly justify a deviation. Keep the provided target authoritative unless repeated historical deviation and current readiness together justify a safer reduction.
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli
@@ -292,19 +292,19 @@ Planning logic:
 Workout library lookup (when `list_library_workouts` is available):
 1. Determine all planned sessions and their full canonical tags first.
 2. Call `list_library_workouts` exactly once with all distinct tags,
-	`match_mode="any"`, `include_untagged=false`, and `limit=100`.
+       `match_mode="any"`, `include_untagged=false`, and `limit=100`.
 3. Use a result only when its exact workout tag and dose fit the planned session.
-	Treat duration and TSS as soft ranking criteria and prefer the closest
-	candidate. Preserve its `library_workout_id` and do not recreate its steps.
+       Treat duration and TSS as soft ranking criteria and prefer the closest
+       candidate. Preserve its `library_workout_id` and do not recreate its steps.
 4. If there is no matching tagged workout, generate the session normally with
-	steps and without `library_workout_id`. Do not broaden or repeat the search.
+       steps and without `library_workout_id`. Do not broaden or repeat the search.
 
 Format: Day-by-day with session type, duration, intensity (zone), session goal, estimated TSS, and fueling recommendation.
 
 Final self-check before returning output:
 1. For every generated workout, recompute TSS from the final `steps` and
-	verify it matches the value in `description`.
-2. Verify the weekly TSS total against `load_target` (±10%).
+       verify it matches the value in `description`.
+2. Verify the weekly TSS total against `weekly_load_target` (±10%).
 If a check fails, correct steps or plan composition first, then re-verify.
 ```
 

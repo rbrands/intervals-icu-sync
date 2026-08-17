@@ -1,11 +1,11 @@
 Fetch the current data from intervals.icu via prepare_week_data. Based on the weekly analysis, create a training plan for the coming week.
 If current-week data from prepare_week_data is already present in this chat and still relevant, reuse it and do not call prepare_week_data again.
 
-Derive the planning parameters directly from the intervals.icu data:
-- Training phase and week type: from `next_week_active_phases` and `next_week_load_targets.week_type` (NORMAL / RECOVERY / RACE)
-- Weekly target: from `next_week_load_targets.load_target` (TSS). If `time_target_hours` is also present, treat it as an upper time cap. Only if `load_target` is `null`, use `time_target_hours` as the weekly target.
-- Available days: from `next_week_day_constraints` — days with `training_allowed: false` are unavailable, days with `training_allowed: true` and type LIMITED only get short, easy sessions. If `max_training_time_hours` is present, planned duration on that day must not exceed this value.
-- Already planned sessions: from `planned_workouts` for next week — treat as anchors, do not replace
+Derive the planning parameters directly from the intervals.icu data. The week entries live in `week_summary.training_plan`; use the entry whose `week` equals the target week start:
+- Training phase and week type: from `phase` and `week_type` (NORMAL / RECOVERY / RACE) of that entry. Respect `week_note` when present.
+- Weekly target: from `weekly_load_target` (TSS) of that entry. Never invent a target and never fall back to another week's target.
+- Available days: from `day_constraints` of that entry — days with `training_allowed: false` are unavailable, days with `training_allowed: true` and type LIMITED only get short, easy sessions. If `max_training_time_hours` is present, planned duration on that day must not exceed this value.
+- Already planned sessions: from `planned_workouts` for the target week — treat as anchors, do not replace
 - Consider current form (TSB) and fatigue (ATL)
 - Recent load pattern: use `training_load_history` to distinguish isolated from
   repeated target deviations. Treat it as secondary context behind current
@@ -13,7 +13,7 @@ Derive the planning parameters directly from the intervals.icu data:
 
 Planning logic:
 1. Place key sessions matched to the training phase first (VO2max, threshold, long ride)
-2. Align total volume to the weekly target: use TSS when `load_target` is present and treat `time_target_hours` as an additional upper bound. Only if `load_target` is `null`, use total planned time when `time_target_hours` is present. Still show estimated TSS per session. For the weekly total, sum TSS strictly per the TSS Calculation rules from the system prompt: computed from steps for generated workouts, library TSS for selected library workouts, and the stated TSS for anchored `planned_workouts`. The planned weekly total should land within ±10% of `load_target` unless constraints or fatigue clearly justify a deviation. Keep the provided target authoritative unless repeated historical deviation and current readiness together justify a safer reduction.
+2. Align total volume to the weekly target: use TSS from `weekly_load_target`. Still show estimated TSS per session. For the weekly total, sum TSS strictly per the TSS Calculation rules from the system prompt: computed from steps for generated workouts, library TSS for selected library workouts, and the stated TSS for anchored `planned_workouts`. The planned weekly total should land within ±10% of `weekly_load_target` unless constraints or fatigue clearly justify a deviation. Keep the provided target authoritative unless repeated historical deviation and current readiness together justify a safer reduction.
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli
@@ -35,5 +35,5 @@ Format: Day-by-day with session type, duration, intensity (zone), session goal, 
 Final self-check before returning output:
 1. For every generated workout, recompute TSS from the final `steps` and
    verify it matches the value in `description`.
-2. Verify the weekly TSS total against `load_target` (±10%).
+2. Verify the weekly TSS total against `weekly_load_target` (±10%).
 If a check fails, correct steps or plan composition first, then re-verify.
