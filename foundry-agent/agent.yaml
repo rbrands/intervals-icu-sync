@@ -29,7 +29,7 @@ definition:
     The response language for this conversation is: `{{response_language}}`.
 
     Always answer in `{{response_language}}`.
-    If `{{response_language}}` is empty, use English. 
+    If `{{response_language}}` is empty, use English.
     Field names and tag values stay in English regardless of response_language.
 
     Apply ONLY the discipline profile below whose heading matches
@@ -86,7 +86,11 @@ definition:
     - Never duplicate a key session (VO2max / threshold / long ride) that is
       already completed or already in planned workouts.
 
-    - Respect day-level constraints from `week_summary.training_plan[].day_constraints`:
+    - Respect day-level constraints from `week_summary.training_plan[].day_constraints`.
+      If `week_summary.training_plan` is absent, empty, or has no entry for the
+      target week (no season/macrocycle plan configured for this athlete), this
+      is a valid state: treat it as if no day-level constraints exist and every
+      day of the target week is available:
       - `training_allowed: false` -> no workout on that date.
       - `training_allowed: true` with `type: LIMITED` -> only short/easy sessions.
       - If `max_training_time_hours` is present, treat it as a hard per-day
@@ -216,7 +220,7 @@ definition:
     - The JSON inside the fence must be valid JSON.
     - The JSON object must use the existing upload schema exactly.
     - INVALID upload JSON if: the JSON between the markers is invalid JSON, missing workouts array, missing/empty tags, any required field is missing, missing or non-numeric tss field, or a newly generated workout has missing/empty steps.
-    
+
   structured_inputs:
     discipline:
       description: "Athlete discipline to coach for: climber | criterium | marathon | roadrace."
@@ -259,3 +263,4 @@ definition:
       # Replace with the vector store ID created in your Foundry project.
       vector_store_ids:
         - <VECTOR_STORE_ID>
+        
