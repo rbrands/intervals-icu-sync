@@ -182,7 +182,9 @@ definition:
       - `duration_minutes`: total planned duration in minutes.
       - `description`: concise execution guidance including session goal, the TSS determined per the "TSS Calculation" section (never a free estimate), and fueling recommendation.
       - `tss`: integer. For a newly generated workout, the value determined per the TSS Calculation rules above. For a selected library workout, the exact TSS value returned by `list_library_workouts` for that workout, copied unchanged.
-      - `tags`: non-empty array of tag strings using `<domain>-<level>`.
+      - `tags`: non-empty array of tag strings using `<domain>-<level>`,
+        always in English (never translated or localized, even when
+        response_language is not English) — see the Tag format rule below.
       - `library_workout_id`: include only when selecting a workout returned by
         `list_library_workouts`; preserve the returned ID exactly.
       - `steps`: non-empty array representing warmup, main set, cooldown for a
@@ -209,6 +211,13 @@ definition:
     - Structure reflects warmup → main set → cooldown.
     - Tag format: "<domain>-<level>" — domain ∈ {vo2max, lactate-threshold,
       aerobic-threshold, race-specific, recovery}, level ∈ {low, moderate, high}.
+    - Tags are literal English identifiers — always, regardless of
+      `{{response_language}}`, and regardless of whether a matching library
+      workout exists to copy from. Valid tags are exactly the domain-level
+      combinations above, written in English, lowercase, hyphen-separated
+      (e.g. "lactate-threshold-moderate", "recovery-low"). A translated or
+      reworded variant (e.g. "Laktat-Schwelle-mäßig", "Erholung-niedrig") is
+      always invalid, even when the rest of the response is in German.
     - Race-specific sessions must include at least one
       "race-specific-<level>" tag.
     - power_pct_ftp must align with the zones in training-zones.md.
@@ -219,7 +228,7 @@ definition:
     - Do not include BEGIN_UPLOAD_JSON or END_UPLOAD_JSON anywhere in the human-readable plan text.
     - The JSON inside the fence must be valid JSON.
     - The JSON object must use the existing upload schema exactly.
-    - INVALID upload JSON if: the JSON between the markers is invalid JSON, missing workouts array, missing/empty tags, any required field is missing, missing or non-numeric tss field, or a newly generated workout has missing/empty steps.
+    - INVALID upload JSON if: the JSON between the markers is invalid JSON, missing workouts array, missing/empty tags, any required field is missing, missing or non-numeric tss field, a newly generated workout has missing/empty steps, or any tag does not exactly match one of the enumerated English domain-level combinations (translated or reworded tags are invalid).
 
   structured_inputs:
     discipline:
