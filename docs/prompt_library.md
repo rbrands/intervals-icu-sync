@@ -392,6 +392,15 @@ Regel fuer Sicherheitsgrad:
 - `moderat` bei `heuristic_score >= 0.30` und `< 0.45`
 - `niedrig` bei `< 0.30`
 
+Discipline fit:
+Vergleiche das aktuelle Powerprofil (Rider Type und w_per_kg across
+p15s/p30s/p1min/p3min/p5min/p20min) mit den Prioritäten der Disziplin des
+Athleten, wie sie im System-Prompt definiert sind. In 1-2 Sätzen: nenne die
+Disziplinanforderung, die das aktuelle Profil bereits gut abdeckt, und nenne
+die größte Lücke zwischen dem aktuellen Profil und dem, was die Disziplin am
+meisten braucht. Wiederhole nicht den Rider-Type-Absatz darüber; füge nur den
+disziplin-spezifischen Vergleich hinzu.
+
 **Wellness**
 - HRV: aktueller Wert und Trend (letzte 7 Tage)
 - Ruhepuls: aktueller Wert und Trend
@@ -425,6 +434,16 @@ Confidence level rule:
 - `high` when `heuristic_score >= 0.45`
 - `moderate` when `heuristic_score >= 0.30` and `< 0.45`
 - `low` when `< 0.30`
+
+Discipline fit:
+Compare the current power profile (rider type and w_per_kg across
+p15s/p30s/p1min/p3min/p5min/p20min) against the priorities of the athlete's
+discipline, as defined in the system prompt above). In 1-2
+sentences: name the discipline demand the current profile already covers
+well, and name the single biggest gap between the current profile and what
+the discipline needs most. Do not repeat the rider-type paragraph above; add
+only the discipline-specific comparison.
+
 
 **Wellness**
 - HRV: current value and trend (last 7 days)

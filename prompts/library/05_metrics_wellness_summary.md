@@ -16,6 +16,16 @@ Confidence level rule:
 - `moderate` when `heuristic_score >= 0.30` and `< 0.45`
 - `low` when `< 0.30`
 
+Discipline fit:
+Compare the current power profile (rider type and w_per_kg across
+p15s/p30s/p1min/p3min/p5min/p20min) against the priorities of the athlete's
+discipline, as defined in the system prompt above). In 1-2
+sentences: name the discipline demand the current profile already covers
+well, and name the single biggest gap between the current profile and what
+the discipline needs most. Do not repeat the rider-type paragraph above; add
+only the discipline-specific comparison.
+
+
 **Wellness**
 - HRV: current value and trend (last 7 days)
 - Resting heart rate: current value and trend
