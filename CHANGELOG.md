@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.5] - 2026-08-19
+
+### Added
+
+- Added a new prompt, `06_consistency.md`, for data-quality checks of athlete completeness and internal consistency.
+- Added the new consistency prompt to the MCP registration and prompt loader so it is available like the other library prompts.
+- Added the new prompt section to the prompt library documentation in both German and English.
+
+### Changed
+
+- Updated the prompt library to include the new data-consistency workflow alongside the weekly analysis, planning, fueling, and metrics summary prompts.
+- Kept the consistency prompt aligned with the MCP data-fetch pattern by loading data via `prepare_week_data` instead of a manual placeholder.
+- Extended the metrics summary prompt to assess whether the athlete's discipline goal fits the current power profile and to highlight the main gap between the current profile and the target discipline demands.
+
 ## [1.2.4] - 2026-08-17
 
 ### Changed

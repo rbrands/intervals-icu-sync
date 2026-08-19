@@ -461,6 +461,114 @@ Keep the summary compact and action-oriented.
 
 ---
 
+## 6. Datenkonsistenz / Data Consistency Check
+
+### Deutsch
+
+```
+Lies die aktuellen Daten aus intervals über prepare_week_data. Prüfe die Athletendaten auf Vollständigkeit und interne Konsistenz.
+Dies ist ein Datenqualitäts-Check, kein Coaching-Interpretation; gib hier keine Trainingsempfehlungen, sondern nur an, was vorhanden, fehlt oder inkonsistent ist und warum das für spätere Bewertungen und Pläne relevant ist.
+Wenn die aktuellen Daten aus prepare_week_data bereits im Chat vorhanden sind und noch relevant sind, verwende sie erneut und rufe prepare_week_data nicht noch einmal auf.
+
+Bewerte jede unten genannte Stelle. Für jede Stelle gib einen Status (`OK`, `Warning` oder `Missing`) und eine ein Satz lange Erklärung an, welche praktische Auswirkung das hat, wenn er nicht `OK` ist. Nutze die genauen Schwellenwerte; erfinde keine eigenen.
+
+**Season plan / macrocycle**
+- `OK`, wenn `week_summary.training_plan` vorhanden ist und einen Eintrag für die aktuelle Woche enthält.
+- `Missing`, wenn `week_summary.training_plan` fehlt oder leer ist.
+- Wirkung bei `Missing`: Es stehen keine Phase, kein Wochen-Load-Ziel und keine Tagesbedingungen zur Verfügung; die Planerstellung fällt auf einen readiness-basierten Plan ohne Ziel zurück.
+
+**FTP consistency**
+- Vergleiche `ftp` mit `rolling_ftp` und `eftp`.
+- `OK`, wenn beide sich von `ftp` um weniger als 10 % unterscheiden.
+- `Warning`, wenn sich einer um 10-20 % unterscheidet.
+- `Missing`/als inkonsistent markieren, wenn einer sich um mehr als 20 % unterscheidet.
+- Prüfe zusätzlich `metrics.power_profile.p20min.watts`: Wenn diese beste 20-Minuten-Leistung über `period_days` auf ein Threshold hindeutet, das deutlich unter `ftp` liegt (mehr als 20 % niedriger nach einem 0,95-Faktor), nenne dies ausdrücklich, aber als Kontext (z. B. plausibel für Sprint-/Puncheur-Typen, die in diesem Fenster keinen ausdauernden Einsatz absolviert haben), nicht als Fehler.
+
+**W' consistency**
+- Vergleiche `w_prime` mit `rolling_w_prime`.
+- `OK`, wenn sie sich um weniger als 10 % unterscheiden.
+- `Warning`, wenn sie sich um 10-20 % unterscheiden.
+- Als inkonsistent markieren, wenn sie sich um mehr als 20 % unterscheiden.
+
+**Wellness tracking**
+- Prüfe `resting_hr`, `hrv` und `sleep_secs`.
+- `OK`, wenn mindestens einer dieser drei Werte nicht null ist.
+- `Missing`, wenn alle drei null sind.
+- Wirkung bei `Missing`: Form-/Readiness-Bewertungen können keine Erholungssignale nutzen und stützen sich nur auf Trainingslast-Metriken (CTL/ATL/TSB).
+
+**Recent activity density**
+- Zähle Einträge in `activities` innerhalb des `lookback_days`-Fensters.
+- `OK`, wenn 3 oder mehr Aktivitäten vorhanden sind.
+- `Warning`, wenn 1-2 Aktivitäten vorhanden sind.
+- `Missing`, wenn 0 Aktivitäten vorhanden sind.
+- Wirkung bei `Warning` oder `Missing`: Recent-Load- und Intensitätsverteilungs-Interpretationen basieren auf sehr wenig Daten und haben geringe Sicherheit.
+
+**Load target history**
+- Prüfe `weekly_load_target` über alle Einträge in `training_load_history`.
+- `OK`, wenn mindestens ein Eintrag einen nicht-null `weekly_load_target` hat.
+- `Missing`, wenn alle Einträge null sind.
+- Wirkung bei `Missing`: Es gibt keinen historischen Trend von Ziel-vs.-Erreichung; das ist konsistent mit (und erwartet neben) einem fehlenden Saisonplan oben.
+
+**Summary**
+Beende mit einer Zeile: Gesamt-Datenvollständigkeit als `Good` (alle Bereiche `OK`), `Partial` (nur `Warning`/`Missing`-Bereiche, höchstens zwei) oder `Limited` (drei oder mehr `Warning`/`Missing`-Bereiche). Danach ein Satz, welche einzelne Maßnahme die Datenqualität am meisten verbessern würde (z. B. „ein Wellness-Tracker anschließen" oder „einen Saisonplan in intervals.icu einrichten").
+
+Halte die Antwort kompakt: eine kurze Zeile pro Bereich, kein ganzer Absatz.
+```
+
+### English
+
+```
+Fetch the current data from intervals via prepare_week_data. Check the athlete data for completeness and internal consistency.
+This is a data-quality check, not a coaching interpretation — do not give training recommendations here, only report what is present, missing, or inconsistent and why it matters for future assessments and plans.
+If current-week data from prepare_week_data is already present in this chat and still relevant, reuse it and do not call prepare_week_data again.
+
+Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Missing`) and a one-sentence explanation of the practical impact if it is not `OK`. Use the exact thresholds given; do not invent your own.
+
+**Season plan / macrocycle**
+- `OK` if `week_summary.training_plan` is present and contains an entry for the current week.
+- `Missing` if `week_summary.training_plan` is absent or empty.
+- Impact when `Missing`: no phase, weekly load target, or day constraints are available; plan generation falls back to a readiness-based plan without a target to work toward.
+
+**FTP consistency**
+- Compare `ftp` against `rolling_ftp` and `eftp`.
+- `OK` if both differ from `ftp` by less than 10%.
+- `Warning` if either differs by 10-20%.
+- `Missing`/flag as inconsistent if either differs by more than 20%.
+- Additionally check `metrics.power_profile.p20min.watts`: if this best 20-minute power over `period_days` implies a threshold far below `ftp` (more than 20% lower after applying a 0.95 factor), note this explicitly, but frame it as context (e.g. plausible for sprint/puncheur-type riders who did not perform a sustained effort in this window), not as an error.
+
+**W' consistency**
+- Compare `w_prime` against `rolling_w_prime`.
+- `OK` if they differ by less than 10%.
+- `Warning` if they differ by 10-20%.
+- Flag as inconsistent if they differ by more than 20%.
+
+**Wellness tracking**
+- Check `resting_hr`, `hrv`, and `sleep_secs`.
+- `OK` if at least one of these three is non-null.
+- `Missing` if all three are null.
+- Impact when `Missing`: form/readiness assessments cannot use recovery signals and rely on training load metrics (CTL/ATL/TSB) alone.
+
+**Recent activity density**
+- Count entries in `activities` within the `lookback_days` window.
+- `OK` if 3 or more activities are present.
+- `Warning` if 1-2 activities are present.
+- `Missing` if 0 activities are present.
+- Impact when `Warning` or `Missing`: recent-load and intensity-distribution interpretations are based on very little data and have low confidence.
+
+**Load target history**
+- Check `weekly_load_target` across all entries in `training_load_history`.
+- `OK` if at least one entry has a non-null `weekly_load_target`.
+- `Missing` if every entry is null.
+- Impact when `Missing`: no historical target-vs-achievement trend is available; this is consistent with (and expected alongside) a missing season plan above.
+
+**Summary**
+End with one line: overall data completeness as `Good` (all areas `OK`), `Partial` (only `Warning`/`Missing` areas, no more than two), or `Limited` (three or more `Warning`/`Missing` areas). Follow this with one sentence on which single fix would improve the data quality most (e.g. "connecting a wellness tracker" or "setting up a season plan in intervals.icu").
+
+Keep the response compact: one short line per area, not a full paragraph.
+```
+
+---
+
 ## Hinweise zur Verwendung / Usage Notes
 
 ## MCP Prompt-Aufruf je Client / MCP Prompt Invocation by Client
@@ -479,7 +587,8 @@ The prompts are not only stored as Markdown files, but also exposed by the MCP s
 | Trainingsplan automatisch / Training plan automatic | `coach_prompt_training_plan_generation_automatic` |
 | Fueling-Analyse / Fueling analysis | `coach_prompt_fueling_analysis` |
 | Metriken & Wellness / Metrics & wellness | `coach_prompt_metrics_wellness_summary` |
-| Generischer Einstieg / Generic entry point | `coach_prompt` with `prompt_name` = `single_workout_analysis`, `weekly_analysis`, `training_plan_generation_manual`, `training_plan_generation_automatic`, `fueling_analysis`, or `metrics_wellness_summary` |
+| Datenkonsistenz / Data consistency | `coach_prompt_consistency` |
+| Generischer Einstieg / Generic entry point | `coach_prompt` with `prompt_name` = `single_workout_analysis`, `weekly_analysis`, `training_plan_generation_manual`, `training_plan_generation_automatic`, `fueling_analysis`, `metrics_wellness_summary`, or `consistency` |
 
 Alle Prompt-Endpunkte akzeptieren zusätzlich `response_language`, zum Beispiel `de` oder `en`.
 

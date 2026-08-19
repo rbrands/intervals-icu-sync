@@ -1052,6 +1052,12 @@ def coach_prompt_metrics_wellness_summary(response_language: str = "de") -> str:
     return render_coach_prompt("metrics_wellness_summary", response_language)
 
 
+@mcp.prompt(title="Coach Prompt - Data Consistency Check", description="Data quality and consistency check prompt from prompts/library.")
+def coach_prompt_consistency(response_language: str = "de") -> str:
+    """Return the data consistency coaching prompt."""
+    return render_coach_prompt("consistency", response_language)
+
+
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
