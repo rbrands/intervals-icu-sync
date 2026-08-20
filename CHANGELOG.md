@@ -12,12 +12,14 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Added a new prompt, `06_consistency.md`, for data-quality checks of athlete completeness and internal consistency.
 - Added the new consistency prompt to the MCP registration and prompt loader so it is available like the other library prompts.
 - Added the new prompt section to the prompt library documentation in both German and English.
+- Added CTL/ATL/Form (TSB) trend context to the data consumed by prompt workflows via `training_load_history`, in addition to current readiness snapshot values.
 
 ### Changed
 
 - Updated the prompt library to include the new data-consistency workflow alongside the weekly analysis, planning, fueling, and metrics summary prompts.
 - Kept the consistency prompt aligned with the MCP data-fetch pattern by loading data via `prepare_week_data` instead of a manual placeholder.
 - Extended the metrics summary prompt to assess whether the athlete's discipline goal fits the current power profile and to highlight the main gap between the current profile and the target discipline demands.
+- Extended the metrics summary prompt to include recent CTL/ATL/Form (TSB) history context so readiness interpretation is anchored in short-term trend development, not only current snapshot values.
 
 ## [1.2.4] - 2026-08-17
 
