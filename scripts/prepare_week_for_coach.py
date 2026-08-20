@@ -173,6 +173,31 @@ def _merge_fueling_into_activities(
     return merged_activities, cleaned_fueling
 
 
+def merge_training_load_history(
+    load_history: list[dict] | None,
+    readiness_history: list[dict] | None,
+) -> list[dict]:
+    """Combine weekly TSS data with compact CTL/ATL/form snapshots."""
+    readiness_by_week = {
+        entry.get("week_starting"): entry
+        for entry in (readiness_history or [])
+        if isinstance(entry, dict) and isinstance(entry.get("week_starting"), str)
+    }
+    merged_history: list[dict] = []
+
+    for entry in load_history or []:
+        if not isinstance(entry, dict):
+            continue
+        merged_entry = dict(entry)
+        readiness = readiness_by_week.pop(entry.get("week_starting"), None)
+        if readiness:
+            for key in ("ctl", "atl", "form_absolute", "form_pct", "form_percent_display"):
+                merged_entry[key] = readiness.get(key)
+        merged_history.append(merged_entry)
+
+    return merged_history + list(readiness_by_week.values())
+
+
 def consolidate() -> None:
     today = date.today()
     monday = today - timedelta(days=today.weekday())
@@ -192,9 +217,11 @@ def consolidate() -> None:
     # Keep readiness metrics in week_summary only (no duplication in metrics).
     ctl = None
     atl = None
+    readiness_history = None
     if isinstance(metrics, dict):
         ctl = metrics.pop("ctl", None)
         atl = metrics.pop("atl", None)
+        readiness_history = metrics.pop("training_load_history", None)
 
     if not isinstance(week_data, dict):
         week_data = {}
@@ -222,10 +249,9 @@ def consolidate() -> None:
         "current_date": date.today().isoformat(),
         "metrics": metrics,
         "week_summary": week_data,
-        "training_load_history": (
-            plan_data.get("training_load_history")
-            if isinstance(plan_data, dict)
-            else []
+        "training_load_history": merge_training_load_history(
+            plan_data.get("training_load_history") if isinstance(plan_data, dict) else [],
+            readiness_history if isinstance(readiness_history, list) else [],
         ),
         "activities": activities,
         "fueling_analysis": fueling_data,

@@ -559,6 +559,21 @@ public class TrainingLoadHistoryEntryDto
     [JsonPropertyName("achievement_pct")]
     public double? AchievementPct { get; set; }
 
+    [JsonPropertyName("ctl")]
+    public double? Ctl { get; set; }
+
+    [JsonPropertyName("atl")]
+    public double? Atl { get; set; }
+
+    [JsonPropertyName("form_absolute")]
+    public double? FormAbsolute { get; set; }
+
+    [JsonPropertyName("form_pct")]
+    public double? FormPct { get; set; }
+
+    [JsonPropertyName("form_percent_display")]
+    public double? FormPercentDisplay { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }

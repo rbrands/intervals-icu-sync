@@ -128,6 +128,43 @@ def _empty_metric_trend() -> dict:
     }
 
 
+def build_training_load_history(
+    entries: list[dict],
+    current_monday: date | None = None,
+    weeks: int = 4,
+) -> list[dict]:
+    """Return compact CTL/ATL/form snapshots for completed calendar weeks."""
+    current_monday = current_monday or (date.today() - timedelta(days=date.today().weekday()))
+    daily_entries: dict[date, dict] = {}
+    for entry in entries:
+        point_date = _entry_date(entry)
+        if point_date is not None:
+            daily_entries[point_date] = entry
+
+    history: list[dict] = []
+    for weeks_ago in range(weeks, 0, -1):
+        week_start = current_monday - timedelta(weeks=weeks_ago)
+        week_end = week_start + timedelta(days=6)
+        snapshot_date = max(
+            (point_date for point_date in daily_entries if week_start <= point_date <= week_end),
+            default=None,
+        )
+        snapshot = daily_entries.get(snapshot_date, {}) if snapshot_date else {}
+        ctl = _to_float(snapshot.get("ctl"))
+        atl = _to_float(snapshot.get("atl"))
+        form_absolute = ctl - atl if ctl is not None and atl is not None else None
+        form_pct = form_absolute / ctl if form_absolute is not None and ctl and ctl > 0 else None
+        history.append({
+            "week_starting": week_start.isoformat(),
+            "ctl": round(ctl, 1) if ctl is not None else None,
+            "atl": round(atl, 1) if atl is not None else None,
+            "form_absolute": round(form_absolute, 1) if form_absolute is not None else None,
+            "form_pct": round(form_pct, 4) if form_pct is not None else None,
+            "form_percent_display": round(form_pct * 100, 1) if form_pct is not None else None,
+        })
+    return history
+
+
 def _build_wellness_trends(entries: list[dict]) -> dict:
     metric_specs: list[tuple[str, str, float]] = [
         ("weight", "weight", 0.2),
@@ -179,6 +216,7 @@ def fetch_wellness(weight_pref_lb: bool = False) -> dict:
         "eftp": sport_info.get("eftp"),
         "sleep_secs": today_entry.get("sleepSecs"),
         "sleep_quality": _SLEEP_QUALITY_LABELS.get(raw_sleep_quality, raw_sleep_quality),
+        "training_load_history": build_training_load_history(entries),
         "wellness_trends": _build_wellness_trends(entries),
     }
 

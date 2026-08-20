@@ -276,6 +276,11 @@ class TrainingLoadHistoryEntry(_SchemaModel):
     weekly_load_target: float | int | None = None
     total_training_load: float | int
     achievement_pct: float | int | None = None
+    ctl: float | int | None = None
+    atl: float | int | None = None
+    form_absolute: float | int | None = None
+    form_pct: float | int | None = None
+    form_percent_display: float | int | None = None
 
 
 class WeekData(_SchemaModel):

@@ -90,6 +90,11 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   intervals.icu athlete summary; zero when the week has no Ride load.
 - `achievement_pct`: `total_training_load / weekly_load_target * 100`, rounded
   to one decimal; null when no positive target exists.
+- `ctl` / `atl`: last available daily fitness and fatigue values in the week.
+- `form_absolute` / `form_pct` / `form_percent_display`: form values calculated
+  identically to `week_summary`: `ctl - atl`, `(ctl - atl) / ctl`, and the
+  percentage display value. They are null when the underlying wellness data is
+  unavailable.
 - The current, incomplete week is intentionally excluded because its load and
   target are already available in `week_summary`.
 

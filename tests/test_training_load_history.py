@@ -23,9 +23,87 @@ get_training_plan = _load_module(
     "get_training_plan_history_script",
     "scripts/get_training_plan.py",
 )
+get_metrics = _load_module(
+    "get_metrics_history_script",
+    "scripts/get_metrics.py",
+)
+prepare_week_for_coach = _load_module(
+    "prepare_week_for_coach_history_script",
+    "scripts/prepare_week_for_coach.py",
+)
 
 
 class TrainingLoadHistoryTests(unittest.TestCase):
+    def test_merges_weekly_readiness_into_load_history(self):
+        history = prepare_week_for_coach.merge_training_load_history(
+            [{"week_starting": "2026-08-03", "total_training_load": 500}],
+            [{
+                "week_starting": "2026-08-03",
+                "ctl": 58.4,
+                "atl": 63.1,
+                "form_absolute": -4.7,
+                "form_pct": -0.0805,
+                "form_percent_display": -8.1,
+            }],
+        )
+
+        self.assertEqual(history, [{
+            "week_starting": "2026-08-03",
+            "total_training_load": 500,
+            "ctl": 58.4,
+            "atl": 63.1,
+            "form_absolute": -4.7,
+            "form_pct": -0.0805,
+            "form_percent_display": -8.1,
+        }])
+
+    def test_builds_compact_weekly_ctl_atl_form_snapshots(self):
+        entries = [
+            {"id": "2026-07-19", "ctl": 50.04, "atl": 45.06},
+            {"id": "2026-07-26", "ctl": 52.04, "atl": 56.06},
+            {"id": "2026-08-01", "ctl": 55.04, "atl": 47.06},
+        ]
+
+        history = get_metrics.build_training_load_history(
+            entries,
+            current_monday=date(2026, 8, 10),
+        )
+
+        self.assertEqual(history, [
+            {
+                "week_starting": "2026-07-13",
+                "ctl": 50.0,
+                "atl": 45.1,
+                "form_absolute": 5.0,
+                "form_pct": 0.0995,
+                "form_percent_display": 10.0,
+            },
+            {
+                "week_starting": "2026-07-20",
+                "ctl": 52.0,
+                "atl": 56.1,
+                "form_absolute": -4.0,
+                "form_pct": -0.0772,
+                "form_percent_display": -7.7,
+            },
+            {
+                "week_starting": "2026-07-27",
+                "ctl": 55.0,
+                "atl": 47.1,
+                "form_absolute": 8.0,
+                "form_pct": 0.145,
+                "form_percent_display": 14.5,
+            },
+            {
+                "week_starting": "2026-08-03",
+                "ctl": None,
+                "atl": None,
+                "form_absolute": None,
+                "form_pct": None,
+                "form_percent_display": None,
+            },
+        ])
+
     def test_builds_four_completed_ride_weeks(self):
         events = [
             {
