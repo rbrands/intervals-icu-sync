@@ -381,6 +381,7 @@ to upload the plan to intervals.icu
 Fetches cycling activities from intervals.icu (Monday of previous week → today) and saves them to `data/raw/`.
 Included activity types are `Ride`, `MountainBikeRide`, and `GravelRide` (plus `VirtualRide` for indoor/platform rides).
 Missing or invalid `icu_training_load` values are treated as `0` during filtering.
+Rides with a training load above `20` are always kept. Tagged rides below that threshold are kept only when they carry at least one usable metric (training load, average or normalized power, heart rate, or zone times), so incomplete placeholder entries are dropped.
 
 ```bash
 python scripts/get_activities.py

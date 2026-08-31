@@ -268,6 +268,23 @@ def _as_float(value: object, default: float = 0.0) -> float:
         return default
 
 
+_METRIC_FIELDS = (
+    "icu_training_load",
+    "icu_average_watts",
+    "icu_weighted_avg_watts",
+    "average_watts",
+    "average_heartrate",
+    "avg_hr",
+)
+
+
+def _has_usable_metrics(activity: dict) -> bool:
+    """True when an activity carries at least one analyzable metric."""
+    if any(activity.get(field) is not None for field in _METRIC_FIELDS):
+        return True
+    return bool(activity.get("icu_zone_times"))
+
+
 def filter_activities(activities: list) -> list:
     today = date.today()
     lower_bound = today - timedelta(days=_lookback_days())
@@ -277,7 +294,10 @@ def filter_activities(activities: list) -> list:
         if ((act_date := _activity_date(a)) is not None and act_date >= lower_bound)
         if a.get("type") in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide")
         and a.get("source") != "STRAVA"
-        and (_as_float(a.get("icu_training_load")) > 20 or bool(a.get("tags")))
+        and (
+            _as_float(a.get("icu_training_load")) > 20
+            or (bool(a.get("tags")) and _has_usable_metrics(a))
+        )
     ]
 
 

@@ -18,6 +18,11 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Added an overall time budget for `prepare_week_data` (`PREPARE_WEEK_TIMEOUT_SECONDS`, default `180`) and a configurable per-script timeout (`SCRIPT_TIMEOUT_SECONDS`, default `120`), so long-running pipelines return a JSON error instead of a dropped connection.
 - Added exception telemetry for failed `prepare_week_data` pipeline steps: subprocess failures and pipeline timeouts are now recorded on the tool span, so they appear correlated under Application Insights "Failures" instead of only as an error trace.
 
+### Changed
+
+- Tightened the tag-based exception in the ride filters (`get_activities.py`, `prepare_activities_for_coach.py`, `analyze_week.py`): tagged activities below the 20-load threshold are now only kept when they carry at least one usable metric (training load, average/normalized power, heart rate, or zone times), so empty placeholder entries no longer reach the coach input.
+- Added regression coverage in `tests/test_activity_metric_filtering.py` for the metric-aware ride filter.
+
 ## [1.2.6] - 2026-08-20
 
 ### Added
