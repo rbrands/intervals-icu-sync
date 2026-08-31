@@ -41,13 +41,17 @@ import logging
 import os
 import re
 import asyncio
+import functools
 import hashlib
 import subprocess
 import sys
 import contextlib
 import tempfile
+import time
 from datetime import date, timedelta
 from pathlib import Path
+
+import anyio.to_thread
 
 # Repo root and scripts directory (unchanged from the existing layout)
 _ROOT = Path(__file__).resolve().parents[1]
@@ -716,9 +720,17 @@ def _check_credentials() -> str | None:
     return None
 
 
+_SCRIPT_TIMEOUT_SECONDS = int(os.environ.get("SCRIPT_TIMEOUT_SECONDS", "120"))
+# Overall budget for prepare_week_data; kept below the Azure App Service request
+# limit (~230s) so clients get a JSON error instead of a dropped connection.
+_PREPARE_WEEK_TIMEOUT_SECONDS = int(
+    os.environ.get("PREPARE_WEEK_TIMEOUT_SECONDS", "180")
+)
+
+
 def _run_script(
     script: str,
-    timeout: int = 120,
+    timeout: int = _SCRIPT_TIMEOUT_SECONDS,
     extra_env: dict[str, str] | None = None,
 ) -> tuple[bool, str, int | None]:
     """Run a script from SCRIPTS_DIR, injecting credentials as env vars."""
@@ -1088,7 +1100,7 @@ def coach_prompt_consistency(response_language: str = "de") -> str:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def prepare_week_data(lookback_days: int = 7) -> str:
+async def prepare_week_data(lookback_days: int = 7) -> str:
     """Fetch all training data and return consolidated coach input as JSON.
 
     Activity and fueling details use a sliding window controlled by
@@ -1130,6 +1142,22 @@ def prepare_week_data(lookback_days: int = 7) -> str:
             span.set_status(_ERROR, "missing credentials")
             return err
 
+        athlete_id, api_key = _get_credentials()
+        # The pipeline spawns blocking subprocesses. Running it inline would stall
+        # the ASGI event loop for the whole call, so the HTTP/SSE connection goes
+        # silent and clients abort the request (e.g. .NET TaskCanceledException).
+        return await anyio.to_thread.run_sync(
+            functools.partial(
+                _run_week_pipeline, lookback_days, athlete_id, api_key, span
+            )
+        )
+
+
+def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) -> str:
+    """Blocking part of ``prepare_week_data``; executed in a worker thread."""
+    athlete_token = athlete_id_var.set(athlete_id)
+    api_key_token = api_key_var.set(api_key)
+    try:
         pipeline = [
             "get_activities.py",
             "get_metrics.py",
@@ -1139,6 +1167,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
             "fueling_analysis.py",
             "analyze_week.py",
         ]
+        deadline = time.monotonic() + _PREPARE_WEEK_TIMEOUT_SECONDS
 
         # Each request writes to its own isolated temp directories so that
         # concurrent requests for different athletes never overwrite each other.
@@ -1154,10 +1183,34 @@ def prepare_week_data(lookback_days: int = 7) -> str:
 
             log_lines: list[str] = []
             for script in pipeline:
+                remaining = int(deadline - time.monotonic())
+                if remaining <= 0:
+                    _emit_tool_error(
+                        "prepare_week_data",
+                        "pipeline_timeout",
+                        f"Pipeline exceeded {_PREPARE_WEEK_TIMEOUT_SECONDS}s before {script}",
+                        script=script,
+                    )
+                    span.set_status(_ERROR, "pipeline timeout")
+                    return json.dumps(
+                        {
+                            "error": (
+                                f"Pipeline exceeded the overall time budget of "
+                                f"{_PREPARE_WEEK_TIMEOUT_SECONDS}s at {script}. "
+                                "Retry with a smaller lookback_days."
+                            ),
+                            "log": "\n".join(log_lines),
+                        },
+                        ensure_ascii=False,
+                    )
                 per_script_env = dict(base_env)
                 if script in {"prepare_activities_for_coach.py", "fueling_analysis.py"}:
                     per_script_env["LOOKBACK_DAYS"] = str(lookback_days)
-                ok, output, return_code = _run_script(script, extra_env=per_script_env)
+                ok, output, return_code = _run_script(
+                    script,
+                    timeout=min(_SCRIPT_TIMEOUT_SECONDS, remaining),
+                    extra_env=per_script_env,
+                )
                 status = "OK" if ok else "FAILED"
                 log_lines.append(f"[{status}] {script}")
                 if output:
@@ -1260,6 +1313,9 @@ def prepare_week_data(lookback_days: int = 7) -> str:
         # TemporaryDirectory context exited — both temp dirs are deleted automatically
         span.set_status(_OK)
         return json.dumps(coach_input, indent=2, ensure_ascii=False)
+    finally:
+        athlete_id_var.reset(athlete_token)
+        api_key_var.reset(api_key_token)
 
 
 @mcp.tool()

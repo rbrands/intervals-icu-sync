@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.7] - 2026-08-31
+
+### Fixed
+
+- Fixed client-side request cancellations (e.g. .NET `TaskCanceledException`) during `prepare_week_data` in the webservice MCP server: the blocking script pipeline now runs in a worker thread instead of stalling the ASGI event loop for the whole call.
+
+### Added
+
+- Added an overall time budget for `prepare_week_data` (`PREPARE_WEEK_TIMEOUT_SECONDS`, default `180`) and a configurable per-script timeout (`SCRIPT_TIMEOUT_SECONDS`, default `120`), so long-running pipelines return a JSON error instead of a dropped connection.
+
 ## [1.2.6] - 2026-08-20
 
 ### Added

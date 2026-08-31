@@ -298,6 +298,13 @@ athlete data and increase telemetry volume.
 | `OAUTH_ACCESS_TOKEN_LIFETIME_DAYS` | Access-token lifetime in days (default `30`) |
 | `OAUTH_CLIENT_STORAGE_ACCOUNT` | Existing Storage Account name for OAuth client persistence (default from Bicep: `stbrandsadvisorycentral`) |
 | `OAUTH_CLIENT_TABLE_NAME` | Azure Table name for OAuth client persistence (default from Bicep: `mcpoauthclients`) |
+
+### Optional timeout settings
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `SCRIPT_TIMEOUT_SECONDS` | `120` | Timeout for a single pipeline script run |
+| `PREPARE_WEEK_TIMEOUT_SECONDS` | `180` | Overall budget for `prepare_week_data`; when exceeded, the tool returns a JSON error instead of letting the client run into its own HTTP timeout |
 | `MCP_TRACE_RESPONSE_JSON` | `false` (recommended) or `true` for temporary payload debugging |
 | `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | `4096` |
 | `MCP_RPC_EVENT_LOG_LEVEL` | `INFO` |
