@@ -305,6 +305,7 @@ athlete data and increase telemetry volume.
 |---|---|---|
 | `SCRIPT_TIMEOUT_SECONDS` | `120` | Timeout for a single pipeline script run |
 | `PREPARE_WEEK_TIMEOUT_SECONDS` | `180` | Overall budget for `prepare_week_data`; when exceeded, the tool returns a JSON error instead of letting the client run into its own HTTP timeout |
+| `MCP_STATELESS_HTTP` | `true` | Runs the Streamable HTTP transport without server-side sessions. Set to `false` only if a client requires session-bound server-to-client streaming; sessions are in-memory per instance and are lost on restarts and slot swaps (`400 Bad Request: Missing session ID`). |
 | `MCP_TRACE_RESPONSE_JSON` | `false` (recommended) or `true` for temporary payload debugging |
 | `MCP_TRACE_RESPONSE_PREVIEW_LIMIT` | `4096` |
 | `MCP_RPC_EVENT_LOG_LEVEL` | `INFO` |

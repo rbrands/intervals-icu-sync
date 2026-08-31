@@ -11,6 +11,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Fixed client-side request cancellations (e.g. .NET `TaskCanceledException`) during `prepare_week_data` in the webservice MCP server: the blocking script pipeline now runs in a worker thread instead of stalling the ASGI event loop for the whole call.
 - Fixed `TypeError: '>' not supported between instances of 'NoneType' and 'int'` in `prepare_activities_for_coach.py` and `analyze_week.py` when intervals.icu returns activities with `icu_training_load: null`, missing `moving_time`, `start_date_local`, or zone-time entries without `secs`.
+- Fixed recurring `400 Bad Request: Missing session ID` responses on `/mcp` by running the Streamable HTTP transport in stateless mode (`MCP_STATELESS_HTTP`, default `true`); MCP sessions were kept in memory per instance and were lost on restarts, slot swaps, and scale-out.
 
 ### Added
 

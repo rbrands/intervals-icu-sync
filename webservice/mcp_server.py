@@ -405,6 +405,10 @@ mcp = FastMCP(
     "intervals-icu-coach",
     host=os.environ.get("FASTMCP_HOST", "0.0.0.0"),
     port=_port,
+    # Sessions are in-memory per instance; stateless mode avoids
+    # "Bad Request: Missing session ID" after restarts, slot swaps and scale-out.
+    stateless_http=os.environ.get("MCP_STATELESS_HTTP", "true").strip().lower()
+    not in {"0", "false", "no", "off"},
     transport_security=TransportSecuritySettings(
         allowed_hosts=_allowed_hosts,
         allowed_origins=_allowed_origins,
