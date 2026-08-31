@@ -116,6 +116,16 @@ def _current_week_range() -> tuple[date, date]:
     return monday, sunday
 
 
+def _as_float(value: object, default: float = 0.0) -> float:
+    """Convert API values to float safely (None/invalid -> default)."""
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def filter_activities(activities: list) -> list:
     monday, sunday = _current_week_range()
     result = []
@@ -123,9 +133,9 @@ def filter_activities(activities: list) -> list:
         if (
             a.get("type") in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide")
             and a.get("source") != "STRAVA"
-            and (a.get("icu_training_load", 0) > 20 or bool(a.get("tags")))
+            and (_as_float(a.get("icu_training_load")) > 20 or bool(a.get("tags")))
         ):
-            start = a.get("start_date_local", "")[:10]
+            start = (a.get("start_date_local") or "")[:10]
             try:
                 activity_date = date.fromisoformat(start)
             except ValueError:
@@ -137,7 +147,11 @@ def filter_activities(activities: list) -> list:
 
 def _z5_plus_pct(activity: dict) -> float:
     zone_times = activity.get("icu_zone_times") or []
-    secs_by_id = {z["id"]: z["secs"] for z in zone_times if "id" in z and "secs" in z}
+    secs_by_id = {
+        z["id"]: _as_float(z.get("secs"))
+        for z in zone_times
+        if isinstance(z, dict) and "id" in z
+    }
     total = sum(secs_by_id.values())
     if total == 0:
         return 0.0
@@ -162,7 +176,11 @@ def _get_zone_distribution(activity: dict) -> dict:
     zone_times = activity.get("icu_zone_times") or []
     if not zone_times:
         return {"z1_z2_pct": None, "z3_z4_pct": None, "z5_plus_pct": None}
-    secs_by_id = {z["id"]: z["secs"] for z in zone_times if "id" in z and "secs" in z}
+    secs_by_id = {
+        z["id"]: _as_float(z.get("secs"))
+        for z in zone_times
+        if isinstance(z, dict) and "id" in z
+    }
     total = sum(secs_by_id.values())
     if total == 0:
         return {"z1_z2_pct": None, "z3_z4_pct": None, "z5_plus_pct": None}
@@ -315,8 +333,8 @@ def compute_form(ctl: float | None, atl: float | None) -> dict:
 
 
 def compute_metrics(activities: list) -> dict:
-    total_load = sum(a.get("icu_training_load", 0) for a in activities)
-    times = [a.get("moving_time", 0) / 3600 for a in activities]
+    total_load = sum(_as_float(a.get("icu_training_load")) for a in activities)
+    times = [_as_float(a.get("moving_time")) / 3600 for a in activities]
     total_time = sum(times)
     longest = max(times, default=0.0)
 

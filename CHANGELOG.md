@@ -10,10 +10,12 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Fixed client-side request cancellations (e.g. .NET `TaskCanceledException`) during `prepare_week_data` in the webservice MCP server: the blocking script pipeline now runs in a worker thread instead of stalling the ASGI event loop for the whole call.
+- Fixed `TypeError: '>' not supported between instances of 'NoneType' and 'int'` in `prepare_activities_for_coach.py` and `analyze_week.py` when intervals.icu returns activities with `icu_training_load: null`, missing `moving_time`, `start_date_local`, or zone-time entries without `secs`.
 
 ### Added
 
 - Added an overall time budget for `prepare_week_data` (`PREPARE_WEEK_TIMEOUT_SECONDS`, default `180`) and a configurable per-script timeout (`SCRIPT_TIMEOUT_SECONDS`, default `120`), so long-running pipelines return a JSON error instead of a dropped connection.
+- Added exception telemetry for failed `prepare_week_data` pipeline steps: subprocess failures and pipeline timeouts are now recorded on the tool span, so they appear correlated under Application Insights "Failures" instead of only as an error trace.
 
 ## [1.2.6] - 2026-08-20
 

@@ -181,10 +181,15 @@ def _slot_name() -> str:
     return os.environ.get("WEBSITE_SLOT_NAME", "production")
 
 
+class ToolPipelineError(RuntimeError):
+    """Raised for reporting only: surfaces tool failures as exception telemetry."""
+
+
 def _emit_tool_error(
     tool_name: str,
     error_type: str,
     message: str,
+    span=None,
     **context,
 ) -> None:
     """Emit structured error logs that are easy to query in Application Insights."""
@@ -199,6 +204,12 @@ def _emit_tool_error(
     }
     payload.update(context)
     _logger.error(json.dumps(payload, ensure_ascii=False))
+    # Span events land in the App Insights exceptions table, so failures inside
+    # subprocesses show up under "Failures" correlated with the request.
+    if span is not None:
+        span.record_exception(
+            ToolPipelineError(f"{tool_name}/{error_type}: {message}")
+        )
 
 
 def _http_error_hint(status_code: int) -> str:
@@ -1189,6 +1200,7 @@ def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) 
                         "prepare_week_data",
                         "pipeline_timeout",
                         f"Pipeline exceeded {_PREPARE_WEEK_TIMEOUT_SECONDS}s before {script}",
+                        span=span,
                         script=script,
                     )
                     span.set_status(_ERROR, "pipeline timeout")
@@ -1220,6 +1232,7 @@ def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) 
                         "prepare_week_data",
                         "pipeline_step_failed",
                         f"Pipeline failed at {script}",
+                        span=span,
                         script=script,
                         return_code=return_code,
                         details=output[:2000],

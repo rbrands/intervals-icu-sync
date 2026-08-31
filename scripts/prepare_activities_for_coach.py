@@ -258,6 +258,16 @@ def _activity_date(activity: dict) -> date | None:
         return None
 
 
+def _as_float(value: object, default: float = 0.0) -> float:
+    """Convert API values to float safely (None/invalid -> default)."""
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def filter_activities(activities: list) -> list:
     today = date.today()
     lower_bound = today - timedelta(days=_lookback_days())
@@ -267,7 +277,7 @@ def filter_activities(activities: list) -> list:
         if ((act_date := _activity_date(a)) is not None and act_date >= lower_bound)
         if a.get("type") in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide")
         and a.get("source") != "STRAVA"
-        and (a.get("icu_training_load", 0) > 20 or bool(a.get("tags")))
+        and (_as_float(a.get("icu_training_load")) > 20 or bool(a.get("tags")))
     ]
 
 
@@ -305,7 +315,11 @@ def _zone_distribution(zone_times: list) -> dict:
     """Compute Z1+2 / Z3+4 / Z5+ percentage breakdown from icu_zone_times."""
     if not zone_times:
         return {"z1_z2_pct": None, "z3_z4_pct": None, "z5_plus_pct": None}
-    secs_by_id = {z["id"]: z["secs"] for z in zone_times if "id" in z and "secs" in z}
+    secs_by_id = {
+        z["id"]: _as_float(z.get("secs"))
+        for z in zone_times
+        if isinstance(z, dict) and "id" in z
+    }
     total = sum(secs_by_id.values())
     if total == 0:
         return {"z1_z2_pct": None, "z3_z4_pct": None, "z5_plus_pct": None}
