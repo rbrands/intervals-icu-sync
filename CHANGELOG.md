@@ -10,6 +10,12 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Fixed `metrics.ftp` in the MCP coach data to use the manually configured Ride FTP from `sportSettings`, while keeping `metrics.rolling_ftp` as the separate rolling estimate.
+- Fixed `metrics.w_prime` to use the current manually configured Ride W' from `sportSettings` instead of the value stored on the latest activity.
+
+### Added
+
+- Added `activity_ftp` and `activity_eftp` to each exported activity, preserving the FTP and activity-specific eFTP values supplied by intervals.icu.
+- Added `metrics.ew_prime` for the effective Ride W' value from the current intervals.icu sport settings.
 
 ## [1.2.7] - 2026-08-31
 

@@ -52,6 +52,12 @@ public class ActivityDto
     [JsonPropertyName("duration_hours")]
     public double? DurationHours { get; set; }
 
+    [JsonPropertyName("activity_ftp")]
+    public double? ActivityFtp { get; set; }
+
+    [JsonPropertyName("activity_eftp")]
+    public double? ActivityEftp { get; set; }
+
     [JsonPropertyName("training_load")]
     public double? TrainingLoad { get; set; }
 
@@ -352,17 +358,23 @@ public class MetricsDto
     [JsonPropertyName("ftp")]
     public double? Ftp { get; set; }
 
-    [JsonPropertyName("ftp_classification")]
-    public FtpClassificationDto? FtpClassification { get; set; }
-
     [JsonPropertyName("rolling_ftp")]
     public double? RollingFtp { get; set; }
+
+    [JsonPropertyName("eftp")]
+    public double? Eftp { get; set; }
 
     [JsonPropertyName("w_prime")]
     public double? WPrime { get; set; }
 
     [JsonPropertyName("rolling_w_prime")]
     public double? RollingWPrime { get; set; }
+
+    [JsonPropertyName("ew_prime")]
+    public double? EwPrime { get; set; }
+
+    [JsonPropertyName("ftp_classification")]
+    public FtpClassificationDto? FtpClassification { get; set; }
 
     [JsonPropertyName("rolling_p_max")]
     public double? RollingPMax { get; set; }
@@ -387,9 +399,6 @@ public class MetricsDto
 
     [JsonPropertyName("hrv")]
     public double? Hrv { get; set; }
-
-    [JsonPropertyName("eftp")]
-    public double? Eftp { get; set; }
 
     [JsonPropertyName("sleep_secs")]
     public int? SleepSecs { get; set; }

@@ -42,6 +42,36 @@
           "default": null,
           "title": "Duration Hours"
         },
+        "activity_ftp": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Activity Ftp"
+        },
+        "activity_eftp": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Activity Eftp"
+        },
         "training_load": {
           "anyOf": [
             {
@@ -1196,17 +1226,6 @@
           "default": null,
           "title": "Ftp"
         },
-        "ftp_classification": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/FtpClassification"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
         "rolling_ftp": {
           "anyOf": [
             {
@@ -1221,6 +1240,21 @@
           ],
           "default": null,
           "title": "Rolling Ftp"
+        },
+        "eftp": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eftp"
         },
         "w_prime": {
           "anyOf": [
@@ -1251,6 +1285,32 @@
           ],
           "default": null,
           "title": "Rolling W Prime"
+        },
+        "ew_prime": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ew Prime"
+        },
+        "ftp_classification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FtpClassification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "rolling_p_max": {
           "anyOf": [
@@ -1365,21 +1425,6 @@
           ],
           "default": null,
           "title": "Hrv"
-        },
-        "eftp": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Eftp"
         },
         "sleep_secs": {
           "anyOf": [

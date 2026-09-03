@@ -49,6 +49,8 @@ def fetch_athlete_info() -> tuple[dict, bool]:
     )
     result = {
         "ftp": ride_settings.get("ftp"),
+        "w_prime": ride_settings.get("w_prime"),
+        "ew_prime": ride_settings.get("w_prime"),
         "weight": _weight_to_kg(data.get("icu_weight"), weight_pref_lb),
     }
     dob_str = data.get("icu_date_of_birth")
@@ -247,14 +249,9 @@ def fetch_metrics_from_activities() -> dict:
     for activity in activities:
         ride_ftp = activity.get("icu_rolling_ftp")
         if ride_ftp:
-            w_prime = activity.get("icu_w_prime")
             rolling_w_prime = activity.get("icu_rolling_w_prime")
-            if not w_prime and rolling_w_prime is not None:
-                w_prime = rolling_w_prime
-
             return {
                 "rolling_ftp": activity.get("icu_rolling_ftp"),
-                "w_prime": w_prime,
                 "rolling_w_prime": rolling_w_prime,
                 "rolling_p_max": activity.get("icu_rolling_p_max"),
                 "lthr": activity.get("lthr"),
@@ -916,6 +913,22 @@ def _build_vo2max_classification(
     }
 
 
+def _order_metrics(metrics: dict) -> dict:
+    """Keep related FTP and W' fields together in serialized output."""
+    ordered_keys = (
+        "date",
+        "ftp",
+        "rolling_ftp",
+        "eftp",
+        "w_prime",
+        "rolling_w_prime",
+        "ew_prime",
+    )
+    ordered = {key: metrics[key] for key in ordered_keys if key in metrics}
+    ordered.update({key: value for key, value in metrics.items() if key not in ordered})
+    return ordered
+
+
 def main() -> None:
     if not API_KEY:
         print("Error: INTERVALS_API_KEY is not set.")
@@ -950,6 +963,7 @@ def main() -> None:
         metrics.get("age"),
         metrics.get("sex"),
     )
+    metrics = _order_metrics(metrics)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_file = OUTPUT_DIR / f"metrics_{today.isoformat()}.json"

@@ -460,6 +460,8 @@ def extract_fields(
         "date": (activity.get("start_date_local") or "")[:10],
         "name": activity.get("name"),
         "duration_hours": round((activity.get("moving_time") or 0) / 3600, 2),
+        "activity_ftp": activity.get("icu_ftp"),
+        "activity_eftp": activity.get("icu_pm_ftp"),
         "training_load": activity.get("icu_training_load"),
         "avg_power": activity.get("icu_average_watts"),
         "norm_power": activity.get("icu_weighted_avg_watts"),

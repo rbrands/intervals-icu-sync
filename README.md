@@ -382,6 +382,7 @@ Fetches cycling activities from intervals.icu (Monday of previous week → today
 Included activity types are `Ride`, `MountainBikeRide`, and `GravelRide` (plus `VirtualRide` for indoor/platform rides).
 Missing or invalid `icu_training_load` values are treated as `0` during filtering.
 Rides with a training load above `20` are always kept. Tagged rides below that threshold are kept only when they carry at least one usable metric (training load, average or normalized power, heart rate, or zone times), so incomplete placeholder entries are dropped.
+The coach export also includes the activity FTP (`activity_ftp`) and activity-specific eFTP (`activity_eftp`) supplied by intervals.icu; these are separate from the current athlete Metrics FTP.
 
 ```bash
 python scripts/get_activities.py
@@ -393,7 +394,7 @@ Output: `data/raw/activities_{date}.json`
 
 ### `get_metrics.py`
 
-Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
+Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', eW', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
 In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 Weight values are normalized to kilograms (kg). If the athlete account stores weight in pounds, `get_metrics.py` converts it to kg before writing outputs.

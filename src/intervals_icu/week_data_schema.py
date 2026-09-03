@@ -75,10 +75,12 @@ class Vo2MaxClassification(_SchemaModel):
 class Metrics(_SchemaModel):
     date: str | None = None
     ftp: float | int | None = None
-    ftp_classification: FtpClassification | None = None
     rolling_ftp: float | int | None = None
+    eftp: float | int | None = None
     w_prime: float | int | None = None
     rolling_w_prime: float | int | None = None
+    ew_prime: float | int | None = None
+    ftp_classification: FtpClassification | None = None
     rolling_p_max: float | int | None = None
     lthr: float | int | None = None
     max_hr: float | int | None = None
@@ -87,7 +89,6 @@ class Metrics(_SchemaModel):
     sex: str | None = None
     resting_hr: float | int | None = None
     hrv: float | int | None = None
-    eftp: float | int | None = None
     sleep_secs: int | None = None
     sleep_quality: str | None = None
     wellness_trends: WellnessTrends | None = None
@@ -191,6 +192,8 @@ class Activity(_SchemaModel):
     date: str | None = None
     name: str | None = None
     duration_hours: float | int | None = None
+    activity_ftp: float | int | None = None
+    activity_eftp: float | int | None = None
     training_load: float | int | None = None
     avg_power: float | int | None = None
     norm_power: float | int | None = None
