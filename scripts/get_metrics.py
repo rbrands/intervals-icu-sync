@@ -27,6 +27,18 @@ def _to_float(value: object) -> float | None:
         return None
 
 
+def compute_ftp_eftp_delta_pct(ftp: float | int | None, eftp: float | int | None) -> float | None:
+    """Return the relative percentage gap between FTP and effective FTP.
+
+    Formula: ((eftp - ftp) / ftp) * 100. Positive values mean eFTP is above FTP.
+    """
+    ftp_value = _to_float(ftp)
+    eftp_value = _to_float(eftp)
+    if ftp_value is None or eftp_value is None or ftp_value == 0:
+        return None
+    return round(((eftp_value - ftp_value) / ftp_value) * 100, 2)
+
+
 def _weight_to_kg(value: object, weight_pref_lb: bool) -> float | None:
     weight = _to_float(value)
     if weight is None:
@@ -920,6 +932,7 @@ def _order_metrics(metrics: dict) -> dict:
         "ftp",
         "rolling_ftp",
         "eftp",
+        "ftp_eftp_delta_pct",
         "w_prime",
         "rolling_w_prime",
         "ew_prime",
@@ -943,6 +956,7 @@ def main() -> None:
     athlete_info, weight_pref_lb = fetch_athlete_info()
     metrics.update(athlete_info)
     metrics.update(fetch_wellness(weight_pref_lb=weight_pref_lb))
+    metrics["ftp_eftp_delta_pct"] = compute_ftp_eftp_delta_pct(metrics.get("ftp"), metrics.get("eftp"))
 
     ftp_wkg = _calc_wkg(metrics.get("ftp"), metrics.get("weight"))
     metrics["ftp_classification"] = _build_ftp_classification(
@@ -980,6 +994,9 @@ def main() -> None:
         print(f"FTP Class:    {ftp_class.get('category')} ({ftp_class.get('age_group')}, {ftp_class.get('sex')})")
     print(f"Rolling FTP:  {metrics.get('rolling_ftp')} W")
     print(f"eFTP:         {metrics.get('eftp'):.1f} W" if metrics.get("eftp") else "eFTP:         n/a")
+    if metrics.get("ftp_eftp_delta_pct") is not None:
+        direction = "above" if metrics["ftp_eftp_delta_pct"] >= 0 else "below"
+        print(f"FTP/eFTP Δ:   {metrics['ftp_eftp_delta_pct']:.2f}% {direction} FTP")
     print(f"W':           {metrics.get('w_prime')} J")
     vo2_class = metrics.get("vo2max_classification") or {}
     if vo2_class.get("ml_per_kg_min") is not None:

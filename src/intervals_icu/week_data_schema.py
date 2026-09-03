@@ -77,6 +77,7 @@ class Metrics(_SchemaModel):
     ftp: float | int | None = None
     rolling_ftp: float | int | None = None
     eftp: float | int | None = None
+    ftp_eftp_delta_pct: float | int | None = None
     w_prime: float | int | None = None
     rolling_w_prime: float | int | None = None
     ew_prime: float | int | None = None
@@ -148,6 +149,9 @@ class WeekSummary(_SchemaModel):
     avg_decoupling: float | int | None = None
     avg_decoupling_label: str | None = None
     high_decoupling_rides: int | None = None
+    days_since_last_hiit: int | None = None
+    days_since_last_polarized: int | None = None
+    days_since_last_hard_session: int | None = None
     form_absolute: float | int | None = None
     form_pct: float | int | None = None
     form_percent_display: float | int | None = None

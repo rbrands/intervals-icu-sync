@@ -16,6 +16,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Added `activity_ftp` and `activity_eftp` to each exported activity, preserving the FTP and activity-specific eFTP values supplied by intervals.icu.
 - Added `metrics.ew_prime` for the effective Ride W' value from the current intervals.icu sport settings.
+- Added `metrics.ftp_eftp_delta_pct`, the relative percentage difference between the configured FTP and effective FTP (eFTP).
+- Added day-based recency fields to `week_summary`: `days_since_last_hiit`, `days_since_last_polarized`, and `days_since_last_hard_session`.
 
 ## [1.2.7] - 2026-08-31
 

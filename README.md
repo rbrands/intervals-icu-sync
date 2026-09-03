@@ -394,7 +394,7 @@ Output: `data/raw/activities_{date}.json`
 
 ### `get_metrics.py`
 
-Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', eW', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
+Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, the percentage delta between FTP and eFTP (`ftp_eftp_delta_pct`), W', eW', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
 In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 Weight values are normalized to kilograms (kg). If the athlete account stores weight in pounds, `get_metrics.py` converts it to kg before writing outputs.
@@ -429,6 +429,9 @@ Session distribution semantics in `week_summary`:
 - `threshold_sessions`: sessions classified as threshold.
 - `endurance_sessions`: catch-all bucket for sessions that are neither VO2max nor threshold.
     This includes long steady rides that are not classified as VO2max/threshold.
+- `days_since_last_hiit`: calendar days since the last ride classified as `HIIT`.
+- `days_since_last_polarized`: calendar days since the last ride classified as `HIIT` or `Polarized`.
+- `days_since_last_hard_session`: calendar days since the last ride classified as `HIIT`, `Polarized`, or `Threshold`.
 
 Long-ride counting for fueling is tracked separately in
 `fueling_analysis.weekly_summary.number_of_long_rides`.

@@ -1,5 +1,6 @@
 import importlib.util
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,6 +20,10 @@ def _load_module(module_name: str, relative_path: str):
 analyze_week = _load_module(
     "analyze_week_script",
     "scripts/analyze_week.py",
+)
+get_metrics = _load_module(
+    "get_metrics_script",
+    "scripts/get_metrics.py",
 )
 week_data_schema = _load_module(
     "week_data_schema_model",
@@ -62,6 +67,40 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
         self.assertEqual(saved_form["form_pct"], -0.25)
         self.assertEqual(saved_form["form_percent_display"], -25.0)
         self.assertEqual(saved_form["form_zone"], "optimal")
+
+    def test_compute_ftp_eftp_delta_pct(self):
+        self.assertEqual(get_metrics.compute_ftp_eftp_delta_pct(100, 110), 10.0)
+        self.assertEqual(get_metrics.compute_ftp_eftp_delta_pct(260, 260.2), 0.08)
+
+    def test_compute_days_since_last_hard_session_uses_distribution_labels(self):
+        activities = [
+            {
+                "start_date_local": "2026-08-25T10:00:00Z",
+                "icu_zone_times": [{"id": "Z1", "secs": 2000}, {"id": "Z5", "secs": 1000}],
+            },
+            {
+                "start_date_local": "2026-08-27T10:00:00Z",
+                "icu_zone_times": [{"id": "Z1", "secs": 5000}, {"id": "Z5", "secs": 2000}],
+            },
+            {
+                "start_date_local": "2026-08-30T10:00:00Z",
+                "icu_zone_times": [{"id": "Z1", "secs": 7000}, {"id": "Z3", "secs": 800}],
+            },
+        ]
+        today = date.fromisoformat("2026-08-31")
+
+        self.assertEqual(
+            analyze_week.compute_days_since_last_distribution(activities, ["HIIT"], today),
+            4,
+        )
+        self.assertEqual(
+            analyze_week.compute_days_since_last_distribution(activities, ["HIIT", "Polarized"], today),
+            4,
+        )
+        self.assertEqual(
+            analyze_week.compute_days_since_last_distribution(activities, ["HIIT", "Polarized", "Threshold"], today),
+            4,
+        )
 
 
 if __name__ == "__main__":

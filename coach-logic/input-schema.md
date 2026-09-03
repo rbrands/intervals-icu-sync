@@ -39,6 +39,9 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `ftp` / `rolling_ftp` / `eftp`: set FTP (W), 42-day rolling estimate,
   and effective FTP from recent rides. Use `ftp` for zones unless told
   otherwise.
+- `ftp_eftp_delta_pct`: percentage difference between `ftp` and `eftp`,
+  calculated as `((eftp - ftp) / ftp) * 100`. Positive values mean eFTP is
+  above FTP.
 - `ftp_classification`: age- and sex-adjusted FTP category based on FTP
   W/kg, including `w_per_kg`, `category`, `category_range`,
   `next_category`, and `delta_to_next`.
@@ -77,6 +80,14 @@ Activity-level FTP fields are separate from the current athlete Metrics:
   keep readiness (`ctl`, `atl`, `form_*`) together in one section.
 - `form_absolute` / `form_pct` / `form_zone`: CTL−ATL, its ratio, the zone
   label (thresholds in interpretation-rules.md).
+- `days_since_last_hiit`: integer number of calendar days since the last ride
+  whose `training_distribution` is `HIIT`. `0` means the athlete had a HIIT
+  session today.
+- `days_since_last_polarized`: integer number of calendar days since the last
+  ride whose `training_distribution` is `HIIT` or `Polarized`.
+- `days_since_last_hard_session`: integer number of calendar days since the
+  last ride whose `training_distribution` is one of `HIIT`, `Polarized`, or
+  `Threshold`.
 - `training_plan[].week_type`: from an intervals.icu NOTE event
   (NORMAL | RECOVERY | RACE); defaults to NORMAL.
 - `training_plan[].day_constraints`: day-level constraints extracted from NOTE

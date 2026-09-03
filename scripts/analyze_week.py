@@ -352,6 +352,59 @@ def compute_form(ctl: float | None, atl: float | None) -> dict:
     }
 
 
+def _infer_distribution_label(activity: dict) -> str | None:
+    """Infer ride distribution from raw `icu_zone_times` when no explicit label is present."""
+    distribution = activity.get("training_distribution")
+    if distribution:
+        return str(distribution)
+
+    zone_dist = _get_zone_distribution(activity)
+    z1_z2_pct = zone_dist.get("z1_z2_pct")
+    z3_z4_pct = zone_dist.get("z3_z4_pct")
+    z5_plus_pct = zone_dist.get("z5_plus_pct")
+    if z1_z2_pct is None or z3_z4_pct is None or z5_plus_pct is None:
+        return None
+
+    if z5_plus_pct >= 20:
+        return "HIIT"
+    if z1_z2_pct >= 70 and z5_plus_pct >= 10:
+        return "Polarized"
+    if z3_z4_pct >= 20:
+        return "Threshold"
+    if z1_z2_pct >= 70 and z3_z4_pct >= 10 and z5_plus_pct < 10:
+        return "Pyramidal"
+    if z1_z2_pct >= 85 and z3_z4_pct < 10 and z5_plus_pct < 5:
+        return "Base"
+    return "Unique"
+
+
+def compute_days_since_last_distribution(activities: list, labels: list[str], as_of: date) -> int | None:
+    """Return the number of calendar days since the latest matching ride distribution."""
+    if not activities:
+        return None
+
+    label_set = {str(label).strip() for label in labels if str(label).strip()}
+    if not label_set:
+        return None
+
+    for activity in sorted(
+        activities,
+        key=lambda a: (a.get("start_date_local") or a.get("date") or ""),
+        reverse=True,
+    ):
+        distribution = _infer_distribution_label(activity)
+        if distribution in label_set:
+            start_value = activity.get("start_date_local") or activity.get("date")
+            if not isinstance(start_value, str):
+                continue
+            try:
+                activity_date = date.fromisoformat(start_value[:10])
+            except ValueError:
+                continue
+            return (as_of - activity_date).days
+    return None
+
+
 def compute_metrics(activities: list) -> dict:
     total_load = sum(_as_float(a.get("icu_training_load")) for a in activities)
     times = [_as_float(a.get("moving_time")) / 3600 for a in activities]
@@ -390,6 +443,13 @@ def compute_metrics(activities: list) -> dict:
         "avg_decoupling": avg_decoupling,
         "avg_decoupling_label": avg_decoupling_label,
         "high_decoupling_rides": high_decoupling,
+        "days_since_last_hiit": compute_days_since_last_distribution(activities, ["HIIT"], date.today()),
+        "days_since_last_polarized": compute_days_since_last_distribution(activities, ["HIIT", "Polarized"], date.today()),
+        "days_since_last_hard_session": compute_days_since_last_distribution(
+            activities,
+            ["HIIT", "Polarized", "Threshold"],
+            date.today(),
+        ),
     }
 
 
