@@ -193,6 +193,8 @@ class FuelingDetail(_SchemaModel):
 
 
 class Activity(_SchemaModel):
+    id: str | int | None = None
+    type: str | None = None
     date: str | None = None
     name: str | None = None
     duration_hours: float | int | None = None

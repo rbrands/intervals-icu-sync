@@ -118,6 +118,8 @@ Activity-level FTP fields are separate from the current athlete Metrics:
 
 ## activities — non-obvious fields
 
+- `id` identifies the activity in intervals.icu; `type` contains the source
+  activity type (for example `Ride`, `Run`, or `VirtualRide`).
 - `notes`: free-text athlete description; qualitative context (effort,
   conditions, how legs felt); null if unset.
 - `weather`: null for indoor rides (no GPS). `max_rain` > 0 = wet.

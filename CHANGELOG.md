@@ -14,6 +14,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added `type` to each exported activity, preserving the original intervals.icu activity type for future multi-sport support.
 - Added `activity_ftp` and `activity_eftp` to each exported activity, preserving the FTP and activity-specific eFTP values supplied by intervals.icu.
 - Added `metrics.ew_prime` for the effective Ride W' value from the current intervals.icu sport settings.
 - Added `metrics.ftp_eftp_delta_pct`, the relative percentage difference between the configured FTP and effective FTP (eFTP).

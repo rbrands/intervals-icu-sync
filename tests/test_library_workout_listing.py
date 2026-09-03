@@ -101,11 +101,12 @@ class LibraryWorkoutListingTests(unittest.TestCase):
         spec.loader.exec_module(module)
         self.assertTrue(callable(getattr(module, "main", None)))
 
-    def test_extract_fields_includes_activity_id_only(self):
+    def test_extract_fields_includes_activity_id_and_type(self):
         module = _load_prepare_activities_module()
 
         activity = {
             "id": "i123456",
+            "type": "Ride",
             "start_date_local": "2026-08-16T08:00:00",
             "name": "Test Ride",
             "moving_time": 3600,
@@ -125,6 +126,8 @@ class LibraryWorkoutListingTests(unittest.TestCase):
         result = module.extract_fields(activity, wbal_summary=None, power_curve=None, interval_hr_analysis=None)
 
         self.assertEqual(result["id"], "i123456")
+        self.assertEqual(result["type"], "Ride")
+        self.assertEqual(list(result)[:2], ["id", "type"])
         self.assertNotIn("activity_id", result)
 
     def test_week_plan_schema_accepts_library_workout_without_steps(self):

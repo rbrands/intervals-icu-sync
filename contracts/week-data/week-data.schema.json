@@ -3,6 +3,18 @@
     "Activity": {
       "additionalProperties": true,
       "properties": {
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type"
+        },
         "date": {
           "anyOf": [
             {

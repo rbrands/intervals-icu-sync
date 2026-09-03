@@ -457,6 +457,7 @@ def extract_fields(
     )
     return {
         "id": activity.get("id"),
+        "type": activity.get("type"),
         "date": (activity.get("start_date_local") or "")[:10],
         "name": activity.get("name"),
         "duration_hours": round((activity.get("moving_time") or 0) / 3600, 2),
