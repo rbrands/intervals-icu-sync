@@ -393,7 +393,7 @@ Output: `data/raw/activities_{date}.json`
 
 ### `get_metrics.py`
 
-Fetches athlete performance metrics: FTP, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
+Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, W', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
 In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 Weight values are normalized to kilograms (kg). If the athlete account stores weight in pounds, `get_metrics.py` converts it to kg before writing outputs.

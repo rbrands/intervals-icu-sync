@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.8] - 2026-09-03
+
+### Fixed
+
+- Fixed `metrics.ftp` in the MCP coach data to use the manually configured Ride FTP from `sportSettings`, while keeping `metrics.rolling_ftp` as the separate rolling estimate.
+
 ## [1.2.7] - 2026-08-31
 
 ### Fixed

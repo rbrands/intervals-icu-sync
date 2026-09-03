@@ -39,7 +39,18 @@ def fetch_athlete_info() -> tuple[dict, bool]:
     r.raise_for_status()
     data = r.json()
     weight_pref_lb = bool(data.get("weight_pref_lb"))
-    result = {"weight": _weight_to_kg(data.get("icu_weight"), weight_pref_lb)}
+    ride_settings = next(
+        (
+            settings
+            for settings in (data.get("sportSettings") or [])
+            if "Ride" in (settings.get("types") or [])
+        ),
+        {},
+    )
+    result = {
+        "ftp": ride_settings.get("ftp"),
+        "weight": _weight_to_kg(data.get("icu_weight"), weight_pref_lb),
+    }
     dob_str = data.get("icu_date_of_birth")
     if dob_str:
         from datetime import date as _date
@@ -234,14 +245,14 @@ def fetch_metrics_from_activities() -> dict:
     activities = r.json()
 
     for activity in activities:
-        if activity.get("icu_ftp"):
+        ride_ftp = activity.get("icu_rolling_ftp")
+        if ride_ftp:
             w_prime = activity.get("icu_w_prime")
             rolling_w_prime = activity.get("icu_rolling_w_prime")
             if not w_prime and rolling_w_prime is not None:
                 w_prime = rolling_w_prime
 
             return {
-                "ftp": activity.get("icu_ftp"),
                 "rolling_ftp": activity.get("icu_rolling_ftp"),
                 "w_prime": w_prime,
                 "rolling_w_prime": rolling_w_prime,
