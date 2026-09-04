@@ -668,7 +668,30 @@ Each entry in the JSON file must have:
 - `name` — display name shown in intervals.icu
 - `duration_minutes` — planned duration (integer or float)
 
-Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `steps` (structured workout intervals → uploaded as a ZWO file), and `library_workout_id` (copies the exact stored library workout, including its `workout_doc`, instead of generated steps).
+Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `activity_type` (intervals.icu activity type; defaults to `Ride`), `steps` (structured workout intervals → uploaded as a ZWO file), and `library_workout_id` (copies the exact stored library workout, including its `type` and `workout_doc`, instead of generated steps).
+
+Use `activity_type` for non-ride planned activities. Supported upload values are `Ride`, `VirtualRide`, `MountainBikeRide`, `GravelRide`, `Run`, `TrailRun`, `VirtualRun`, and `WeightTraining`. `Run` and `WeightTraining` entries can be uploaded without `steps`; in that case the event is created from duration, notes, and tags only.
+
+```json
+{
+    "workouts": [
+        {
+            "date": "2026-09-05",
+            "name": "Easy Run",
+            "duration_minutes": 30,
+            "activity_type": "Run",
+            "tags": ["recovery-low"]
+        },
+        {
+            "date": "2026-09-06",
+            "name": "Strength",
+            "duration_minutes": 45,
+            "activity_type": "WeightTraining",
+            "tags": ["strength"]
+        }
+    ]
+}
+```
 
 Plan JSON Schema: `contracts/week-plan/week-plan.schema.json` (supports both accepted top-level formats: bare workout array or `{ "week": "...", "workouts": [...] }`).
 

@@ -52,6 +52,24 @@
           "exclusiveMinimum": 0,
           "description": "Planned duration in minutes."
         },
+        "activity_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "Ride",
+            "VirtualRide",
+            "MountainBikeRide",
+            "GravelRide",
+            "Run",
+            "TrailRun",
+            "VirtualRun",
+            "WeightTraining",
+            null
+          ],
+          "description": "Optional intervals.icu activity type. Defaults to Ride when omitted or null. When library_workout_id is set, the library workout type takes precedence."
+        },
         "library_workout_id": {
           "type": "integer",
           "minimum": 1,

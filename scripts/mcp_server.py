@@ -698,16 +698,22 @@ def save_week_plan(plan_json: str) -> str:
         plan_json: The training plan as a JSON string. Must be a JSON array of
                    workout objects or an object with a "workouts" array. Each
                    workout must have "date", "name", and "duration_minutes".
+                                     Optional "activity_type" sets the intervals.icu type and
+                                     defaults to "Ride" when omitted; supported values include
+                                     "Run", "TrailRun", "VirtualRun", and "WeightTraining".
                    Set "library_workout_id" to schedule the exact stored library
-                   workout instead of generating structure from "steps".
+                                     workout, including its type, instead of generating structure
+                                     from "steps". Run and WeightTraining entries do not require
+                                     steps.
                    Example:
                    [
                      {
                        "date": "2026-05-05T09:00:00",
-                       "name": "Endurance Ride",
-                       "duration_minutes": 90,
-                       "description": "Zone 2 steady state",
-                       "tags": ["endurance-moderate"]
+                                             "name": "Easy Run",
+                                             "duration_minutes": 30,
+                                             "activity_type": "Run",
+                                             "description": "Zone 1 easy",
+                                             "tags": ["recovery-low"]
                      }
                    ]
     """
@@ -831,8 +837,10 @@ def upload_week_plan(dry_run: bool = False, clear: bool = False) -> str:
 
     Reads data/plans/week_plan.json and creates or updates WORKOUT events in
     the intervals.icu calendar. Entries with library_workout_id copy the stored
-    workout structure. Existing events with the same name and date are updated
-    (PUT), new ones are created (POST) — no duplicates.
+    workout structure and type. Entries may set optional activity_type, defaulting
+    to Ride when omitted; Run and WeightTraining entries can be uploaded without
+    steps. Existing events with the same name and date are updated (PUT), new
+    ones are created (POST) — no duplicates.
 
     Typically called after save_week_plan has written the coach's plan.
 

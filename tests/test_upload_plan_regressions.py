@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from jsonschema import Draft202012Validator
+
 from src.intervals_icu.client import _steps_to_zwo, create_activity
 
 
@@ -34,6 +36,57 @@ def _load_check_plan_tss_module():
 
 
 class UploadPlanRegressionTests(unittest.TestCase):
+    def test_week_plan_schema_accepts_valid_activity_types(self):
+        schema = json.loads(
+            (REPO_ROOT / "contracts" / "week-plan" / "week-plan.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        validator = Draft202012Validator(schema)
+        plan = {
+            "workouts": [
+                {
+                    "date": "2026-05-19",
+                    "name": "Easy run",
+                    "duration_minutes": 30,
+                    "activity_type": "Run",
+                },
+                {
+                    "date": "2026-05-20",
+                    "name": "Strength",
+                    "duration_minutes": 45,
+                    "activity_type": "WeightTraining",
+                },
+                {
+                    "date": "2026-05-21",
+                    "name": "Default ride",
+                    "duration_minutes": 60,
+                },
+            ]
+        }
+
+        self.assertEqual(list(validator.iter_errors(plan)), [])
+
+    def test_week_plan_schema_rejects_invalid_activity_type(self):
+        schema = json.loads(
+            (REPO_ROOT / "contracts" / "week-plan" / "week-plan.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        plan = {
+            "workouts": [
+                {
+                    "date": "2026-05-19",
+                    "name": "Bad type",
+                    "duration_minutes": 30,
+                    "activity_type": "Jogging",
+                }
+            ]
+        }
+
+        errors = list(Draft202012Validator(schema).iter_errors(plan))
+        self.assertTrue(errors)
+
     def test_steps_to_zwo_accepts_seconds_and_percent_fields(self):
         zwo = _steps_to_zwo(
             "Test",
@@ -72,6 +125,50 @@ class UploadPlanRegressionTests(unittest.TestCase):
         self.assertNotIn("file_contents_base64", payload)
         self.assertNotIn("filename", payload)
 
+    @patch("src.intervals_icu.client.requests.post")
+    def test_create_activity_defaults_activity_type_to_ride(self, post):
+        post.return_value.raise_for_status.return_value = None
+        post.return_value.json.return_value = {"id": 123}
+
+        create_activity(
+            api_key="test-key",
+            athlete_id="test-athlete",
+            name="Default ride",
+            start_date_local="2026-05-19T00:00:00",
+            duration=300,
+        )
+
+        payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
+        self.assertEqual(payload["type"], "Ride")
+
+    @patch("src.intervals_icu.client.requests.post")
+    def test_create_activity_respects_custom_activity_type(self, post):
+        post.return_value.raise_for_status.return_value = None
+        post.return_value.json.return_value = {"id": 123}
+
+        create_activity(
+            api_key="test-key",
+            athlete_id="test-athlete",
+            name="Easy run",
+            start_date_local="2026-05-19T00:00:00",
+            duration=1800,
+            activity_type="Run",
+        )
+
+        payload = json.loads(post.call_args.kwargs["data"].decode("utf-8"))
+        self.assertEqual(payload["type"], "Run")
+
+    def test_create_activity_rejects_invalid_activity_type(self):
+        with self.assertRaises(ValueError):
+            create_activity(
+                api_key="test-key",
+                athlete_id="test-athlete",
+                name="Bad type",
+                start_date_local="2026-05-19T00:00:00",
+                duration=1800,
+                activity_type="Jogging",
+            )
+
     def test_upload_plan_dry_run_supports_top_level_steps(self):
         module = _load_upload_plan_module()
         plan = [
@@ -86,6 +183,31 @@ class UploadPlanRegressionTests(unittest.TestCase):
         with contextlib.redirect_stdout(output):
             module.upload_plan(plan, dry_run=True)
         self.assertIn("1 steps", output.getvalue())
+
+    def test_upload_plan_dry_run_shows_custom_activity_type_without_steps(self):
+        module = _load_upload_plan_module()
+        plan = [
+            {
+                "date": "2026-05-19",
+                "name": "Easy run",
+                "duration_minutes": 30,
+                "activity_type": "Run",
+            },
+            {
+                "date": "2026-05-20",
+                "name": "Strength",
+                "duration_minutes": 45,
+                "activity_type": "WeightTraining",
+            },
+        ]
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            module.upload_plan(plan, dry_run=True)
+        text = output.getvalue()
+        self.assertIn("Easy run", text)
+        self.assertIn("Run, 30 min", text)
+        self.assertIn("Strength", text)
+        self.assertIn("WeightTraining, 45 min", text)
 
     def test_upload_plan_dry_run_supports_nested_workout_steps(self):
         module = _load_upload_plan_module()
@@ -180,6 +302,42 @@ class UploadPlanRegressionTests(unittest.TestCase):
         self.assertEqual(captured["description"], "Stored execution notes")
         self.assertEqual(captured["tags"], ["vo2max-moderate"])
         self.assertEqual(captured["raw_workout_doc"], library_workout["workout_doc"])
+        self.assertEqual(captured["activity_type"], "Ride")
+
+    def test_upload_plan_library_workout_type_takes_precedence(self):
+        module = _load_upload_plan_module()
+        captured: dict = {}
+        library_workout = {
+            "id": 81,
+            "name": "Stored Strength",
+            "type": "WeightTraining",
+            "moving_time": 2700,
+            "description": "Stored execution notes",
+        }
+
+        module.get_events = lambda *args, **kwargs: []
+        module.get_library_workout = lambda *args, **kwargs: library_workout
+
+        def _fake_create_activity(**kwargs):
+            captured.update(kwargs)
+            return {"id": "evt-1"}
+
+        module.create_activity = _fake_create_activity
+
+        plan = [
+            {
+                "date": "2026-05-19",
+                "name": "Generated placeholder",
+                "duration_minutes": 45,
+                "library_workout_id": 81,
+                "activity_type": "Run",
+            }
+        ]
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            module.upload_plan(plan, dry_run=False)
+
+        self.assertEqual(captured["activity_type"], "WeightTraining")
 
     def test_upload_plan_preserves_library_workout_tss_without_steps(self):
         module = _load_upload_plan_module()
@@ -217,6 +375,84 @@ class UploadPlanRegressionTests(unittest.TestCase):
 
         self.assertEqual(captured["training_load"], 70)
         self.assertIsNone(captured["raw_workout_doc"])
+
+    def test_upload_plan_passes_custom_activity_type_without_steps(self):
+        module = _load_upload_plan_module()
+        captured: dict = {}
+
+        module.get_events = lambda *args, **kwargs: []
+
+        def _fake_create_activity(**kwargs):
+            captured.update(kwargs)
+            return {"id": "evt-1"}
+
+        module.create_activity = _fake_create_activity
+
+        plan = [
+            {
+                "date": "2026-05-19",
+                "name": "Easy run",
+                "duration_minutes": 30,
+                "activity_type": "Run",
+            }
+        ]
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            module.upload_plan(plan, dry_run=False)
+
+        self.assertEqual(captured["activity_type"], "Run")
+        self.assertIsNone(captured["workout"])
+        self.assertIsNone(captured["raw_workout_doc"])
+
+    def test_upload_plan_update_event_includes_custom_activity_type(self):
+        module = _load_upload_plan_module()
+        captured: dict = {}
+
+        module.get_events = lambda *args, **kwargs: [
+            {"id": 123, "name": "Easy run", "start_date_local": "2026-05-19T00:00:00"}
+        ]
+
+        def _fake_update_event(api_key, athlete_id, event_id, payload):
+            captured["event_id"] = event_id
+            captured["payload"] = payload
+            return {"id": event_id}
+
+        module.update_event = _fake_update_event
+
+        plan = [
+            {
+                "date": "2026-05-19",
+                "name": "Easy run",
+                "duration_minutes": 30,
+                "activity_type": "Run",
+            }
+        ]
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            module.upload_plan(plan, dry_run=False)
+
+        self.assertEqual(captured["event_id"], 123)
+        self.assertEqual(captured["payload"]["type"], "Run")
+
+    def test_upload_plan_rejects_invalid_activity_type(self):
+        module = _load_upload_plan_module()
+
+        module.get_events = lambda *args, **kwargs: []
+
+        plan = [
+            {
+                "date": "2026-05-19",
+                "name": "Bad type",
+                "duration_minutes": 30,
+                "activity_type": "Jogging",
+            }
+        ]
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            module.upload_plan(plan, dry_run=False)
+
+        self.assertIn("Invalid activity_type", output.getvalue())
+        self.assertIn("0 uploaded, 0 skipped, 1 failed", output.getvalue())
 
 
 class CheckPlanTssRegressionTests(unittest.TestCase):

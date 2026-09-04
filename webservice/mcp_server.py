@@ -657,7 +657,7 @@ class AuthHeaderMiddleware:
 </head>
 <body>
   <h1>intervals-icu-sync</h1>
-  <p class="sub">MCP Server — cycling training data from <a href="https://intervals.icu">intervals.icu</a> &nbsp;|&nbsp; Version {_SCHEMA_VERSION}</p>
+  <p class="sub">MCP Server — curated training dataset from <a href="https://intervals.icu">intervals.icu</a> &nbsp;|&nbsp; Version {_SCHEMA_VERSION}</p>
   <p class="sub">See <a href="https://github.com/rbrands/intervals-icu-sync">GitHub repository intervals-icu-sync</a> for details including step-by-step guides how 
     to set up and use the MCP server in popular GenAI platforms.</p>
   <h2>Endpoints</h2>
@@ -673,9 +673,9 @@ class AuthHeaderMiddleware:
         <tr><td><code>get_latest_activities</code></td><td>Returns a compact latest-first activity list to avoid large payload truncation.</td></tr>
         <tr><td><code>get_activity_streams_sampled</code></td><td>Returns a compact, down-sampled stream payload for a single activity. Supports optional stream selection, time/distance windows, and a point cap to keep outputs small.</td></tr>
         <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with library workout ID, duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
-        <tr><td><code>validate_week_plan</code></td><td>Validates plan JSON against <code>contracts/week-plan/week-plan.schema.json</code> and returns structured validation results.</td></tr>
+        <tr><td><code>validate_week_plan</code></td><td>Validates plan JSON against <code>contracts/week-plan/week-plan.schema.json</code>, including optional <code>activity_type</code>, and returns structured validation results.</td></tr>
         <tr><td><code>check_plan_tss</code></td><td>Checks a generated plan's stated TSS values against deterministic step-based TSS math and weekly target tolerance.</td></tr>
-        <tr><td><code>upload_week_plan</code></td><td>Uploads a JSON training plan to intervals.icu (supports dry-run and clear).</td></tr>
+        <tr><td><code>upload_week_plan</code></td><td>Uploads a JSON training plan to intervals.icu (supports optional <code>activity_type</code>, dry-run, and clear).</td></tr>
     </table>
   <h2>Authentication</h2>
   <table>
@@ -1690,24 +1690,31 @@ def upload_week_plan(
     Writes the plan to a temporary file, calls upload_plan.py, then discards
     the file. Nothing is retained on the server after this call.
 
-    Entries with library_workout_id copy the stored workout structure. Existing
-    WORKOUT events with the same name and date are updated (PUT); new ones are
-    created (POST) — no duplicates.
+    Entries with library_workout_id copy the stored workout structure and type.
+    Entries may set optional activity_type, defaulting to Ride when omitted; Run
+    and WeightTraining entries can be uploaded without steps. Existing WORKOUT
+    events with the same name and date are updated (PUT); new ones are created
+    (POST) — no duplicates.
 
     Args:
         plan_json:  Training plan as a JSON string. Must be a JSON array of
                     workout objects or an object with a "workouts" array.
                     Each workout requires "date" (ISO 8601 datetime), "name",
-                    and "duration_minutes". Set "library_workout_id" to copy
-                    the exact stored library workout instead of generated steps.
+                                        and "duration_minutes". Optional "activity_type" sets the
+                                        intervals.icu type and defaults to "Ride" when omitted;
+                                        supported values include "Run", "TrailRun", "VirtualRun",
+                                        and "WeightTraining". Set "library_workout_id" to copy
+                                        the exact stored library workout, including its type, instead
+                                        of generated steps.
                     Example:
                     [
                       {
                         "date": "2026-05-19T09:00:00",
-                        "name": "Endurance Ride",
-                        "duration_minutes": 90,
-                        "description": "Zone 2 steady state",
-                        "tags": ["endurance-moderate"]
+                                                "name": "Easy Run",
+                                                "duration_minutes": 30,
+                                                "activity_type": "Run",
+                                                "description": "Zone 1 easy",
+                                                "tags": ["recovery-low"]
                       }
                     ]
         dry_run:    If True, show what would be uploaded without making API calls.

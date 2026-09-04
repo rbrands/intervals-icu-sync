@@ -7,6 +7,12 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [1.2.10] - 2026-09-04
 
+### Added
+
+- Added optional `activity_type` support to planned activity uploads, allowing week-plan entries to create `Run`, `TrailRun`, `VirtualRun`, and `WeightTraining` events while preserving `Ride` as the default for existing plans.
+- Added schema and regression coverage for optional upload activity types, including run and weight-training entries without workout steps.
+- Updated local and hosted MCP tool descriptions to document optional `activity_type` support for plan validation and upload.
+
 ### Fixed
 
 - Fixed the deployed MCP validation tool so the plan schema is available in the Azure App Service package: the deployment artifact now includes the `contracts/` tree, which restores access to `contracts/week-plan/week-plan.schema.json` during `validate_week_plan` checks.

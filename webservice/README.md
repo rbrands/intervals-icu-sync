@@ -10,8 +10,8 @@ MCP server for Azure App Service. Exposes tools over SSE transport, with credent
 | `get_latest_activities` | Runs a slim pipeline and returns a compact, latest-first activity list (`date`, `name`, `duration_hours`, `training_load`, `avg_hr`, `max_hr`, `rpe`, `tags`) to avoid client-side truncation on large payloads. |
 | `get_activity_streams_sampled` | Returns a compact, down-sampled activity stream payload for a single activity. Accepts `activity_id`, optional `stream_types` (for example `["time", "distance", "altitude", "heartrate", "velocity"]`), `max_points` (default `300`), and optional time/distance windows via `start_time_s`, `end_time_s`, `start_distance_m`, and `end_distance_m`. Useful for sub-km analysis without huge payloads. |
 | `list_library_workouts` | Lists the authenticated caller's own workout library with key fields (`library_workout_id`, `folder`, `name`, `duration`, `tss`, `tags`). Supports optional filters: `tag_prefixes`, `match_mode` (`any`/`all`), `include_untagged`, `limit`. |
-| `validate_week_plan` | Validates plan JSON against `contracts/week-plan/week-plan.schema.json` and returns structured validation results (`valid`/`invalid`) before upload. |
-| `upload_week_plan` | Uploads a JSON training plan to intervals.icu as planned workout events. Entries with `library_workout_id` copy the exact stored workout structure. Accepts `dry_run` and `clear` flags. |
+| `validate_week_plan` | Validates plan JSON against `contracts/week-plan/week-plan.schema.json`, including optional `activity_type`, and returns structured validation results (`valid`/`invalid`) before upload. |
+| `upload_week_plan` | Uploads a JSON training plan to intervals.icu as planned workout events. Entries can set optional `activity_type` (`Ride` default; supports `Run`, `TrailRun`, `VirtualRun`, `WeightTraining`). Entries with `library_workout_id` copy the exact stored workout structure and type. Accepts `dry_run` and `clear` flags. |
 
 ## Prompts
 

@@ -4,6 +4,18 @@ import requests
 
 BASE_URL = "https://intervals.icu/api/v1"
 
+DEFAULT_ACTIVITY_TYPE = "Ride"
+VALID_ACTIVITY_TYPES = {
+    "Ride",
+    "VirtualRide",
+    "MountainBikeRide",
+    "GravelRide",
+    "Run",
+    "TrailRun",
+    "VirtualRun",
+    "WeightTraining",
+}
+
 _ASCII_FALLBACKS = {
     '\u2013': '-',    # en dash –
     '\u2014': '-',    # em dash —
@@ -62,6 +74,16 @@ def _steps_to_zwo(name: str, description: str, steps: list[dict]) -> str:
         lines.append(f'    <SteadyState Duration="{dur}" Power="{power}"/>')
     lines += ["  </workout>", "</workout_file>"]
     return "\n".join(lines)
+
+
+def normalize_activity_type(activity_type: str | None) -> str:
+    """Return a valid intervals.icu activity type, defaulting to Ride."""
+    if activity_type is None:
+        return DEFAULT_ACTIVITY_TYPE
+    if activity_type not in VALID_ACTIVITY_TYPES:
+        valid = ", ".join(sorted(VALID_ACTIVITY_TYPES))
+        raise ValueError(f"Invalid activity_type {activity_type!r}. Must be one of: {valid}")
+    return activity_type
 
 
 def _raise_for_status_with_context(response: requests.Response, operation: str) -> None:
@@ -259,6 +281,7 @@ def create_activity(
     uid: str | None = None,
     tags: list[str] | None = None,
     training_load: int | float | None = None,
+    activity_type: str | None = None,
 ) -> dict:
     """Create a planned workout on intervals.icu.
 
@@ -280,6 +303,7 @@ def create_activity(
                          from a library workout. Sent unchanged when provided.
         training_load: Optional stored TSS to preserve for library workouts with
                        no generated steps/workout_doc.
+        activity_type: Optional intervals.icu activity type. Defaults to Ride.
 
     Returns:
         The created event dict as returned by the API.
@@ -288,11 +312,12 @@ def create_activity(
         requests.HTTPError: If the response status code is not 2xx.
     """
     url = f"{BASE_URL}/athlete/{athlete_id}/events"
+    event_type = normalize_activity_type(activity_type)
 
     payload = {
         "name": name,
         "start_date_local": start_date_local,
-        "type": "Ride",
+        "type": event_type,
         "category": "WORKOUT",
         "moving_time": duration,
         "description": description,

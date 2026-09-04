@@ -33,7 +33,7 @@ if _venv_site.exists() and str(_venv_site) not in sys.path:
     sys.path.insert(0, str(_venv_site))
 
 import requests
-from intervals_icu.client import _ascii_safe, _steps_to_zwo, create_activity, delete_events_range, get_events, get_library_workout, update_event
+from intervals_icu.client import _ascii_safe, _steps_to_zwo, create_activity, delete_events_range, get_events, get_library_workout, normalize_activity_type, update_event
 from intervals_icu.config import API_KEY, ATHLETE_ID
 
 DEFAULT_PLAN = Path(__file__).resolve().parents[1] / "data" / "plans" / "week_plan.json"
@@ -169,11 +169,19 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
             raw_tags = [source["tag"]]
         tags = raw_tags
 
+        raw_activity_type = source.get("type") if library_workout is not None else workout.get("activity_type")
+        try:
+            activity_type = normalize_activity_type(raw_activity_type)
+        except ValueError as exc:
+            print(f"  Failed:   {name} on {date[:10]} — {exc}")
+            failed += 1
+            continue
+
         if dry_run:
             steps = len(workout_doc["steps"]) if workout_doc else 0
             suffix = f", {steps} steps" if steps else ""
             tag_suffix = f", tags: {tags}" if tags else ""
-            print(f"  [dry-run] Would upload: {name} on {date[:10]}  ({duration_seconds // 60} min{suffix}{tag_suffix})")
+            print(f"  [dry-run] Would upload: {name} on {date[:10]}  ({activity_type}, {duration_seconds // 60} min{suffix}{tag_suffix})")
             success += 1
             continue
 
@@ -191,7 +199,7 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                 payload = {
                     "name": name,
                     "start_date_local": date,
-                    "type": "Ride",
+                    "type": activity_type,
                     "category": "WORKOUT",
                     "moving_time": duration_seconds,
                     "description": description,
@@ -222,6 +230,7 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                     raw_workout_doc=raw_library_workout_doc,
                     tags=tags if tags else None,
                     training_load=library_training_load,
+                    activity_type=activity_type,
                 )
                 print(f"  Created:  {name} on {date[:10]}")
             success += 1
