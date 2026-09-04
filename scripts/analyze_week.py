@@ -135,12 +135,53 @@ _METRIC_FIELDS = (
     "avg_hr",
 )
 
+_SUPPORTED_ACTIVITY_TYPES = {
+    "Ride",
+    "VirtualRide",
+    "MountainBikeRide",
+    "GravelRide",
+    "Run",
+    "TrailRun",
+    "VirtualRun",
+}
+
+_RUN_ACTIVITY_TYPES = {"Run", "TrailRun", "VirtualRun"}
+
+
+def _has_training_load(activity: dict) -> bool:
+    """True when intervals.icu supplied a training load value."""
+    return activity.get("icu_training_load") is not None
+
+
+def _passes_load_filter(activity: dict) -> bool:
+    """Return True when an activity should be kept by load/metric rules."""
+    if activity.get("type") in _RUN_ACTIVITY_TYPES and _has_training_load(activity):
+        return True
+    return (
+        _as_float(activity.get("icu_training_load")) > 20
+        or (bool(activity.get("tags")) and _has_usable_metrics(activity))
+    )
+
 
 def _has_usable_metrics(activity: dict) -> bool:
     """True when an activity carries at least one analyzable metric."""
     if any(activity.get(field) is not None for field in _METRIC_FIELDS):
         return True
-    return bool(activity.get("icu_zone_times"))
+    return bool(activity.get("icu_zone_times") or activity.get("icu_hr_zone_times"))
+
+
+def _activity_zone_times(activity: dict) -> list:
+    """Return power/primary zone times, falling back to HR zone times."""
+    zone_times = activity.get("icu_zone_times")
+    if zone_times:
+        return zone_times
+    hr_zone_times = activity.get("icu_hr_zone_times") or []
+    if not isinstance(hr_zone_times, list):
+        return []
+    return [
+        {"id": f"Z{idx}", "secs": secs}
+        for idx, secs in enumerate(hr_zone_times, start=1)
+    ]
 
 
 def filter_activities(activities: list) -> list:
@@ -148,12 +189,9 @@ def filter_activities(activities: list) -> list:
     result = []
     for a in activities:
         if (
-            a.get("type") in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide")
+            a.get("type") in _SUPPORTED_ACTIVITY_TYPES
             and a.get("source") != "STRAVA"
-            and (
-                _as_float(a.get("icu_training_load")) > 20
-                or (bool(a.get("tags")) and _has_usable_metrics(a))
-            )
+            and _passes_load_filter(a)
         ):
             start = (a.get("start_date_local") or "")[:10]
             try:
@@ -166,7 +204,7 @@ def filter_activities(activities: list) -> list:
 
 
 def _z5_plus_pct(activity: dict) -> float:
-    zone_times = activity.get("icu_zone_times") or []
+    zone_times = _activity_zone_times(activity)
     secs_by_id = {
         z["id"]: _as_float(z.get("secs"))
         for z in zone_times
@@ -192,8 +230,8 @@ def _classify_decoupling(value: float) -> str:
 
 
 def _get_zone_distribution(activity: dict) -> dict:
-    """Compute Z1+2 / Z3+4 / Z5+ percentage breakdown from icu_zone_times."""
-    zone_times = activity.get("icu_zone_times") or []
+    """Compute Z1+2 / Z3+4 / Z5+ percentage breakdown from activity zone times."""
+    zone_times = _activity_zone_times(activity)
     if not zone_times:
         return {"z1_z2_pct": None, "z3_z4_pct": None, "z5_plus_pct": None}
     secs_by_id = {

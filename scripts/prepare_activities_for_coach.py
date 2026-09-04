@@ -56,6 +56,9 @@ def _needs_wbal(activity: dict, z5_plus_pct: float | None) -> bool:
     - ride tagged as vo2* (e.g. vo2max-high)
     - ride tagged/typed as event / Race
     """
+    if not _has_power_data(activity):
+        return False
+
     if z5_plus_pct is not None and z5_plus_pct >= 8:
         return True
 
@@ -277,12 +280,64 @@ _METRIC_FIELDS = (
     "avg_hr",
 )
 
+_SUPPORTED_ACTIVITY_TYPES = {
+    "Ride",
+    "VirtualRide",
+    "MountainBikeRide",
+    "GravelRide",
+    "Run",
+    "TrailRun",
+    "VirtualRun",
+}
+
+_RUN_ACTIVITY_TYPES = {"Run", "TrailRun", "VirtualRun"}
+
+_POWER_METRIC_FIELDS = (
+    "icu_average_watts",
+    "icu_weighted_avg_watts",
+    "average_watts",
+)
+
+
+def _has_power_data(activity: dict) -> bool:
+    """True when an activity has real power data from a meter or estimator."""
+    return any(activity.get(field) is not None for field in _POWER_METRIC_FIELDS)
+
+
+def _has_training_load(activity: dict) -> bool:
+    """True when intervals.icu supplied a training load value."""
+    return activity.get("icu_training_load") is not None
+
+
+def _passes_load_filter(activity: dict) -> bool:
+    """Return True when an activity should be kept by load/metric rules."""
+    if activity.get("type") in _RUN_ACTIVITY_TYPES and _has_training_load(activity):
+        return True
+    return (
+        _as_float(activity.get("icu_training_load")) > 20
+        or (bool(activity.get("tags")) and _has_usable_metrics(activity))
+    )
+
 
 def _has_usable_metrics(activity: dict) -> bool:
     """True when an activity carries at least one analyzable metric."""
     if any(activity.get(field) is not None for field in _METRIC_FIELDS):
         return True
-    return bool(activity.get("icu_zone_times"))
+    return bool(activity.get("icu_zone_times") or activity.get("icu_hr_zone_times"))
+
+
+def _activity_zone_times(activity: dict) -> list:
+    """Return power/primary zone times, falling back to HR zone times."""
+    zone_times = activity.get("icu_zone_times")
+    if zone_times:
+        return zone_times
+    hr_zone_times = activity.get("icu_hr_zone_times") or []
+    if not isinstance(hr_zone_times, list):
+        return []
+    return [
+        {"id": f"Z{idx}", "secs": secs}
+        for idx, secs in enumerate(hr_zone_times, start=1)
+    ]
 
 
 def filter_activities(activities: list) -> list:
@@ -292,12 +347,9 @@ def filter_activities(activities: list) -> list:
     return [
         a for a in activities
         if ((act_date := _activity_date(a)) is not None and act_date >= lower_bound)
-        if a.get("type") in ("Ride", "VirtualRide", "MountainBikeRide", "GravelRide")
+        if a.get("type") in _SUPPORTED_ACTIVITY_TYPES
         and a.get("source") != "STRAVA"
-        and (
-            _as_float(a.get("icu_training_load")) > 20
-            or (bool(a.get("tags")) and _has_usable_metrics(a))
-        )
+        and _passes_load_filter(a)
     ]
 
 
@@ -451,24 +503,20 @@ def extract_fields(
     w_prime = _activity_w_prime(activity)
     max_wbal_depletion = activity.get("icu_max_wbal_depletion")
     interval_summary = activity.get("interval_summary")
-    zone_dist = _zone_distribution(activity.get("icu_zone_times") or [])
+    zone_dist = _zone_distribution(_activity_zone_times(activity))
     ride_class = classify_ride(
         zone_dist["z1_z2_pct"], zone_dist["z3_z4_pct"], zone_dist["z5_plus_pct"]
     )
-    return {
+    has_power_data = _has_power_data(activity)
+    result = {
         "id": activity.get("id"),
         "type": activity.get("type"),
         "date": (activity.get("start_date_local") or "")[:10],
         "name": activity.get("name"),
         "duration_hours": round((activity.get("moving_time") or 0) / 3600, 2),
-        "activity_ftp": activity.get("icu_ftp"),
-        "activity_eftp": activity.get("icu_pm_ftp"),
         "training_load": activity.get("icu_training_load"),
-        "avg_power": activity.get("icu_average_watts"),
-        "norm_power": activity.get("icu_weighted_avg_watts"),
         "avg_hr": avg_hr,
         "max_hr": max_hr,
-        "polarization_index": activity.get("polarization_index"),
         "training_distribution": ride_class["label"] if ride_class else None,
         "training_distribution_reason": ride_class["reason"] if ride_class else None,
         "z1_z2_pct": zone_dist["z1_z2_pct"],
@@ -487,24 +535,35 @@ def extract_fields(
         "rpe": activity.get("icu_rpe"),
         "carbs_used_g": activity.get("carbs_used"),
         "carbs_ingested_g": activity.get("carbs_ingested"),
-        "w_prime_j": w_prime,
-        "w_prime_bal_drop_j": max_wbal_depletion,
-        "w_prime_bal_min_j": (
-            w_prime - max_wbal_depletion
-            if w_prime is not None and max_wbal_depletion is not None
-            else None
-        ),
-        "w_prime_usage_pct": (
-            round(max_wbal_depletion / w_prime * 100, 1)
-            if w_prime and max_wbal_depletion is not None
-            else None
-        ),
         "tags": activity.get("tags") or [],
         "notes": activity.get("description") or None,
         "weather": _extract_weather(activity),
-        "power_curve": power_curve,
-        "wbal_summary": wbal_summary,
     }
+    if has_power_data:
+        result.update({
+            "activity_ftp": activity.get("icu_ftp"),
+            "activity_eftp": activity.get("icu_pm_ftp"),
+            "avg_power": activity.get("icu_average_watts"),
+            "norm_power": activity.get("icu_weighted_avg_watts"),
+            "polarization_index": activity.get("polarization_index"),
+            "w_prime_j": w_prime,
+            "w_prime_bal_drop_j": max_wbal_depletion,
+            "w_prime_bal_min_j": (
+                w_prime - max_wbal_depletion
+                if w_prime is not None and max_wbal_depletion is not None
+                else None
+            ),
+            "w_prime_usage_pct": (
+                round(max_wbal_depletion / w_prime * 100, 1)
+                if w_prime and max_wbal_depletion is not None
+                else None
+            ),
+            "power_curve": power_curve,
+            "wbal_summary": wbal_summary,
+        })
+    elif isinstance(interval_hr_analysis, dict):
+        interval_hr_analysis.pop("hr_power_decoupling", None)
+    return result
 
 
 def main() -> None:
@@ -517,7 +576,7 @@ def main() -> None:
     rides.sort(key=lambda a: (a.get("start_date_local") or ""), reverse=True)
     output = []
     for a in rides:
-        zone_dist = _zone_distribution(a.get("icu_zone_times") or [])
+        zone_dist = _zone_distribution(_activity_zone_times(a))
         wbal_summary = None
         if _needs_wbal(a, zone_dist["z5_plus_pct"]):
             print(f"  Computing W'bal for {a.get('name', a.get('id'))} …")

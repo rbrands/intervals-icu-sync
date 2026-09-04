@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.9] - 2026-09-04
+
+### Added
+
+- Added running activity support for `Run`, `TrailRun`, and `VirtualRun` in the activity fetch, coach export, and weekly analysis filters.
+- Added HR-zone fallback handling for activities where `icu_zone_times` is missing but `icu_hr_zone_times` is populated, preserving Z1/Z2, Z3/Z4, and Z5+ distribution for runs without power data.
+- Added regression coverage for running activities with HR zones and low training load.
+
+### Changed
+
+- Changed running activity filtering so runs are included whenever intervals.icu supplies `icu_training_load`, even when the load is below the cycling threshold of `20`.
+- Omitted power-specific fields, including FTP, power, polarization index, power curve, and W'bal details, from coach exports for activities without power data.
+
 ## [1.2.8] - 2026-09-03
 
 ### Fixed

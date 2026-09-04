@@ -65,6 +65,50 @@ class ActivityMetricFilteringTests(unittest.TestCase):
         self.assertEqual(len(prepare_activities.filter_activities([heavy])), 1)
         self.assertEqual(len(analyze_week.filter_activities([heavy])), 1)
 
+    def test_untagged_run_with_any_training_load_is_kept(self):
+        light_run = _activity(type="Run", tags=[], icu_training_load=3)
+
+        self.assertEqual(len(prepare_activities.filter_activities([light_run])), 1)
+        self.assertEqual(len(analyze_week.filter_activities([light_run])), 1)
+
+    def test_untagged_run_without_training_load_is_dropped(self):
+        empty_run = _activity(type="Run", tags=[], icu_training_load=None)
+
+        self.assertEqual(prepare_activities.filter_activities([empty_run]), [])
+        self.assertEqual(analyze_week.filter_activities([empty_run]), [])
+
+    def test_run_with_hr_zones_without_power_is_kept_without_power_fields(self):
+        run = _activity(
+            type="Run",
+            icu_zone_times=None,
+            icu_hr_zone_times=[1800, 0, 0, 0, 0, 0, 0],
+            average_heartrate=142,
+        )
+
+        self.assertEqual(len(prepare_activities.filter_activities([run])), 1)
+        self.assertEqual(len(analyze_week.filter_activities([run])), 1)
+
+        exported = prepare_activities.extract_fields(
+            run,
+            interval_hr_analysis={
+                "hr_start_avg": 140,
+                "hr_end_avg": 145,
+                "hr_drift_pct": 3.6,
+                "hr_power_decoupling": None,
+            },
+        )
+        self.assertEqual(exported["type"], "Run")
+        self.assertEqual(exported["avg_hr"], 142)
+        self.assertEqual(exported["z1_z2_pct"], 100.0)
+        self.assertNotIn("hr_power_decoupling", exported["interval_hr_analysis"])
+        self.assertNotIn("avg_power", exported)
+        self.assertNotIn("norm_power", exported)
+        self.assertNotIn("activity_ftp", exported)
+        self.assertNotIn("polarization_index", exported)
+        self.assertNotIn("power_curve", exported)
+        self.assertNotIn("wbal_summary", exported)
+        self.assertFalse(prepare_activities._needs_wbal(run, 25.0))
+
 
 class ActivityDateWindowTests(unittest.TestCase):
     def test_activity_outside_lookback_window_is_dropped(self):
