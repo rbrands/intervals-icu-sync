@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.10] - 2026-09-04
+
+### Fixed
+
+- Fixed the deployed MCP validation tool so the plan schema is available in the Azure App Service package: the deployment artifact now includes the `contracts/` tree, which restores access to `contracts/week-plan/week-plan.schema.json` during `validate_week_plan` checks.
+- Fixed `get_latest_activities` so compact activity results also include `Run`, `TrailRun`, and `VirtualRun` entries and expose each entry's `type` field for clients that rely on the compact list.
+- Restricted decoupling to power-based activities only: runs without power data no longer expose `decoupling` or weekly decoupling aggregates, while power-enabled runs and rides preserve the metric.
+- Omitted `interval_hr_analysis` from activities without power data, since the interval drift analysis requires power-based interval intensity.
+
 ## [1.2.9] - 2026-09-04
 
 ### Added

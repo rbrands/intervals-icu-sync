@@ -464,7 +464,9 @@ def compute_metrics(activities: list) -> dict:
     decouplings = [
         float(a["decoupling"])
         for a in activities
-        if a.get("decoupling") is not None and (_get_zone_distribution(a).get("z1_z2_pct") or 0) >= 80
+        if a.get("decoupling") is not None
+        and a.get("type") not in _RUN_ACTIVITY_TYPES
+        and (_get_zone_distribution(a).get("z1_z2_pct") or 0) >= 80
     ]
     avg_decoupling = sum(decouplings) / len(decouplings) if decouplings else 0.0
     avg_decoupling_label = _classify_decoupling(avg_decoupling) if decouplings else "no durability data"

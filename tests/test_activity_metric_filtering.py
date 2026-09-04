@@ -1,4 +1,7 @@
 import importlib.util
+import json
+import os
+import tempfile
 import unittest
 from datetime import date, timedelta
 from pathlib import Path
@@ -100,7 +103,9 @@ class ActivityMetricFilteringTests(unittest.TestCase):
         self.assertEqual(exported["type"], "Run")
         self.assertEqual(exported["avg_hr"], 142)
         self.assertEqual(exported["z1_z2_pct"], 100.0)
-        self.assertNotIn("hr_power_decoupling", exported["interval_hr_analysis"])
+        self.assertNotIn("decoupling", exported)
+        self.assertNotIn("decoupling_label", exported)
+        self.assertNotIn("interval_hr_analysis", exported)
         self.assertNotIn("avg_power", exported)
         self.assertNotIn("norm_power", exported)
         self.assertNotIn("activity_ftp", exported)
@@ -118,6 +123,39 @@ class ActivityDateWindowTests(unittest.TestCase):
         )
 
         self.assertEqual(prepare_activities.filter_activities([old]), [])
+
+    def test_get_latest_activities_output_keeps_run_type_visible(self):
+        module = _load_module("get_latest_activities_script", "scripts/get_latest_activities.py")
+
+        monday = date.today() - timedelta(days=date.today().weekday())
+        payload = {
+            "activities": [
+                {
+                    "id": 42,
+                    "date": "2026-09-04T09:00:00",
+                    "name": "Easy run",
+                    "type": "Run",
+                    "duration_hours": 1.0,
+                    "training_load": 3,
+                    "avg_hr": 140,
+                    "max_hr": 160,
+                    "rpe": 5,
+                    "tags": [],
+                }
+            ]
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            module.PROCESSED_DIR = Path(tmpdir)
+            try:
+                path = Path(tmpdir) / f"coach_input_{monday.isoformat()}.json"
+                path.write_text(json.dumps(payload), encoding="utf-8")
+
+                result = module.load_activities(10)
+                self.assertEqual(result["activities"][0]["type"], "Run")
+                self.assertEqual(result["activities"][0]["name"], "Easy run")
+            finally:
+                module.PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 
 
 if __name__ == "__main__":

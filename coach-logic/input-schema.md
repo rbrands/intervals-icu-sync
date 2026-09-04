@@ -131,8 +131,14 @@ Activity-level FTP fields are separate from the current athlete Metrics:
   null otherwise. Key field: `wbal_min_j` = lowest W'bal reached.
 - `power_curve`: best mean-maximal power per duration; null if no power.
   p3m ≈ VO2max proxy, p5m = gold-standard VO2max effort, p20m ≈ FTP proxy.
+- `decoupling`: aerobic decoupling in %, calculated only for activities with
+  power data. The field is omitted for activities without power data,
+  including HR-only runs.
+- `decoupling_label`: classification of `decoupling`; omitted together with
+  `decoupling` when power data is unavailable.
 - `interval_hr_analysis`: compact WORK-interval HR durability summary;
-  null if no suitable structured intervals are available.
+  omitted when power data is unavailable or no suitable structured intervals
+  are available.
   Suitable means: WORK intervals with at least 120 seconds duration and at
   least 95% FTP intensity.
   - `hr_start_avg`: avg HR of first half of WORK intervals.

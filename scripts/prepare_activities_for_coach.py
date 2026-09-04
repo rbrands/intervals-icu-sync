@@ -304,6 +304,13 @@ def _has_power_data(activity: dict) -> bool:
     return any(activity.get(field) is not None for field in _POWER_METRIC_FIELDS)
 
 
+def _should_include_decoupling(activity: dict) -> bool:
+    """Decoupling is only meaningful for cycling or power-enabled runs."""
+    if activity.get("type") in _RUN_ACTIVITY_TYPES:
+        return _has_power_data(activity)
+    return True
+
+
 def _has_training_load(activity: dict) -> bool:
     """True when intervals.icu supplied a training load value."""
     return activity.get("icu_training_load") is not None
@@ -523,15 +530,6 @@ def extract_fields(
         "z3_z4_pct": zone_dist["z3_z4_pct"],
         "z5_plus_pct": zone_dist["z5_plus_pct"],
         "interval_summary": interval_summary,
-        "interval_hr_analysis": interval_hr_analysis,
-        "decoupling": activity.get("decoupling"),
-        "decoupling_label": (
-            _classify_decoupling(
-                float(activity["decoupling"]),
-                z1_z2_pct=zone_dist["z1_z2_pct"]
-            )
-            if activity.get("decoupling") is not None else None
-        ),
         "rpe": activity.get("icu_rpe"),
         "carbs_used_g": activity.get("carbs_used"),
         "carbs_ingested_g": activity.get("carbs_ingested"),
@@ -539,6 +537,19 @@ def extract_fields(
         "notes": activity.get("description") or None,
         "weather": _extract_weather(activity),
     }
+    if _should_include_decoupling(activity):
+        decoupling_value = activity.get("decoupling")
+        result["decoupling"] = decoupling_value
+        result["decoupling_label"] = (
+            _classify_decoupling(
+                float(decoupling_value),
+                z1_z2_pct=zone_dist["z1_z2_pct"],
+            )
+            if decoupling_value is not None
+            else None
+        )
+    if has_power_data and interval_hr_analysis is not None:
+        result["interval_hr_analysis"] = interval_hr_analysis
     if has_power_data:
         result.update({
             "activity_ftp": activity.get("icu_ftp"),
@@ -561,8 +572,6 @@ def extract_fields(
             "power_curve": power_curve,
             "wbal_summary": wbal_summary,
         })
-    elif isinstance(interval_hr_analysis, dict):
-        interval_hr_analysis.pop("hr_power_decoupling", None)
     return result
 
 
@@ -582,7 +591,7 @@ def main() -> None:
             print(f"  Computing W'bal for {a.get('name', a.get('id'))} …")
             wbal_summary = _fetch_wbal_summary(a)
         power_curve = _fetch_power_curve(a)
-        interval_hr_analysis = _fetch_interval_hr_analysis(a)
+        interval_hr_analysis = _fetch_interval_hr_analysis(a) if _has_power_data(a) else None
         output.append(
             extract_fields(
                 a,

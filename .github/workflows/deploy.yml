@@ -91,7 +91,7 @@ jobs:
       - name: Build deployment package
         if: steps.check_app.outputs.exists == 'true'
         run: |
-          mkdir -p _deploy/webservice _deploy/scripts _deploy/src/intervals_icu _deploy/prompts/library
+          mkdir -p _deploy/webservice _deploy/scripts _deploy/src/intervals_icu _deploy/prompts/library _deploy/contracts
 
           # Python package marker so 'webservice' is importable as a package
           touch _deploy/webservice/__init__.py
@@ -103,6 +103,7 @@ jobs:
           cp scripts/*.py              _deploy/scripts/
           cp src/intervals_icu/*.py    _deploy/src/intervals_icu/
           cp prompts/library/*.md      _deploy/prompts/library/
+          cp -R contracts/.            _deploy/contracts/
 
           # VERSION at the zip root (mcp_server.py resolves it via parents[1])
           cp VERSION _deploy/VERSION

@@ -1425,6 +1425,7 @@ def get_latest_activities(limit: int = 10) -> str:
                 {
                     "date": a.get("date"),
                     "name": a.get("name"),
+                    "type": a.get("type"),
                     "duration_hours": a.get("duration_hours"),
                     "training_load": a.get("training_load"),
                     "avg_hr": a.get("avg_hr"),

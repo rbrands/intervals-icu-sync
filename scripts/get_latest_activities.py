@@ -63,6 +63,7 @@ def load_activities(limit: int) -> dict:
     compact = [
         {
             "id": a.get("id"),
+            "type": a.get("type"),
             "date": a.get("date"),
             "name": a.get("name"),
             "duration_hours": a.get("duration_hours"),
