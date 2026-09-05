@@ -2485,7 +2485,7 @@
           "default": null,
           "title": "Total Training Load"
         },
-        "number_of_rides": {
+        "number_of_activities": {
           "anyOf": [
             {
               "type": "integer"
@@ -2495,7 +2495,7 @@
             }
           ],
           "default": null,
-          "title": "Number Of Rides"
+          "title": "Number Of Activities"
         },
         "total_time_hours": {
           "anyOf": [
@@ -2512,7 +2512,7 @@
           "default": null,
           "title": "Total Time Hours"
         },
-        "longest_ride_hours": {
+        "longest_activity_hours": {
           "anyOf": [
             {
               "type": "number"
@@ -2525,7 +2525,7 @@
             }
           ],
           "default": null,
-          "title": "Longest Ride Hours"
+          "title": "Longest Activity Hours"
         },
         "vo2_sessions": {
           "anyOf": [

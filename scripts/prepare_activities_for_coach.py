@@ -21,6 +21,7 @@ OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESS
 
 MIN_WORK_INTERVAL_SECONDS = 120
 MIN_WORK_INTERVAL_INTENSITY_PCT = 95.0
+MIN_DECOUPLING_DURATION_HOURS = 1.5
 
 
 # ---------------------------------------------------------------------------
@@ -360,25 +361,11 @@ def filter_activities(activities: list) -> list:
     ]
 
 
-def _classify_decoupling(value: float, z1_z2_pct: float | None = None) -> str | None:
-    """Classify HR/power decoupling based on zone distribution.
-    
-    Z1+Z2 >= 80%: full validity — classify normally
-    Z1+Z2 >= 60%: limited validity — return "limited durability signal"
-    Z1+Z2 < 60%: not applicable — return None
-    """
-    if z1_z2_pct is None:
+def _classify_decoupling(value: float, duration_hours: float | None = None) -> str | None:
+    """Classify HR/power decoupling for rides long enough to show durability."""
+    if duration_hours is None or duration_hours < MIN_DECOUPLING_DURATION_HOURS:
         return None
-    
-    if z1_z2_pct < 60:
-        # Not an endurance ride, no durability signal
-        return None
-    
-    if z1_z2_pct < 80:
-        # Marginal endurance ride, limited signal
-        return "limited durability signal"
-    
-    # Full endurance ride, classify normally
+
     if value < 3:
         return "excellent durability"
     if value < 5:
@@ -511,6 +498,7 @@ def extract_fields(
     max_wbal_depletion = activity.get("icu_max_wbal_depletion")
     interval_summary = activity.get("interval_summary")
     zone_dist = _zone_distribution(_activity_zone_times(activity))
+    duration_hours = (activity.get("moving_time") or 0) / 3600
     ride_class = classify_ride(
         zone_dist["z1_z2_pct"], zone_dist["z3_z4_pct"], zone_dist["z5_plus_pct"]
     )
@@ -520,7 +508,7 @@ def extract_fields(
         "type": activity.get("type"),
         "date": (activity.get("start_date_local") or "")[:10],
         "name": activity.get("name"),
-        "duration_hours": round((activity.get("moving_time") or 0) / 3600, 2),
+        "duration_hours": round(duration_hours, 2),
         "training_load": activity.get("icu_training_load"),
         "avg_hr": avg_hr,
         "max_hr": max_hr,
@@ -543,7 +531,7 @@ def extract_fields(
         result["decoupling_label"] = (
             _classify_decoupling(
                 float(decoupling_value),
-                z1_z2_pct=zone_dist["z1_z2_pct"],
+                duration_hours=duration_hours,
             )
             if decoupling_value is not None
             else None

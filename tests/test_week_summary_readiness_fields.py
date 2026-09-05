@@ -102,6 +102,60 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
             4,
         )
 
+    def test_fueling_form_prioritizes_durability_limited_flag(self):
+        fueling_data = {
+            "weekly_summary": {
+                "avg_carbs_per_hour": 55,
+                "number_of_underfueled_sessions": 0,
+                "number_of_long_rides": 1,
+                "avg_fueling_ratio": 0.6,
+            },
+            "activities": [
+                {"name": "Long drift ride", "carbs_per_hour": 45},
+            ],
+        }
+        activities = [
+            {
+                "name": "Long drift ride",
+                "type": "Ride",
+                "moving_time": 2 * 3600,
+                "decoupling": 9.2,
+            },
+        ]
+
+        result = analyze_week.analyse_fueling_form(-0.35, fueling_data, activities)
+
+        self.assertEqual(result["fueling_status"], "moderate")
+        self.assertTrue(result["durability_limited_by_fueling"])
+        self.assertEqual(result["interpretation"], "Durability appears limited by fueling")
+        self.assertNotIn("adequate", result["interpretation"])
+
+    def test_short_high_decoupling_ride_does_not_limit_durability_by_fueling(self):
+        fueling_data = {
+            "weekly_summary": {
+                "avg_carbs_per_hour": 55,
+                "number_of_underfueled_sessions": 0,
+                "number_of_long_rides": 1,
+                "avg_fueling_ratio": 0.6,
+            },
+            "activities": [
+                {"name": "Short drift ride", "carbs_per_hour": 45},
+            ],
+        }
+        activities = [
+            {
+                "name": "Short drift ride",
+                "type": "Ride",
+                "moving_time": 55 * 60,
+                "decoupling": 9.2,
+            },
+        ]
+
+        result = analyze_week.analyse_fueling_form(-0.35, fueling_data, activities)
+
+        self.assertFalse(result["durability_limited_by_fueling"])
+        self.assertEqual(result["interpretation"], "High training load, but fueling is adequate")
+
 
 if __name__ == "__main__":
     unittest.main()

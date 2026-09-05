@@ -146,6 +146,7 @@ _SUPPORTED_ACTIVITY_TYPES = {
 }
 
 _RUN_ACTIVITY_TYPES = {"Run", "TrailRun", "VirtualRun"}
+MIN_DECOUPLING_DURATION_HOURS = 1.5
 
 
 def _has_training_load(activity: dict) -> bool:
@@ -252,22 +253,36 @@ def _get_zone_distribution(activity: dict) -> dict:
     }
 
 
+def _has_valid_decoupling_signal(activity: dict) -> bool:
+    if activity.get("decoupling") is None:
+        return False
+    if activity.get("type") in _RUN_ACTIVITY_TYPES:
+        return False
+    duration_h = _as_float(activity.get("moving_time")) / 3600
+    return duration_h >= MIN_DECOUPLING_DURATION_HOURS
+
+
 def _classify_ride(activity: dict) -> str:
     raw = activity.get("interval_summary") or ""
     summary = " ".join(raw) if isinstance(raw, list) else raw
     tags = [t.lower().replace("treshold", "threshold") for t in (activity.get("tags") or [])]
     z5_plus = _z5_plus_pct(activity)
+    duration_h = (activity.get("moving_time") or 0) / 3600
+    z3_z4_pct = _get_zone_distribution(activity).get("z3_z4_pct") or 0
     # Tag-based override (takes priority over heuristics)
     if any(t.startswith("vo2") for t in tags):
         return "vo2max"
     if any(t.startswith("lactate-threshold") or t.startswith("lactate_threshold") for t in tags):
         return "threshold"
+    if any(t.startswith("recovery") for t in tags):
+        return "recovery"
+    if any(t.startswith("aerobic-threshold") or t.startswith("aerobic_threshold") for t in tags):
+        return "long_ride" if duration_h >= 2 else "endurance"
     # Interval-summary heuristics
     if (re.search(r"\b(1m|2m|3m|4m)", summary) or "110%" in summary) and z5_plus > 5:
         return "vo2max"
-    if re.search(r"\b([89]m|[1-9][0-9]m)", summary):
+    if re.search(r"\b([89]m|[1-9][0-9]m)", summary) and z3_z4_pct >= 20:
         return "threshold"
-    duration_h = (activity.get("moving_time") or 0) / 3600
     if duration_h >= 2.5:
         return "long_ride"
     return "endurance"
@@ -298,7 +313,7 @@ def analyse_fueling_form(form_pct: float, fueling_data: dict, activities: list, 
         name = act.get("name")
         fa = fuel_by_name.get(name, {})
         carbs_h = fa.get("carbs_per_hour") or 0.0
-        if decoupling is not None and float(decoupling) >= 8 and carbs_h < 60:
+        if _has_valid_decoupling_signal(act) and float(decoupling) >= 8 and carbs_h < 60:
             durability_limited = True
             break
 
@@ -311,7 +326,10 @@ def analyse_fueling_form(form_pct: float, fueling_data: dict, activities: list, 
         fatigue_status = "low"
 
     # Interpretation
-    if fatigue_status == "optimal" and fueling_status == "low":
+    if durability_limited:
+        interpretation = "Durability appears limited by fueling"
+        recommendation = "Improve fueling on long or high-drift rides before adding intensity"
+    elif fatigue_status == "optimal" and fueling_status == "low":
         interpretation = "Fatigue is amplified by insufficient fueling"
         recommendation = "Do not increase intensity — improve fueling first"
     elif fatigue_status == "optimal" and fueling_status in ("moderate", "good"):
@@ -464,9 +482,7 @@ def compute_metrics(activities: list) -> dict:
     decouplings = [
         float(a["decoupling"])
         for a in activities
-        if a.get("decoupling") is not None
-        and a.get("type") not in _RUN_ACTIVITY_TYPES
-        and (_get_zone_distribution(a).get("z1_z2_pct") or 0) >= 80
+        if _has_valid_decoupling_signal(a)
     ]
     avg_decoupling = sum(decouplings) / len(decouplings) if decouplings else 0.0
     avg_decoupling_label = _classify_decoupling(avg_decoupling) if decouplings else "no durability data"
@@ -474,9 +490,9 @@ def compute_metrics(activities: list) -> dict:
 
     return {
         "total_training_load": total_load,
-        "number_of_rides": len(activities),
+        "number_of_activities": len(activities),
         "total_time_hours": total_time,
-        "longest_ride_hours": longest,
+        "longest_activity_hours": longest,
         "vo2_sessions": vo2_sessions,
         "threshold_sessions": threshold_sessions,
         "endurance_sessions": endurance_sessions,
@@ -510,9 +526,9 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
     print()
     print("=== Weekly Training Summary ===")
     print(f"Total Load:          {m['total_training_load']}")
-    print(f"Number of Rides:     {m['number_of_rides']}")
+    print(f"Number of Activities: {m['number_of_activities']}")
     print(f"Total Time (h):      {m['total_time_hours']:.1f}")
-    print(f"Longest Ride (h):    {m['longest_ride_hours']:.1f}")
+    print(f"Longest Activity (h): {m['longest_activity_hours']:.1f}")
     print()
     print("Distribution:")
     print(f"  VO2max sessions:     {m['vo2_sessions']}")

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.11] - 2026-09-05
+
+### Fixed
+
+- Fixed durability decoupling validity so activity labels and weekly `avg_decoupling` use an explicit 90-minute minimum duration instead of deriving validity from training distribution or zone balance.
+- Fixed `fueling_form_analysis` so `durability_limited_by_fueling: true` takes precedence in the interpretation and no longer reports fueling as adequate at the same time.
+- Aligned fueling-related durability checks with the same valid-decoupling rule, preventing short high-decoupling rides from setting `durability_limited_by_fueling`.
+
 ## [1.2.10] - 2026-09-04
 
 ### Added

@@ -140,9 +140,9 @@ class WeekSummary(_SchemaModel):
     ctl: float | int | None = None
     atl: float | int | None = None
     total_training_load: float | int | None = None
-    number_of_rides: int | None = None
+    number_of_activities: int | None = None
     total_time_hours: float | int | None = None
-    longest_ride_hours: float | int | None = None
+    longest_activity_hours: float | int | None = None
     vo2_sessions: int | None = None
     threshold_sessions: int | None = None
     endurance_sessions: int | None = None

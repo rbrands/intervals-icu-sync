@@ -43,6 +43,16 @@ def _activity(**overrides) -> dict:
     return activity
 
 
+def _zone_times(z1: int = 0, z2: int = 0, z3: int = 0, z4: int = 0, z5: int = 0) -> list[dict]:
+    return [
+        {"id": "Z1", "secs": z1},
+        {"id": "Z2", "secs": z2},
+        {"id": "Z3", "secs": z3},
+        {"id": "Z4", "secs": z4},
+        {"id": "Z5", "secs": z5},
+    ]
+
+
 class ActivityMetricFilteringTests(unittest.TestCase):
     def test_tagged_activity_without_metrics_is_dropped(self):
         empty = _activity()
@@ -113,6 +123,52 @@ class ActivityMetricFilteringTests(unittest.TestCase):
         self.assertNotIn("power_curve", exported)
         self.assertNotIn("wbal_summary", exported)
         self.assertFalse(prepare_activities._needs_wbal(run, 25.0))
+
+    def test_short_base_ride_does_not_get_decoupling_label(self):
+        short_base = _activity(
+            moving_time=55 * 60,
+            icu_training_load=45,
+            icu_zone_times=_zone_times(z1=1200, z2=2000, z3=100, z4=0, z5=0),
+            decoupling=0.91,
+        )
+
+        exported = prepare_activities.extract_fields(short_base)
+
+        self.assertEqual(exported["duration_hours"], 0.92)
+        self.assertEqual(exported["training_distribution"], "Base")
+        self.assertEqual(exported["decoupling"], 0.91)
+        self.assertIsNone(exported["decoupling_label"])
+
+    def test_week_decoupling_ignores_short_base_ride(self):
+        short_base = _activity(
+            moving_time=55 * 60,
+            icu_training_load=45,
+            icu_zone_times=_zone_times(z1=1200, z2=2000, z3=100, z4=0, z5=0),
+            decoupling=0.91,
+        )
+
+        metrics = analyze_week.compute_metrics([short_base])
+
+        self.assertEqual(metrics["avg_decoupling"], 0.0)
+        self.assertEqual(metrics["avg_decoupling_label"], "no durability data")
+        self.assertEqual(metrics["high_decoupling_rides"], 0)
+
+    def test_long_hiit_ride_gets_decoupling_label_despite_distribution(self):
+        long_hiit = _activity(
+            moving_time=144 * 60,
+            icu_training_load=100,
+            icu_zone_times=_zone_times(z1=2000, z2=1000, z3=1000, z4=1200, z5=3400),
+            decoupling=10.8,
+        )
+
+        exported = prepare_activities.extract_fields(long_hiit)
+        metrics = analyze_week.compute_metrics([long_hiit])
+
+        self.assertEqual(exported["training_distribution"], "HIIT")
+        self.assertEqual(exported["decoupling_label"], "significant limitation")
+        self.assertEqual(metrics["avg_decoupling"], 10.8)
+        self.assertEqual(metrics["avg_decoupling_label"], "significant limitation")
+        self.assertEqual(metrics["high_decoupling_rides"], 1)
 
 
 class ActivityDateWindowTests(unittest.TestCase):
