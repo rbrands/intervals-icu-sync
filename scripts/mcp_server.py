@@ -33,6 +33,7 @@ from intervals_icu.client import (
     get_library_folders,
     get_library_workouts,
 )
+from intervals_icu.training_readiness import compute_training_readiness
 from intervals_icu.config import API_KEY, ATHLETE_ID
 from intervals_icu.prompt_templates import render_coach_prompt
 PROCESSED_DIR = _ROOT / "data" / "processed"
@@ -448,6 +449,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
         week_data["ctl"] = ctl
     if week_data.get("atl") is None and atl is not None:
         week_data["atl"] = atl
+    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
 
     def _copy_target_fields(entry: dict, target: dict) -> None:
         load_target = target.get("load_target")

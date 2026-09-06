@@ -121,6 +121,7 @@ from intervals_icu.client import (
     get_library_folders,
     get_library_workouts,
 )
+from intervals_icu.training_readiness import compute_training_readiness
 
 from context import api_key_var, athlete_id_var
 from intervals_icu.prompt_templates import render_coach_prompt
@@ -1289,6 +1290,7 @@ def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) 
                 week_data["ctl"] = ctl
             if week_data.get("atl") is None and atl is not None:
                 week_data["atl"] = atl
+            week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
 
             ride_plan = _extract_ride_plan_summary(plan_data, monday)
             if ride_plan:

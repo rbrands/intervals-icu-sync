@@ -195,6 +195,7 @@ intervals-icu-sync/
 │       ├── __init__.py
 │       ├── client.py               # HTTP client (intervals.icu API)
 │       ├── config.py               # Loads API_KEY, ATHLETE_ID from .env
+│       ├── training_readiness.py   # Shared readiness traffic-light calculation
 │       ├── week_data_schema.py     # Pydantic models for consolidated week_data JSON schema
 │       └── wbal.py                 # Shared W'bal computation (Skiba differential model)
 ├── data/
@@ -639,7 +640,7 @@ Output: `data/processed/wbal_{activity_id}.json`
 
 ### `mcp_server.py`
 
-FastMCP server that exposes the training data pipeline and plan upload as MCP tools. It also offers a compact latest-activities method for clients that truncate large tool outputs and a sampled activity-stream tool for sub-km analysis. The stream tool supports optional stream selection, bounding by time or distance, and a fixed point cap (default 300) to keep outputs compact. See [MCP Server Integration](#mcp-server-integration) for setup and usage.
+FastMCP server that exposes the training data pipeline and plan upload as MCP tools. Consolidated week data includes the daily traffic light under `week_summary.training_readiness`. It also offers a compact latest-activities method for clients that truncate large tool outputs and a sampled activity-stream tool for sub-km analysis. The stream tool supports optional stream selection, bounding by time or distance, and a fixed point cap (default 300) to keep outputs compact. See [MCP Server Integration](#mcp-server-integration) for setup and usage.
 
 ---
 
