@@ -361,9 +361,17 @@ def filter_activities(activities: list) -> list:
     ]
 
 
-def _classify_decoupling(value: float, duration_hours: float | None = None) -> str | None:
-    """Classify HR/power decoupling for rides long enough to show durability."""
-    if duration_hours is None or duration_hours < MIN_DECOUPLING_DURATION_HOURS:
+def _classify_decoupling(
+    value: float,
+    duration_hours: float | None = None,
+    training_distribution: str | None = None,
+) -> str | None:
+    """Classify decoupling for long, endurance-oriented rides."""
+    if (
+        duration_hours is None
+        or duration_hours < MIN_DECOUPLING_DURATION_HOURS
+        or training_distribution not in {"Base", "Pyramidal", "Threshold"}
+    ):
         return None
 
     if value < 3:
@@ -532,6 +540,7 @@ def extract_fields(
             _classify_decoupling(
                 float(decoupling_value),
                 duration_hours=duration_hours,
+                training_distribution=ride_class["label"] if ride_class else None,
             )
             if decoupling_value is not None
             else None

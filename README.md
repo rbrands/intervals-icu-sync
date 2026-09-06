@@ -757,7 +757,7 @@ Exit code behavior:
 Interactive Jupyter notebook that loads the consolidated `coach_input_{monday}.json` and displays a structured overview of the current training week:
 
 - **Athlete Metrics**: FTP, eFTP, VO2Max, W\', HRV, weight — FTP values shown in W and W/kg
-- **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling (only from rides ≥ 90 min; shows `"no durability data"` if no eligible rides exist)
+- **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling (only from Base/Pyramidal/Threshold rides ≥ 90 min; shows `"no durability data"` if no eligible rides exist)
 - **Training Readiness**: CTL, ATL, Form Zone, HRV, and a color-coded readiness traffic light with score, confidence, recommendation, contributing signals, and safety limits (`ctl`, `atl`, and `training_readiness` are read from `week_summary`)
 - **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling (labeled only for Base/Pyramidal/Threshold rides ≥ 90 min), and carbohydrate data
 - **Zone Distribution Chart**: bar charts per activity showing Z1+2 / Z3+4 / Z5+ split

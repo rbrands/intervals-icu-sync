@@ -153,22 +153,29 @@ class ActivityMetricFilteringTests(unittest.TestCase):
         self.assertEqual(metrics["avg_decoupling_label"], "no durability data")
         self.assertEqual(metrics["high_decoupling_rides"], 0)
 
-    def test_long_hiit_ride_gets_decoupling_label_despite_distribution(self):
+    def test_long_hiit_ride_is_excluded_from_week_decoupling(self):
         long_hiit = _activity(
             moving_time=144 * 60,
             icu_training_load=100,
             icu_zone_times=_zone_times(z1=2000, z2=1000, z3=1000, z4=1200, z5=3400),
-            decoupling=10.8,
+            decoupling=10.76,
+        )
+        long_base = _activity(
+            id="base",
+            moving_time=180 * 60,
+            icu_training_load=100,
+            icu_zone_times=_zone_times(z1=3000, z2=7000, z3=500, z4=0, z5=0),
+            decoupling=0.29,
         )
 
         exported = prepare_activities.extract_fields(long_hiit)
-        metrics = analyze_week.compute_metrics([long_hiit])
+        metrics = analyze_week.compute_metrics([long_hiit, long_base])
 
         self.assertEqual(exported["training_distribution"], "HIIT")
-        self.assertEqual(exported["decoupling_label"], "significant limitation")
-        self.assertEqual(metrics["avg_decoupling"], 10.8)
-        self.assertEqual(metrics["avg_decoupling_label"], "significant limitation")
-        self.assertEqual(metrics["high_decoupling_rides"], 1)
+        self.assertIsNone(exported["decoupling_label"])
+        self.assertEqual(metrics["avg_decoupling"], 0.29)
+        self.assertEqual(metrics["avg_decoupling_label"], "excellent durability")
+        self.assertEqual(metrics["high_decoupling_rides"], 0)
 
 
 class ActivityDateWindowTests(unittest.TestCase):

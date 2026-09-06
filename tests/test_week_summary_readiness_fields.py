@@ -248,6 +248,7 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
                 "name": "Long drift ride",
                 "type": "Ride",
                 "moving_time": 2 * 3600,
+                "training_distribution": "Base",
                 "decoupling": 9.2,
             },
         ]

@@ -259,7 +259,11 @@ def _has_valid_decoupling_signal(activity: dict) -> bool:
     if activity.get("type") in _RUN_ACTIVITY_TYPES:
         return False
     duration_h = _as_float(activity.get("moving_time")) / 3600
-    return duration_h >= MIN_DECOUPLING_DURATION_HOURS
+    distribution = _infer_distribution_label(activity)
+    return (
+        duration_h >= MIN_DECOUPLING_DURATION_HOURS
+        and distribution in {"Base", "Pyramidal", "Threshold"}
+    )
 
 
 def _classify_ride(activity: dict) -> str:
