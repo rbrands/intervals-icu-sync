@@ -32,6 +32,11 @@ training session. It combines five independent domains: form, hard-session
 recency, HRV, resting heart rate, and sleep. CTL, ATL, and TSB/form are one
 combined form signal and must not be counted separately.
 
+A session counts as hard when its training distribution is `HIIT` or
+`Polarized`. A `Threshold` session counts as hard only with at least 50 TSS or
+RPE 7+, preventing short, easy rides with incidental Z3/Z4 time from resetting
+hard-session recency.
+
 Score contributions:
 
 | signal | condition | contribution |

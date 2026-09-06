@@ -16,6 +16,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Updated coaching rules and the metrics/wellness prompt to consume the readiness result without duplicating or re-deriving its thresholds.
+- Refined hard-session recency so `Threshold` rides count as hard only at 50+ TSS or RPE 7+, while `HIIT` and `Polarized` sessions remain hard regardless of load.
+- Added the training-readiness traffic light, score, confidence, contributing signals, and safety limits to the weekly summary notebook.
 
 ## [1.2.11] - 2026-09-05
 

@@ -189,6 +189,48 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
             4,
         )
 
+    def test_low_load_threshold_ride_is_not_a_hard_session(self):
+        activities = [
+            {
+                "start_date_local": "2026-09-06T10:00:00Z",
+                "training_distribution": "Threshold",
+                "icu_training_load": 38,
+                "perceived_exertion": 3,
+            },
+            {
+                "start_date_local": "2026-09-05T10:00:00Z",
+                "training_distribution": "Threshold",
+                "icu_training_load": 231,
+                "perceived_exertion": 6,
+            },
+        ]
+
+        self.assertEqual(
+            analyze_week.compute_days_since_last_hard_session(
+                activities,
+                date.fromisoformat("2026-09-06"),
+            ),
+            1,
+        )
+
+    def test_high_rpe_threshold_ride_is_a_hard_session_despite_low_load(self):
+        activities = [
+            {
+                "start_date_local": "2026-09-06T10:00:00Z",
+                "training_distribution": "Threshold",
+                "icu_training_load": 38,
+                "perceived_exertion": 8,
+            },
+        ]
+
+        self.assertEqual(
+            analyze_week.compute_days_since_last_hard_session(
+                activities,
+                date.fromisoformat("2026-09-06"),
+            ),
+            0,
+        )
+
     def test_fueling_form_prioritizes_durability_limited_flag(self):
         fueling_data = {
             "weekly_summary": {

@@ -92,8 +92,8 @@ Activity-level FTP fields are separate from the current athlete Metrics:
 - `days_since_last_polarized`: integer number of calendar days since the last
   ride whose `training_distribution` is `HIIT` or `Polarized`.
 - `days_since_last_hard_session`: integer number of calendar days since the
-  last ride whose `training_distribution` is one of `HIIT`, `Polarized`, or
-  `Threshold`.
+  last `HIIT` or `Polarized` ride, or since the last `Threshold` ride with at
+  least 50 TSS or RPE 7+.
 - `training_plan[].week_type`: from an intervals.icu NOTE event
   (NORMAL | RECOVERY | RACE); defaults to NORMAL.
 - `training_plan[].day_constraints`: day-level constraints extracted from NOTE

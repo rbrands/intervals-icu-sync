@@ -461,6 +461,31 @@ def compute_days_since_last_distribution(activities: list, labels: list[str], as
     return None
 
 
+def compute_days_since_last_hard_session(activities: list, as_of: date) -> int | None:
+    """Return days since the latest session with meaningful recovery demand."""
+    qualifying_activities = []
+    for activity in activities:
+        distribution = _infer_distribution_label(activity)
+        if distribution in {"HIIT", "Polarized"}:
+            qualifying_activities.append(activity)
+            continue
+        if distribution != "Threshold":
+            continue
+
+        training_load = _as_float(
+            activity.get("icu_training_load", activity.get("training_load"))
+        )
+        rpe = _as_float(activity.get("perceived_exertion", activity.get("rpe")))
+        if training_load >= 50 or rpe >= 7:
+            qualifying_activities.append(activity)
+
+    return compute_days_since_last_distribution(
+        qualifying_activities,
+        ["HIIT", "Polarized", "Threshold"],
+        as_of,
+    )
+
+
 def compute_metrics(activities: list) -> dict:
     total_load = sum(_as_float(a.get("icu_training_load")) for a in activities)
     times = [_as_float(a.get("moving_time")) / 3600 for a in activities]
@@ -501,9 +526,8 @@ def compute_metrics(activities: list) -> dict:
         "high_decoupling_rides": high_decoupling,
         "days_since_last_hiit": compute_days_since_last_distribution(activities, ["HIIT"], date.today()),
         "days_since_last_polarized": compute_days_since_last_distribution(activities, ["HIIT", "Polarized"], date.today()),
-        "days_since_last_hard_session": compute_days_since_last_distribution(
+        "days_since_last_hard_session": compute_days_since_last_hard_session(
             activities,
-            ["HIIT", "Polarized", "Threshold"],
             date.today(),
         ),
     }

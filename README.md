@@ -397,7 +397,7 @@ Output: `data/raw/activities_{date}.json`
 ### `get_metrics.py`
 
 Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, the percentage delta between FTP and eFTP (`ftp_eftp_delta_pct`), W', eW', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
-In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place. The consolidation step also writes an explainable daily traffic light to `week_summary.training_readiness`, combining form, hard-session recency, HRV, resting HR, and sleep.
+In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place. The consolidation step also writes an explainable daily traffic light to `week_summary.training_readiness`, combining form, hard-session recency, HRV, resting HR, and sleep. `HIIT` and `Polarized` sessions count as hard; `Threshold` sessions require at least 50 TSS or RPE 7+ so short, easy rides with incidental Z3/Z4 time do not reset hard-session recency.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 Weight values are normalized to kilograms (kg). If the athlete account stores weight in pounds, `get_metrics.py` converts it to kg before writing outputs.
 
@@ -758,7 +758,7 @@ Interactive Jupyter notebook that loads the consolidated `coach_input_{monday}.j
 
 - **Athlete Metrics**: FTP, eFTP, VO2Max, W\', HRV, weight — FTP values shown in W and W/kg
 - **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling (only from rides ≥ 90 min; shows `"no durability data"` if no eligible rides exist)
-- **Form, Fatigue & Training Readiness**: CTL, ATL, Form Zone, HRV, and a color-coded readiness traffic light with score, confidence, recommendation, contributing signals, and safety limits (`ctl`, `atl`, and `training_readiness` are read from `week_summary`)
+- **Training Readiness**: CTL, ATL, Form Zone, HRV, and a color-coded readiness traffic light with score, confidence, recommendation, contributing signals, and safety limits (`ctl`, `atl`, and `training_readiness` are read from `week_summary`)
 - **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling (labeled only for Base/Pyramidal/Threshold rides ≥ 90 min), and carbohydrate data
 - **Zone Distribution Chart**: bar charts per activity showing Z1+2 / Z3+4 / Z5+ split
 - **Integrated Fatigue & Fueling Analysis**: combines Form % and weekly fueling quality into a single coaching interpretation with recommendation
