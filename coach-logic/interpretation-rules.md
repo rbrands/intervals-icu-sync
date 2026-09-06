@@ -25,6 +25,39 @@ form_pct      = (CTL - ATL) / CTL
 Always read form together with recovery indicators (HRV, resting HR,
 subjective fatigue) and recent intensity — never in isolation.
 
+## Training Readiness
+
+`week_summary.training_readiness` estimates readiness for today's or the next
+training session. It combines five independent domains: form, hard-session
+recency, HRV, resting heart rate, and sleep. CTL, ATL, and TSB/form are one
+combined form signal and must not be counted separately.
+
+Score contributions:
+
+| signal | condition | contribution |
+| ------ | --------- | ------------ |
+| form | fresh / grey_zone / optimal / transition / high_risk | +2 / +1 / 0 / +1 / -3 |
+| hard-session recency | 0 / 1 / 2 / 3+ days | -3 / -1 / +1 / +2 |
+| HRV vs 7-day average | ≤ -10% / ≤ -5% / ≥ +5% / ≥ +10% | -2 / -1 / +1 / +2 |
+| resting HR vs 7-day average | ≥ +7% / ≥ +3% / ≤ -3% / ≤ -7% | -2 / -1 / +1 / +2 |
+| sleep | POOR or < 6h / AVG or < 7h / GOOD or GREAT and ≥ 7h | -2 / -1 / +1 |
+
+The HRV and resting-HR `trend_7d` adjusts the contribution by one point in
+the matching direction, bounded to -2 through +2.
+
+Base colors are green for scores ≥ +2, yellow for -2 through +1, and red for
+scores ≤ -3. Safety rules override the score:
+
+- `high_risk` form or a hard session today forces red.
+- Two or more adverse signals among HRV, resting HR, and sleep force red.
+- A hard session one day ago caps readiness at yellow.
+- With no usable signal, status is `unknown` rather than green.
+
+Confidence reflects available domains: high for 4–5, medium for 2–3, and low
+for 0–1. Missing wellness data is not adverse; it only lowers confidence.
+Weight trend remains context and does not affect acute readiness because
+short-term weight changes can reflect hydration and fueling.
+
 ---
 
 ## Decoupling (Aerobic Durability)

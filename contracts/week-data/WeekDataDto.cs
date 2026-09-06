@@ -370,6 +370,9 @@ public class MetricsDto
     [JsonPropertyName("eftp")]
     public double? Eftp { get; set; }
 
+    [JsonPropertyName("ftp_eftp_delta_pct")]
+    public double? FtpEftpDeltaPct { get; set; }
+
     [JsonPropertyName("w_prime")]
     public double? WPrime { get; set; }
 
@@ -635,6 +638,51 @@ public class TrainingPlanEntryDto
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
+public class TrainingReadinessDto
+{
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("score")]
+    public int? Score { get; set; }
+
+    [JsonPropertyName("confidence")]
+    public string? Confidence { get; set; }
+
+    [JsonPropertyName("recommendation")]
+    public string? Recommendation { get; set; }
+
+    [JsonPropertyName("reasons")]
+    public List<string>? Reasons { get; set; }
+
+    [JsonPropertyName("safety_vetoes")]
+    public List<string>? SafetyVetoes { get; set; }
+
+    [JsonPropertyName("signals")]
+    public List<TrainingReadinessSignalDto>? Signals { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public class TrainingReadinessSignalDto
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("contribution")]
+    public int? Contribution { get; set; }
+
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
 public class Vo2MaxClassificationDto
 {
     [JsonPropertyName("ml_per_kg_min")]
@@ -721,6 +769,15 @@ public class WeekSummaryDto
     [JsonPropertyName("high_decoupling_rides")]
     public int? HighDecouplingRides { get; set; }
 
+    [JsonPropertyName("days_since_last_hiit")]
+    public int? DaysSinceLastHiit { get; set; }
+
+    [JsonPropertyName("days_since_last_polarized")]
+    public int? DaysSinceLastPolarized { get; set; }
+
+    [JsonPropertyName("days_since_last_hard_session")]
+    public int? DaysSinceLastHardSession { get; set; }
+
     [JsonPropertyName("form_absolute")]
     public double? FormAbsolute { get; set; }
 
@@ -732,6 +789,9 @@ public class WeekSummaryDto
 
     [JsonPropertyName("form_zone")]
     public string? FormZone { get; set; }
+
+    [JsonPropertyName("training_readiness")]
+    public TrainingReadinessDto? TrainingReadiness { get; set; }
 
     [JsonPropertyName("fueling_form_analysis")]
     public FuelingFormAnalysisDto? FuelingFormAnalysis { get; set; }

@@ -80,6 +80,12 @@ Activity-level FTP fields are separate from the current athlete Metrics:
   keep readiness (`ctl`, `atl`, `form_*`) together in one section.
 - `form_absolute` / `form_pct` / `form_zone`: CTL−ATL, its ratio, the zone
   label (thresholds in interpretation-rules.md).
+- `training_readiness`: explainable readiness for today's or the next session,
+  derived from form, hard-session recency, HRV, resting HR, and sleep. It contains
+  `status` (`green`, `yellow`, `red`, or `unknown`), numeric `score`, `confidence`,
+  `recommendation`, `reasons`, `safety_vetoes`, and per-domain `signals` with
+  `name`, `status`, `contribution`, and `reason`. Missing domains lower confidence
+  but do not count negatively. Weight trend is context only and is not scored.
 - `days_since_last_hiit`: integer number of calendar days since the last ride
   whose `training_distribution` is `HIIT`. `0` means the athlete had a HIIT
   session today.

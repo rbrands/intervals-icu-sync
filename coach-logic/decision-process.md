@@ -25,7 +25,7 @@ Resolve conflicts in this order:
 ## Step-by-Step Process
 
 1. **Read state** — use interpretation-rules.md for form zone, recovery,
-   durability, fueling status. Do not re-derive thresholds.
+   training readiness, durability, and fueling status. Do not re-derive thresholds.
 2. **Inventory completed workouts** — which key sessions are done
    (VO2max, threshold, long ride)? Note high RPE, declining power, high decoupling.
 3. **Evaluate planned workouts (CRITICAL)** — they take precedence.
@@ -47,6 +47,15 @@ Resolve conflicts in this order:
 ---
 
 ## Session Decision Rules
+
+### Training readiness
+- Green permits the planned hard session when subjective readiness is also good;
+   it does not by itself justify adding another hard session.
+- Yellow requires checking subjective recovery and reducing, moving, or replacing
+   intensity when concerns remain.
+- Red excludes hard training; prioritize recovery or an easy session.
+- Unknown requires a manual assessment before prescribing intensity.
+- Low-confidence readiness must never be presented as a definitive clearance.
 
 ### VO2max (CRITICAL — age rule)
 - Athletes 50+: exactly 1 VO2max session per week, in ALL phases, unless

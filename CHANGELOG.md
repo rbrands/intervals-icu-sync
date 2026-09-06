@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-09-06
+
+### Added
+
+- Added explainable `week_summary.training_readiness` output for today's or the next session, combining form, hard-session recency, HRV, resting heart rate, and sleep.
+- Added weighted readiness scoring with safety vetoes, confidence based on available inputs, per-signal contributions, and explicit handling for missing wellness data.
+- Added generated JSON Schema and C# DTO contract support plus focused regression coverage for readiness classification and overrides.
+
+### Changed
+
+- Updated coaching rules and the metrics/wellness prompt to consume the readiness result without duplicating or re-deriving its thresholds.
+
 ## [1.2.11] - 2026-09-05
 
 ### Fixed

@@ -110,6 +110,23 @@ class FuelingFormAnalysis(_SchemaModel):
     long_ride_advice: str | None = None
 
 
+class TrainingReadinessSignal(_SchemaModel):
+    name: str | None = None
+    status: str | None = None
+    contribution: int | None = None
+    reason: str | None = None
+
+
+class TrainingReadiness(_SchemaModel):
+    status: str | None = None
+    score: int | None = None
+    confidence: str | None = None
+    recommendation: str | None = None
+    reasons: list[str] | None = None
+    safety_vetoes: list[str] | None = None
+    signals: list[TrainingReadinessSignal] | None = None
+
+
 class DayConstraint(_SchemaModel):
     date: str | None = None
     type: str | None = None
@@ -156,6 +173,7 @@ class WeekSummary(_SchemaModel):
     form_pct: float | int | None = None
     form_percent_display: float | int | None = None
     form_zone: str | None = None
+    training_readiness: TrainingReadiness | None = None
     fueling_form_analysis: FuelingFormAnalysis | None = None
     training_plan: list[TrainingPlanEntry] | None = None
 

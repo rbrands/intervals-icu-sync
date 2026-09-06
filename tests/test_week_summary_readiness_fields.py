@@ -25,6 +25,10 @@ get_metrics = _load_module(
     "get_metrics_script",
     "scripts/get_metrics.py",
 )
+prepare_week_for_coach = _load_module(
+    "prepare_week_for_coach_readiness_script",
+    "scripts/prepare_week_for_coach.py",
+)
 week_data_schema = _load_module(
     "week_data_schema_model",
     "src/intervals_icu/week_data_schema.py",
@@ -32,6 +36,87 @@ week_data_schema = _load_module(
 
 
 class WeekSummaryReadinessFieldTests(unittest.TestCase):
+    def test_training_readiness_caps_positive_score_after_yesterdays_hard_session(self):
+        metrics = {
+            "sleep_secs": 28860,
+            "sleep_quality": "GOOD",
+            "wellness_trends": {
+                "hrv": {"current": 70.0, "avg_7d": 61.57, "trend_7d": "up"},
+                "resting_hr": {"current": 40.0, "avg_7d": 41.71, "trend_7d": "down"},
+            },
+        }
+        summary = {
+            "ctl": 60.9,
+            "atl": 66.7,
+            "form_zone": "grey_zone",
+            "form_percent_display": -9.5,
+            "days_since_last_hard_session": 1,
+        }
+
+        readiness = prepare_week_for_coach.compute_training_readiness(metrics, summary)
+
+        self.assertEqual(readiness["status"], "yellow")
+        self.assertEqual(readiness["score"], 5)
+        self.assertEqual(readiness["confidence"], "high")
+        self.assertIn("capped at yellow", readiness["safety_vetoes"][0])
+
+    def test_training_readiness_uses_safety_veto_for_high_risk_form(self):
+        readiness = prepare_week_for_coach.compute_training_readiness(
+            {},
+            {"ctl": 60, "atl": 90, "form_zone": "high_risk", "days_since_last_hard_session": 3},
+        )
+
+        self.assertEqual(readiness["status"], "red")
+        self.assertIn("high-risk", readiness["safety_vetoes"][0])
+
+    def test_training_readiness_is_green_when_form_and_recency_are_positive(self):
+        readiness = prepare_week_for_coach.compute_training_readiness(
+            {},
+            {"ctl": 60, "atl": 55, "form_zone": "fresh", "days_since_last_hard_session": 3},
+        )
+
+        self.assertEqual(readiness["status"], "green")
+        self.assertEqual(readiness["score"], 4)
+        self.assertEqual(readiness["confidence"], "medium")
+
+    def test_training_readiness_is_red_after_hard_session_today(self):
+        readiness = prepare_week_for_coach.compute_training_readiness(
+            {},
+            {"ctl": 60, "atl": 55, "form_zone": "fresh", "days_since_last_hard_session": 0},
+        )
+
+        self.assertEqual(readiness["status"], "red")
+        self.assertIn("today", readiness["safety_vetoes"][0])
+
+    def test_training_readiness_uses_safety_veto_for_two_adverse_recovery_signals(self):
+        metrics = {
+            "sleep_secs": 5 * 3600,
+            "sleep_quality": "POOR",
+            "wellness_trends": {
+                "hrv": {"current": 50, "avg_7d": 60, "trend_7d": "down"},
+                "resting_hr": {"current": 40, "avg_7d": 40, "trend_7d": "stable"},
+            },
+        }
+        summary = {
+            "ctl": 60,
+            "atl": 55,
+            "form_zone": "fresh",
+            "days_since_last_hard_session": 3,
+        }
+
+        readiness = prepare_week_for_coach.compute_training_readiness(metrics, summary)
+
+        self.assertEqual(readiness["status"], "red")
+        self.assertIn("two recovery signals", readiness["safety_vetoes"][0])
+
+    def test_training_readiness_is_unknown_without_usable_signals(self):
+        readiness = prepare_week_for_coach.compute_training_readiness({}, {})
+
+        self.assertEqual(readiness["status"], "unknown")
+        self.assertEqual(readiness["score"], 0)
+        self.assertEqual(readiness["confidence"], "low")
+        self.assertTrue(all(signal["status"] == "unavailable" for signal in readiness["signals"]))
+
     def test_compute_form_returns_ctl_and_atl(self):
         form = analyze_week.compute_form(60.0, 75.0)
 
@@ -48,6 +133,8 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
         self.assertNotIn("atl", metric_fields)
         self.assertIn("ctl", summary_fields)
         self.assertIn("atl", summary_fields)
+        self.assertIn("training_readiness", summary_fields)
+        self.assertNotIn("training_readiness", metric_fields)
 
     def test_main_saves_form_when_week_has_no_rides(self):
         with (

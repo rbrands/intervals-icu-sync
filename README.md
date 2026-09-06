@@ -396,7 +396,7 @@ Output: `data/raw/activities_{date}.json`
 ### `get_metrics.py`
 
 Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, the percentage delta between FTP and eFTP (`ftp_eftp_delta_pct`), W', eW', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
-In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place.
+In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place. The consolidation step also writes an explainable daily traffic light to `week_summary.training_readiness`, combining form, hard-session recency, HRV, resting HR, and sleep.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 Weight values are normalized to kilograms (kg). If the athlete account stores weight in pounds, `get_metrics.py` converts it to kg before writing outputs.
 
@@ -421,7 +421,7 @@ Also computes **Form %** based on CTL (fitness) and ATL (fatigue), and writes `c
 
 - `form_absolute = CTL − ATL`
 - `form_pct = (CTL − ATL) / CTL` — relative to current fitness level
-- Form zones: `fresh` (> 0%) · `transition` (0 to −10%) · `optimal` (−10 to −30%) · `high_risk` (< −30%)
+- Form zones: `transition` (> +20%) · `fresh` (+5% to +20%) · `grey_zone` (−10% to +5%) · `optimal` (−30% to −10%) · `high_risk` (< −30%)
 - Coaching recommendations adapt based on form zone (combined with HRV if available)
 
 Session distribution semantics in `week_summary`:
@@ -517,7 +517,11 @@ Output: `data/processed/planned_workouts_{monday}.json`
 Runs all scripts in the correct order:
 `get_activities.py` → `get_metrics.py` → `get_training_plan.py` → `prepare_activities_for_coach.py` → `prepare_planned_workouts_for_coach.py` → `fueling_analysis.py` → `analyze_week.py`
 
-Aborts immediately if any script fails.
+Aborts immediately if any script fails. During consolidation it computes
+`week_summary.training_readiness` for today's or the next session. The object
+contains `status`, `score`, `confidence`, `recommendation`, reasons, safety
+vetoes, and the contribution of every available input signal. Missing optional
+wellness values lower confidence instead of counting as negative readiness.
 
 ```bash
 python scripts/prepare_week_for_coach.py

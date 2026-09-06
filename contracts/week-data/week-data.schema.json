@@ -3,6 +3,21 @@
     "Activity": {
       "additionalProperties": true,
       "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
         "type": {
           "anyOf": [
             {
@@ -1268,6 +1283,21 @@
           "default": null,
           "title": "Eftp"
         },
+        "ftp_eftp_delta_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ftp Eftp Delta Pct"
+        },
         "w_prime": {
           "anyOf": [
             {
@@ -2265,6 +2295,161 @@
       "title": "TrainingPlanEntry",
       "type": "object"
     },
+    "TrainingReadiness": {
+      "additionalProperties": true,
+      "properties": {
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "recommendation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommendation"
+        },
+        "reasons": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reasons"
+        },
+        "safety_vetoes": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Safety Vetoes"
+        },
+        "signals": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/TrainingReadinessSignal"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Signals"
+        }
+      },
+      "title": "TrainingReadiness",
+      "type": "object"
+    },
+    "TrainingReadinessSignal": {
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "contribution": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contribution"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "title": "TrainingReadinessSignal",
+      "type": "object"
+    },
     "Vo2MaxClassification": {
       "additionalProperties": true,
       "properties": {
@@ -2602,6 +2787,42 @@
           "default": null,
           "title": "High Decoupling Rides"
         },
+        "days_since_last_hiit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Days Since Last Hiit"
+        },
+        "days_since_last_polarized": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Days Since Last Polarized"
+        },
+        "days_since_last_hard_session": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Days Since Last Hard Session"
+        },
         "form_absolute": {
           "anyOf": [
             {
@@ -2658,6 +2879,17 @@
           ],
           "default": null,
           "title": "Form Zone"
+        },
+        "training_readiness": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TrainingReadiness"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "fueling_form_analysis": {
           "anyOf": [

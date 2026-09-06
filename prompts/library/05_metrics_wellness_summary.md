@@ -33,6 +33,12 @@ only the discipline-specific comparison.
 - Weight: current value and trend
 
 **Assessment**
+- Report `week_summary.training_readiness` first, including status, confidence,
+	recommendation, and any safety vetoes.
+- Use its signal details to explain conflicting recovery indicators. Do not
+	recalculate or override its score and thresholds.
+- When readiness confidence is `low` or status is `unknown`, do not give a
+	definitive clearance for intensity; state which inputs are missing.
 - What is the current form state (fresh / transition / optimal / high risk)?
 - Are there any anomalies in the wellness data indicating overload or insufficient recovery?
 - Recommendation: Can training load be increased next week, or is recovery the priority?
