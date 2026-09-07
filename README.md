@@ -187,7 +187,8 @@ intervals-icu-sync/
 │   ├── 2026-05 Next Level intervals-icu.pdf           # Webinar slides (German)
 │   ├── 2026-05 Next Level intervals-icu Step by Step.pdf  # Step-by-step setup guide (English)
 │   ├── webinar_notes.md            # Webinar companion guide (German)
-│   └── prompt_library.md           # Copy-paste prompts for ChatGPT / Claude (DE + EN)
+│   ├── prompt_library.md           # Copy-paste prompts for ChatGPT / Claude (DE + EN)
+│   └── training_readiness.md       # Training Readiness traffic-light explainer (English)
 ├── notebooks/
 │   └── week_summary.ipynb          # Interactive weekly training overview
 ├── src/
@@ -774,6 +775,14 @@ jupyter lab notebooks/week_summary.ipynb
 ---
 
 ## Docs
+
+### [`docs/training_readiness.md`](docs/training_readiness.md)
+
+> **Language:** English
+
+A blog-ready explanation of the Training Readiness traffic light, including its five input domains, scoring thresholds, hard-session definition, safety overrides, confidence levels, worked example, output structure, and limitations.
+
+---
 
 ### `docs/2026-05 Next Level intervals-icu.pdf`
 

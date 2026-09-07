@@ -12,6 +12,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Added explainable `week_summary.training_readiness` output for today's or the next session, combining form, hard-session recency, HRV, resting heart rate, and sleep.
 - Added weighted readiness scoring with safety vetoes, confidence based on available inputs, per-signal contributions, and explicit handling for missing wellness data.
 - Added generated JSON Schema and C# DTO contract support plus focused regression coverage for readiness classification and overrides.
+- Added an English, blog-ready guide explaining the Training Readiness traffic light, its scoring model, safety rules, confidence, and limitations.
 
 ### Changed
 
