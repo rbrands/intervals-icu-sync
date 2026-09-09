@@ -125,7 +125,21 @@ Use the publicly hosted MCP server at `intervals-mcp.training-architect.com`. No
 
 ### Option 3 – "Integrated Web App"
 
-Use the live web app at [training-architect.com](https://training-architect.com) for an end-to-end coaching workflow in one interface — no local setup and no manual file exchange.
+Use the live web app at [training-architect.com](https://training-architect.com) for an end-to-end coaching workflow without installing the MCP server or running local scripts.
+
+The same curated dataset and plan workflow can also be used with any GenAI tool:
+
+1. Connect Training Architect to intervals.icu and copy the curated dataset with the copy icon in the connection panel.
+2. Paste the dataset into ChatGPT, Claude, Copilot, Mistral AI, or another GenAI tool together with the coach instructions from this repository.
+3. Ask the GenAI tool to return the training plan as JSON.
+4. Paste that JSON into **Create Plan** using the clipboard icon. Training Architect validates the plan automatically.
+5. Review the validated plan and explicitly confirm the upload before it is written to your intervals.icu calendar.
+
+This is a complete fallback when MCP cannot or should not be configured, for example because of technical restrictions or licensing. API users can perform the same flow with `GET /api/dataset`, `POST /api/validate`, and `POST /api/upload`; the OpenAPI documentation is available at [training-architect.com/swagger](https://training-architect.com/swagger).
+
+**Detailed article:** [Use Any GenAI Coach with intervals.icu Without MCP](docs/genai_without_mcp.md)
+
+**Step-by-step setup guide:** [docs/gen_ai_setup_step_by_step.md](docs/gen_ai_setup_step_by_step.md#section-02--using-any-genai-tool-without-mcp)
 
 Project repository: [github.com/rbrands/training-architect](https://github.com/rbrands/training-architect)
 
@@ -186,6 +200,8 @@ intervals-icu-sync/
 ├── docs/
 │   ├── 2026-05 Next Level intervals-icu.pdf           # Webinar slides (German)
 │   ├── 2026-05 Next Level intervals-icu Step by Step.pdf  # Step-by-step setup guide (English)
+│   ├── gen_ai_setup_step_by_step.md  # GenAI coach and MCP setup guide (English)
+│   ├── genai_without_mcp.md       # Any-GenAI workflow without MCP (English)
 │   ├── webinar_notes.md            # Webinar companion guide (German)
 │   ├── prompt_library.md           # Copy-paste prompts for ChatGPT / Claude (DE + EN)
 │   └── training_readiness.md       # Training Readiness traffic-light explainer (English)
@@ -775,6 +791,14 @@ jupyter lab notebooks/week_summary.ipynb
 ---
 
 ## Docs
+
+### [`docs/genai_without_mcp.md`](docs/genai_without_mcp.md)
+
+> **Language:** English
+
+A standalone, blog-ready guide to using the curated intervals.icu dataset with any GenAI coach without MCP. Covers the clipboard workflow, plan validation and explicit upload confirmation, the public HTTP API, `curl` examples, security, and limitations.
+
+---
 
 ### [`docs/training_readiness.md`](docs/training_readiness.md)
 

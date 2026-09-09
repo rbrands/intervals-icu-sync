@@ -116,7 +116,50 @@ Under **"Instructions"**, paste the contents of `system_prompt.md` with the matc
 
 Under **"Knowledge"**, upload all files from the `coach-logic/` directory. ([Download as ZIP](https://download-directory.github.io/?url=https%3A%2F%2Fgithub.com%2Frbrands%2Fintervals-icu-sync%2Ftree%2Fmain%2Fcoach-logic))
 
-## Section 02 – Using the Managed MCP Server
+## Section 02 – Using Any GenAI Tool Without MCP
+
+*Copy the curated dataset into any GenAI tool, then validate and upload the generated plan in Training Architect.*
+
+This workflow does not require an MCP-capable GenAI tool or an MCP server connection. Use it when MCP cannot be configured because of technical or licensing restrictions, or when you prefer a manual, transparent exchange through the clipboard.
+
+For a standalone explanation of the architecture, browser workflow, API examples, security, and limitations, see [Use Any GenAI Coach with intervals.icu Without MCP](genai_without_mcp.md).
+
+## Browser workflow
+
+1. Open [Training Architect](https://training-architect.com) and connect your intervals.icu account with your **Athlete ID** and **API Key**.
+2. In the connection panel, select the **copy icon** next to the connection status. This copies the curated dataset to your clipboard.
+3. Paste the dataset into your GenAI tool together with the system prompt and coach-logic files from Section 01.
+4. Discuss the assessment and ask the GenAI tool to return the final training plan as JSON that follows the plan contract in `prompts/system_prompt.md`.
+5. In Training Architect, select the **clipboard icon** next to **Create Plan** and paste the generated plan JSON.
+6. Training Architect validates the JSON automatically. Resolve any reported validation errors in the GenAI tool and paste the corrected JSON again.
+7. Review the validated plan. The upload to intervals.icu only happens after you explicitly confirm it.
+
+> **Privacy:** The curated dataset contains personal training and wellness data. Only paste it into a GenAI service you trust, and never include your intervals.icu API key in the conversation.
+
+## HTTP API workflow
+
+Postman, `curl`, scripts, and other HTTP clients can use the same workflow through the public API:
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `https://training-architect.com/api/dataset` | Return the curated dataset |
+| `POST` | `https://training-architect.com/api/validate` | Validate raw plan JSON without uploading it |
+| `POST` | `https://training-architect.com/api/upload` | Validate and upload raw plan JSON |
+
+All three endpoints require these request headers:
+
+```text
+X-Intervals-Athlete-Id: <your-athlete-id>
+X-Intervals-Api-Key: <your-api-key>
+```
+
+The `validate` and `upload` endpoints accept the raw plan JSON as the request body, without a wrapper object. Validate and review the plan before calling `upload`; an API call to `POST /api/upload` is the explicit upload confirmation.
+
+The complete interactive API specification, including request and response details, is available at [training-architect.com/swagger](https://training-architect.com/swagger).
+
+---
+
+## Section 03 – Using the Managed MCP Server
 
 *No local Python installation needed — your AI tool fetches your data and uploads the plan directly via MCP.*
 
@@ -239,7 +282,7 @@ Select **"Create new connection"** and enter your intervals.icu **Athlete ID** a
 
 Select **Publish** to make the agent available.
 
-## Section 03 – Set Up Phase Planning in intervals.icu
+## Section 04 – Set Up Phase Planning in intervals.icu
 
 *Define season phases and weekly TSS targets so the coach can evaluate plan adherence correctly.*
 
@@ -275,7 +318,7 @@ in the `training_plan` section of the coach input.
 > **Tip:** Re-open Targets Generator whenever your availability or race goals change.
 > Keeping phase blocks and weekly targets up to date significantly improves coaching quality.
 
-## Section 04 – Typical Workflow
+## Section 05 – Typical Workflow
 
 *How you use the tool every week/daily with your AI coach.*
 
