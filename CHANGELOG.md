@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-09-09
+
+### Fixed
+
+- Improved week-plan schema validation errors so temporary file paths and complete plan contents are not included in the output; nested errors now identify the relevant field and location.
+
 ## [1.3.0] - 2026-09-06
 
 ### Added

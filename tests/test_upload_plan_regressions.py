@@ -3,6 +3,8 @@ import importlib.util
 import io
 import json
 import os
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -36,6 +38,83 @@ def _load_check_plan_tss_module():
 
 
 class UploadPlanRegressionTests(unittest.TestCase):
+    def test_validate_plan_does_not_include_plan_path_for_schema_errors(self):
+        plan_path = REPO_ROOT / "tests" / "invalid-temporary-plan.json"
+        schema_path = REPO_ROOT / "contracts" / "week-plan" / "week-plan.schema.json"
+        plan_path.write_text(
+            json.dumps({"workouts": [{"date": "2026-05-19", "name": "Bad type", "duration_minutes": 30, "activity_type": "Jogging"}]}),
+            encoding="utf-8",
+        )
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts" / "validate_plan.py"),
+                "--plan",
+                str(plan_path),
+                "--schema",
+                str(schema_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("validation error(s) in plan", result.stdout)
+        self.assertNotIn(str(plan_path), result.stdout)
+
+    def test_validate_plan_does_not_echo_entire_plan_for_root_schema_errors(self):
+        plan_path = REPO_ROOT / "tests" / "invalid-root-plan.json"
+        schema_path = REPO_ROOT / "contracts" / "week-plan" / "week-plan.schema.json"
+        plan = {"unexpected": "value", "payload": ["should not be echoed"]}
+        plan_path.write_text(json.dumps(plan), encoding="utf-8")
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts" / "validate_plan.py"),
+                "--plan",
+                str(plan_path),
+                "--schema",
+                str(schema_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("missing required property 'workouts'", result.stdout)
+        self.assertNotIn(json.dumps(plan), result.stdout)
+
+    def test_validate_plan_reports_missing_nested_required_property_without_echoing_plan(self):
+        plan_path = REPO_ROOT / "tests" / "missing-date-plan.json"
+        schema_path = REPO_ROOT / "contracts" / "week-plan" / "week-plan.schema.json"
+        plan = {"workouts": [{"name": "Workout without date", "duration_minutes": 45}]}
+        plan_path.write_text(json.dumps(plan), encoding="utf-8")
+        self.addCleanup(plan_path.unlink, missing_ok=True)
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts" / "validate_plan.py"),
+                "--plan",
+                str(plan_path),
+                "--schema",
+                str(schema_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("$.workouts[0]: missing required property 'date'", result.stdout)
+        self.assertNotIn(json.dumps(plan), result.stdout)
+
     def test_week_plan_schema_accepts_valid_activity_types(self):
         schema = json.loads(
             (REPO_ROOT / "contracts" / "week-plan" / "week-plan.schema.json").read_text(
