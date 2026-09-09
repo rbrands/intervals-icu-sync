@@ -178,6 +178,7 @@ def build_training_load_history(
             if target.get("sport_type") == "Ride"
         ]
         weekly_load_target = ride_targets[0].get("load_target") if ride_targets else None
+        week_type = ride_targets[0].get("week_type", "NORMAL") if ride_targets else "NORMAL"
         achievement_pct = (
             round(total_training_load / weekly_load_target * 100, 1)
             if weekly_load_target
@@ -185,6 +186,7 @@ def build_training_load_history(
         )
         history.append({
             "week_starting": week_start.isoformat(),
+            "week_type": week_type,
             "weekly_load_target": weekly_load_target,
             "total_training_load": total_training_load,
             "achievement_pct": achievement_pct,

@@ -111,7 +111,12 @@ class TrainingLoadHistoryTests(unittest.TestCase):
                 "start_date_local": "2026-08-03",
                 "type": "Ride",
                 "load_target": 418,
-            }
+            },
+            {
+                "category": "NOTE",
+                "start_date_local": "2026-08-03",
+                "name": "Recovery Week",
+            },
         ]
         summaries = {
             "2026-08-03": {
@@ -131,11 +136,13 @@ class TrainingLoadHistoryTests(unittest.TestCase):
         self.assertEqual(len(history), 4)
         self.assertEqual(history[-1], {
             "week_starting": "2026-08-03",
+            "week_type": "RECOVERY",
             "weekly_load_target": 418,
             "total_training_load": 510,
             "achievement_pct": 122.0,
         })
         self.assertEqual(history[0]["week_starting"], "2026-07-13")
+        self.assertEqual(history[0]["week_type"], "NORMAL")
         self.assertEqual(history[0]["total_training_load"], 0)
         self.assertIsNone(history[0]["weekly_load_target"])
         self.assertIsNone(history[0]["achievement_pct"])
@@ -197,6 +204,7 @@ class TrainingLoadHistoryTests(unittest.TestCase):
             output["training_load_history"][-1],
             {
                 "week_starting": latest_completed_monday.isoformat(),
+                "week_type": "NORMAL",
                 "weekly_load_target": 400,
                 "total_training_load": 500,
                 "achievement_pct": 125.0,
