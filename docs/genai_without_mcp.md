@@ -37,7 +37,7 @@ The curated dataset is a consolidated JSON representation of the athlete's relev
 - Fueling information
 - Weekly summaries and training readiness
 - Active training phase and weekly targets
-- Planned workouts and day-level availability constraints
+- Planned workouts, upcoming `RACE_A`/`RACE_B`/`RACE_C` events, and day-level availability constraints
 
 Its structure follows the coaching input contract in `coach-logic/input-schema.md`. The system prompt and coach-logic files tell the GenAI tool how to interpret these fields and turn them into recommendations.
 
@@ -60,6 +60,8 @@ Open [Training Architect](https://training-architect.com), connect it to interva
 Select the copy icon next to the connection status. Training Architect retrieves the current curated dataset and copies it to the clipboard.
 
 Paste the JSON into the prepared GenAI conversation. The athlete can now request a latest-workout assessment, a weekly review, or another coaching analysis using current data.
+
+Race events marked with a race priority in intervals.icu are transferred automatically for the current and next week. If a race has not been entered in intervals.icu, add its date, name, and priority explicitly to the GenAI planning request as a manual fallback; this does not modify the copied dataset itself.
 
 ### 3. Discuss Before Planning
 

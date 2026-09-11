@@ -174,3 +174,6 @@ Activity-level FTP fields are separate from the current athlete Metrics:
 - `steps[].duration_min`: MINUTES (note the unit difference vs activities
   in hours and output in seconds).
 - Planned workouts must be considered BEFORE adding or modifying sessions.
+- `current_week.race_events[]` and `next_week.race_events[]`: intervals.icu
+  race calendar events. `priority` preserves the source category (`RACE_A`,
+  `RACE_B`, or `RACE_C`). Treat these as fixed events, not planned workouts.

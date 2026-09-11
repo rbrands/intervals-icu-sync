@@ -502,6 +502,9 @@ public class PlannedWorkoutsWeekDto
     [JsonPropertyName("planned_workouts")]
     public List<PlannedWorkoutEntryDto>? PlannedWorkouts { get; set; }
 
+    [JsonPropertyName("race_events")]
+    public List<RaceEventDto>? RaceEvents { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
@@ -558,6 +561,27 @@ public class PowerProfilePointDto
 
     [JsonPropertyName("w_per_kg")]
     public double? WPerKg { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public class RaceEventDto
+{
+    [JsonPropertyName("date")]
+    public string Date { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; }
+
+    [JsonPropertyName("priority")]
+    public string Priority { get; set; }
+
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

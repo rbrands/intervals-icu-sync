@@ -90,6 +90,13 @@ def filter_workouts_for_week(workouts: list[dict], week_monday: date) -> list[di
     return [w for w in workouts if week_start <= (w.get("start_date_local") or "")[:10] <= week_end]
 
 
+def filter_races_for_week(races: list[dict], week_monday: date) -> list[dict]:
+    """Return simplified race events in the ISO week starting on week_monday."""
+    week_start = week_monday.isoformat()
+    week_end = (week_monday + timedelta(days=6)).isoformat()
+    return [race for race in races if week_start <= (race.get("date") or "") <= week_end]
+
+
 def main() -> None:
     plan = load_training_plan()
     if plan is None:
@@ -100,19 +107,24 @@ def main() -> None:
     next_monday = monday + timedelta(weeks=1)
 
     raw_workouts: list[dict] = plan.get("workouts") or []
+    raw_race_events: list[dict] = plan.get("race_events") or []
 
     current_week_workouts = [_simplify_workout(w) for w in filter_workouts_for_week(raw_workouts, monday)]
     next_week_workouts = [_simplify_workout(w) for w in filter_workouts_for_week(raw_workouts, next_monday)]
+    current_week_races = filter_races_for_week(raw_race_events, monday)
+    next_week_races = filter_races_for_week(raw_race_events, next_monday)
 
     output = {
         "generated_on": today.isoformat(),
         "current_week": {
             "week_starting": monday.isoformat(),
             "planned_workouts": current_week_workouts,
+            "race_events": current_week_races,
         },
         "next_week": {
             "week_starting": next_monday.isoformat(),
             "planned_workouts": next_week_workouts,
+            "race_events": next_week_races,
         },
     }
 
@@ -122,9 +134,10 @@ def main() -> None:
     print(f"Saved -> {output_path}")
 
     total = len(current_week_workouts) + len(next_week_workouts)
+    total_races = len(current_week_races) + len(next_week_races)
     print(f"  Current week ({monday}): {len(current_week_workouts)} workouts")
     print(f"  Next week    ({next_monday}): {len(next_week_workouts)} workouts")
-    print(f"  Total: {total} workouts")
+    print(f"  Total: {total} workouts, {total_races} races")
 
 
 if __name__ == "__main__":

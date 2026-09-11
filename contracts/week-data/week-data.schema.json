@@ -1789,6 +1789,21 @@
           ],
           "default": null,
           "title": "Planned Workouts"
+        },
+        "race_events": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/RaceEvent"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Race Events"
         }
       },
       "title": "PlannedWorkoutsWeek",
@@ -2002,6 +2017,54 @@
         }
       },
       "title": "PowerProfilePoint",
+      "type": "object"
+    },
+    "RaceEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "date": {
+          "title": "Date",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        }
+      },
+      "required": [
+        "date",
+        "name",
+        "priority"
+      ],
+      "title": "RaceEvent",
       "type": "object"
     },
     "TrainingLoadHistoryEntry": {

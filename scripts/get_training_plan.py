@@ -50,6 +50,8 @@ _WEEK_NOTE_TYPE_MAP: dict[str, str] = {
     "rennwoche": "RACE",
 }
 
+_RACE_CATEGORIES = {"RACE_A", "RACE_B", "RACE_C"}
+
 
 def fetch_all_events(start: str, end: str) -> list:
     url = f"{BASE_URL}/athlete/{ATHLETE_ID}/events.json"
@@ -282,6 +284,25 @@ def find_day_constraints(events: list, monday: date) -> list[dict]:
     return constraints
 
 
+def find_race_events(events: list, start: date) -> list[dict]:
+    """Return upcoming race events with their intervals.icu priority."""
+    races = []
+    for event in events:
+        category = (event.get("category") or "").upper()
+        event_date = (event.get("start_date_local") or "")[:10]
+        if category not in _RACE_CATEGORIES or not event_date or event_date < start.isoformat():
+            continue
+        races.append({
+            "date": event_date,
+            "name": event.get("name") or "(unnamed)",
+            "priority": category,
+            "type": event.get("type"),
+            "description": event.get("description"),
+        })
+    races.sort(key=lambda race: (race["date"], race["priority"], race["name"]))
+    return races
+
+
 def _remove_key_recursive(payload: object, key_to_remove: str) -> object:
     if isinstance(payload, dict):
         return {
@@ -331,6 +352,7 @@ def main() -> None:
 
     workouts = [e for e in phase_events if e.get("category") == "WORKOUT"
                 and e.get("start_date_local", "")[:10] >= today.isoformat()]
+    race_events = find_race_events(phase_events, today)
 
     if active_phases:
         for p in active_phases:
@@ -375,6 +397,7 @@ def main() -> None:
         "range_start": today.isoformat(),
         "range_end": end_date.isoformat(),
         "workouts": workouts,
+        "race_events": race_events,
     }
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

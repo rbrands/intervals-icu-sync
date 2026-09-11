@@ -39,7 +39,7 @@ For the analysis to work properly, the following conditions should be met:
 
 8. **Activity tags set in intervals.icu** *(recommended)*: Tag your completed activities in intervals.icu using the tag scheme described in the [Coaching Logic](#coaching-logic) section (e.g. `vo2max-high`, `lactate-threshold-moderate`). Tags take priority over automatic session classification and lead to more accurate coaching output.
 
-9. **Training plan created in intervals.icu using the Target Generator** *(recommended)*: Create a training plan in intervals.icu via the **Target Generator** (Plans → Target Generator). This places PLAN events (mesocycle blocks, e.g. Base / Build / Peak) and TARGET events (weekly TSS or time targets) in your calendar. `get_training_plan.py` reads these events and adds the current phase name and weekly target — as well as the following week's target — to the coach input. TSS targets are exposed as `weekly_load_target`; if `time_target_hours` is also present, treat it as an upper time cap. If `weekly_load_target` is missing, `weekly_time_target_hours` becomes the weekly target. It also propagates day-level constraints (for example Sick/Travel days) when available. Without a plan the training plan section will be empty.
+9. **Training plan created in intervals.icu using the Target Generator** *(recommended)*: Create a training plan in intervals.icu via the **Target Generator** (Plans → Target Generator). This places PLAN events (mesocycle blocks, e.g. Base / Build / Peak) and TARGET events (weekly TSS or time targets) in your calendar. `get_training_plan.py` reads these events and adds the current phase name and weekly target — as well as the following week's target — to the coach input. TSS targets are exposed as `weekly_load_target`; if `time_target_hours` is also present, treat it as an upper time cap. If `weekly_load_target` is missing, `weekly_time_target_hours` becomes the weekly target. It also propagates day-level constraints (for example Sick/Travel days) when available. Race events categorized as `RACE_A`, `RACE_B`, or `RACE_C` in intervals.icu are included for the current and next week so the coach can taper and protect the race date. Without a plan the training plan section will be empty.
 
 ## Coaching Logic
 
@@ -520,7 +520,7 @@ Output: console plan + `data/processed/fueling_plan_{monday}.json`
 
 ### `prepare_planned_workouts_for_coach.py`
 
-Reads the most recent `training_plan_*.json` and extracts the planned workouts for the current and next ISO week. Simplifies each workout to the fields relevant for coaching (date, name, type, duration, planned load, description, zone distribution, step structure) and saves the result.
+Reads the most recent `training_plan_*.json` and extracts the planned workouts and `RACE_A`/`RACE_B`/`RACE_C` events for the current and next ISO week. Simplifies each workout to the fields relevant for coaching (date, name, type, duration, planned load, description, zone distribution, step structure) and saves races separately under each week's `race_events` field.
 
 ```bash
 python scripts/prepare_planned_workouts_for_coach.py
@@ -607,7 +607,7 @@ Output: table or JSON to stdout
 
 ### `get_training_plan.py`
 
-Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Exports active phase(s), current and next-week TSS or time targets, and day-level constraints (e.g. Sick/Travel/Unavailable) derived from calendar NOTE and availability markers. For NOTE events, explicit `training_availability` values (for example `LIMITED`) take precedence over label keyword inference. If a constrained day has a max duration in intervals.icu, it is exported as `day_constraints[].max_training_time_hours`.
+Fetches the athlete's currently active training plan from intervals.icu (if one is assigned). Exports active phase(s), current and next-week TSS or time targets, upcoming race events with their `RACE_A`/`RACE_B`/`RACE_C` priority, and day-level constraints (e.g. Sick/Travel/Unavailable) derived from calendar NOTE and availability markers. For NOTE events, explicit `training_availability` values (for example `LIMITED`) take precedence over label keyword inference. If a constrained day has a max duration in intervals.icu, it is exported as `day_constraints[].max_training_time_hours`.
 
 The consolidated coach input also includes a top-level `training_load_history` array for the last four completed calendar weeks. Each entry contains `week_starting`, the Ride `weekly_load_target` when available, server-aggregated Ride `total_training_load`, and `achievement_pct`. The current week is excluded because its target and actual load already belong to `week_summary`. Historical load is queried directly from the intervals.icu athlete-summary API and does not depend on older local export files.
 

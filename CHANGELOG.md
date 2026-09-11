@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.2] - 2026-09-11
+
+### Added
+
+- Added `RACE_A`, `RACE_B`, and `RACE_C` calendar events to the curated current- and next-week coaching dataset, including race priority and taper-aware coaching rules.
+
 ## [1.3.1] - 2026-09-09
 
 ### Fixed

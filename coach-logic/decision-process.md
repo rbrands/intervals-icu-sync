@@ -84,6 +84,18 @@ For criterium / road-race goals (discipline block). Hard anaerobic effort
 Use one or more "race-specific-<level>" tags; downstream logic derives the
 race classification from those tags.
 
+### Upcoming races
+- Inspect `planned_workouts.current_week.race_events` and
+   `planned_workouts.next_week.race_events` before placing any session.
+- Never schedule another workout on a race date. The race itself is the key
+   session and replaces an equivalent high-intensity stimulus.
+- `RACE_A`: protect the event with a taper; reduce volume and fatigue while
+   retaining only enough short intensity to preserve sharpness.
+- `RACE_B`: reduce conflicting fatigue and arrive reasonably fresh without
+   overriding the primary season goal.
+- `RACE_C`: treat as a supported training race; replace the week's comparable
+   intensity rather than adding it on top.
+
 ---
 
 ## W' Actions

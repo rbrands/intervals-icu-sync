@@ -287,9 +287,18 @@ class PlannedWorkoutEntry(_SchemaModel):
     steps: list[PlannedWorkoutStep] | None = None
 
 
+class RaceEvent(_SchemaModel):
+    date: str
+    name: str
+    priority: str
+    type: str | None = None
+    description: str | None = None
+
+
 class PlannedWorkoutsWeek(_SchemaModel):
     week_starting: str | None = None
     planned_workouts: list[PlannedWorkoutEntry] | None = None
+    race_events: list[RaceEvent] | None = None
 
 
 class PlannedWorkouts(_SchemaModel):

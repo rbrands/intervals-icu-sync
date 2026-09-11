@@ -36,6 +36,10 @@ analyze_week = _load_module(
     "analyze_week_script",
     "scripts/analyze_week.py",
 )
+prepare_planned_workouts = _load_module(
+    "prepare_planned_workouts_script",
+    "scripts/prepare_planned_workouts_for_coach.py",
+)
 get_training_plan = _load_module(
     "get_training_plan_script",
     "scripts/get_training_plan.py",
@@ -43,6 +47,60 @@ get_training_plan = _load_module(
 
 
 class TrainingPlanPhaseRegressionTests(unittest.TestCase):
+    def test_race_event_is_included_in_next_week_coaching_data(self):
+        races = [
+            {
+                "date": "2026-09-19",
+                "name": "Road Classic Jested",
+                "priority": "RACE_A",
+                "type": "Ride",
+                "description": None,
+            }
+        ]
+
+        next_week_races = prepare_planned_workouts.filter_races_for_week(
+            races,
+            date(2026, 9, 14),
+        )
+
+        self.assertEqual(next_week_races, races)
+
+    def test_race_events_preserve_intervals_priority(self):
+        events = [
+            {
+                "category": "RACE_A",
+                "name": "Road Classic Jested",
+                "type": "Ride",
+                "start_date_local": "2026-09-19T09:00:00",
+                "description": "Season goal",
+            },
+            {
+                "category": "WORKOUT",
+                "name": "Race-specific workout",
+                "start_date_local": "2026-09-17T18:00:00",
+            },
+            {
+                "category": "RACE_B",
+                "name": "Past race",
+                "start_date_local": "2026-09-05T09:00:00",
+            },
+        ]
+
+        races = get_training_plan.find_race_events(events, date(2026, 9, 11))
+
+        self.assertEqual(
+            races,
+            [
+                {
+                    "date": "2026-09-19",
+                    "name": "Road Classic Jested",
+                    "priority": "RACE_A",
+                    "type": "Ride",
+                    "description": "Season goal",
+                }
+            ],
+        )
+
     def test_note_constraints_prefer_explicit_availability_over_label_keywords(self):
         events = [
             {
