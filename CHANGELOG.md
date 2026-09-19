@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.3] - 2026-09-19
+
+### Changed
+
+- Added CTL-relative load to hard-session detection: any session with TSS at least 50% above current CTL now resets hard-session recency, alongside the existing intensity-distribution and RPE rules.
+
 ## [1.3.2] - 2026-09-11
 
 ### Added

@@ -71,9 +71,19 @@ Recovery demand depends strongly on how recently the athlete completed meaningfu
 
 A session counts as hard when its intensity distribution is:
 
+- Any distribution with TSS at least 50% above current CTL
 - `HIIT`, regardless of TSS
 - `Polarized`, regardless of TSS
 - `Threshold` with at least 50 TSS **or** RPE 7+
+
+The CTL-relative threshold is:
+
+$$
+	ext{Hard by load} \iff \text{TSS} \ge 1.5 \times \text{current CTL}
+$$
+
+This incorporates the hard/key-session band from the relative-load table. The
+moderate and easy bands do not reset hard-session recency by themselves.
 
 The extra requirement for Threshold sessions prevents short, easy rides with incidental time in zones 3 and 4 from resetting hard-session recency. HIIT and Polarized sessions do not use a TSS floor because a short VO2max workout can create substantial recovery demand despite a modest total training load.
 

@@ -465,32 +465,48 @@ def compute_days_since_last_distribution(activities: list, labels: list[str], as
     return None
 
 
-def compute_days_since_last_hard_session(activities: list, as_of: date) -> int | None:
+def compute_days_since_last_hard_session(
+    activities: list,
+    as_of: date,
+    current_ctl: float | None = None,
+) -> int | None:
     """Return days since the latest session with meaningful recovery demand."""
     qualifying_activities = []
     for activity in activities:
         distribution = _infer_distribution_label(activity)
+        training_load = _as_float(
+            activity.get("icu_training_load", activity.get("training_load"))
+        )
+        if current_ctl is not None and current_ctl > 0 and training_load >= current_ctl * 1.5:
+            qualifying_activities.append(activity)
+            continue
         if distribution in {"HIIT", "Polarized"}:
             qualifying_activities.append(activity)
             continue
         if distribution != "Threshold":
             continue
 
-        training_load = _as_float(
-            activity.get("icu_training_load", activity.get("training_load"))
-        )
         rpe = _as_float(activity.get("perceived_exertion", activity.get("rpe")))
         if training_load >= 50 or rpe >= 7:
             qualifying_activities.append(activity)
 
-    return compute_days_since_last_distribution(
+    for activity in sorted(
         qualifying_activities,
-        ["HIIT", "Polarized", "Threshold"],
-        as_of,
-    )
+        key=lambda a: (a.get("start_date_local") or a.get("date") or ""),
+        reverse=True,
+    ):
+        start_value = activity.get("start_date_local") or activity.get("date")
+        if not isinstance(start_value, str):
+            continue
+        try:
+            activity_date = date.fromisoformat(start_value[:10])
+        except ValueError:
+            continue
+        return (as_of - activity_date).days
+    return None
 
 
-def compute_metrics(activities: list) -> dict:
+def compute_metrics(activities: list, current_ctl: float | None = None) -> dict:
     total_load = sum(_as_float(a.get("icu_training_load")) for a in activities)
     times = [_as_float(a.get("moving_time")) / 3600 for a in activities]
     total_time = sum(times)
@@ -533,6 +549,7 @@ def compute_metrics(activities: list) -> dict:
         "days_since_last_hard_session": compute_days_since_last_hard_session(
             activities,
             date.today(),
+            current_ctl,
         ),
     }
 
@@ -667,7 +684,7 @@ def main() -> None:
         sys.exit(0)
     athlete_metrics = load_metrics()
     fueling_data = load_fueling(monday)
-    metrics = compute_metrics(rides)
+    metrics = compute_metrics(rides, athlete_metrics.get("ctl"))
     form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
     metrics.update(form)
     fueling_form = analyse_fueling_form(form["form_pct"], fueling_data, rides, training_plan) if fueling_data else None
