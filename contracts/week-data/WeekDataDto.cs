@@ -67,6 +67,15 @@ public class ActivityDto
     [JsonPropertyName("training_load")]
     public double? TrainingLoad { get; set; }
 
+    [JsonPropertyName("ctl")]
+    public double? Ctl { get; set; }
+
+    [JsonPropertyName("atl")]
+    public double? Atl { get; set; }
+
+    [JsonPropertyName("form_absolute")]
+    public double? FormAbsolute { get; set; }
+
     [JsonPropertyName("avg_power")]
     public double? AvgPower { get; set; }
 

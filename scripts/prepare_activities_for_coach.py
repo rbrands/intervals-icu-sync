@@ -495,6 +495,25 @@ def _extract_heart_rate(activity: dict) -> tuple[int | float | None, int | float
     return avg_hr, max_hr
 
 
+def _extract_training_load_state(activity: dict) -> dict:
+    """Post-activity CTL/ATL/form as reported by intervals.icu for this activity."""
+    ctl = _optional_float(activity.get("icu_ctl"))
+    atl = _optional_float(activity.get("icu_atl"))
+    form_absolute = ctl - atl if ctl is not None and atl is not None else None
+    return {
+        "ctl": round(ctl, 1) if ctl is not None else None,
+        "atl": round(atl, 1) if atl is not None else None,
+        "form_absolute": round(form_absolute, 1) if form_absolute is not None else None,
+    }
+
+
+def _optional_float(value: object) -> float | None:
+    try:
+        return None if value is None else float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def extract_fields(
     activity: dict,
     wbal_summary: dict | None = None,
@@ -518,6 +537,7 @@ def extract_fields(
         "name": activity.get("name"),
         "duration_hours": round(duration_hours, 2),
         "training_load": activity.get("icu_training_load"),
+        **_extract_training_load_state(activity),
         "avg_hr": avg_hr,
         "max_hr": max_hr,
         "training_distribution": ride_class["label"] if ride_class else None,

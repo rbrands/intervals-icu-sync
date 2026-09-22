@@ -10,6 +10,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Added `activities[].is_hard_session` to consolidated coach data, using the same CTL, distribution, load, and RPE rules as hard-session recency.
+- Added post-activity `ctl`, `atl`, and `form_absolute` (CTL − ATL) to every exported activity, sourced from intervals.icu `icu_ctl`/`icu_atl`, so the fitness/fatigue/form trajectory is visible per session instead of only as the current `week_summary` snapshot. JSON Schema and C# DTO contracts were regenerated accordingly.
 
 ## [1.3.3] - 2026-09-19
 

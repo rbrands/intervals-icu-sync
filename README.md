@@ -402,6 +402,7 @@ Included activity types are `Ride`, `MountainBikeRide`, and `GravelRide` (plus `
 Missing or invalid `icu_training_load` values are treated as `0` during filtering.
 Cycling activities with a training load above `20` are always kept. Running activities are kept whenever intervals.icu supplies `icu_training_load`, even if the value is below `20`. Tagged activities below the cycling threshold are kept only when they carry at least one usable metric (training load, average or normalized power, heart rate, or zone times), so incomplete placeholder entries are dropped. If `icu_zone_times` is missing, running activities fall back to `icu_hr_zone_times` for the Z1/Z2, Z3/Z4, and Z5+ distribution.
 For activities with power data, the coach export also includes the activity FTP (`activity_ftp`) and activity-specific eFTP (`activity_eftp`) supplied by intervals.icu; these are separate from the current athlete Metrics FTP.
+Every exported activity also carries the post-activity fitness state reported by intervals.icu (`icu_ctl`/`icu_atl`) as `ctl`, `atl` and `form_absolute` (CTL − ATL), so the CTL/ATL/TSB trajectory across the export window is visible per session and not only as the current snapshot in `week_summary`.
 
 ```bash
 python scripts/get_activities.py

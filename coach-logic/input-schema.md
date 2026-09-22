@@ -74,6 +74,10 @@ Activity-level FTP fields are separate from the current athlete Metrics:
 `activities[].is_hard_session` marks whether the activity meets the same
 CTL-relative load, training-distribution, or RPE rules used by
 `week_summary.days_since_last_hard_session`.
+`activities[].ctl` / `activities[].atl` / `activities[].form_absolute` are the
+fitness, fatigue and form (CTL−ATL) values *after* that activity, as reported
+by intervals.icu. Read them in date order to see the CTL/ATL/TSB trajectory;
+`week_summary.ctl`/`atl` remain the current (today) snapshot.
 
 ---
 

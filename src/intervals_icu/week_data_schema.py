@@ -219,6 +219,9 @@ class Activity(_SchemaModel):
     activity_ftp: float | int | None = None
     activity_eftp: float | int | None = None
     training_load: float | int | None = None
+    ctl: float | int | None = None
+    atl: float | int | None = None
+    form_absolute: float | int | None = None
     avg_power: float | int | None = None
     norm_power: float | int | None = None
     avg_hr: float | int | None = None
