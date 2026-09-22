@@ -213,6 +213,18 @@
           "default": null,
           "title": "Training Distribution Reason"
         },
+        "is_hard_session": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Is Hard Session"
+        },
         "z1_z2_pct": {
           "anyOf": [
             {

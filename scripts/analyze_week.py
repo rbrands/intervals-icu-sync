@@ -7,8 +7,13 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-_DEFAULT_RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
-_DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_ROOT / "src"))
+
+from intervals_icu.training_readiness import is_hard_session
+
+_DEFAULT_RAW_DIR = _ROOT / "data" / "raw"
+_DEFAULT_PROCESSED_DIR = _ROOT / "data" / "processed"
 DATA_DIR = Path(os.environ.get("INTERVALS_RAW_DIR", str(_DEFAULT_RAW_DIR)))
 OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESSED_DIR)))
 METRICS_DIR = OUTPUT_DIR
@@ -471,24 +476,15 @@ def compute_days_since_last_hard_session(
     current_ctl: float | None = None,
 ) -> int | None:
     """Return days since the latest session with meaningful recovery demand."""
-    qualifying_activities = []
-    for activity in activities:
-        distribution = _infer_distribution_label(activity)
-        training_load = _as_float(
-            activity.get("icu_training_load", activity.get("training_load"))
+    qualifying_activities = [
+        activity
+        for activity in activities
+        if is_hard_session(
+            activity,
+            current_ctl=current_ctl,
+            distribution=_infer_distribution_label(activity),
         )
-        if current_ctl is not None and current_ctl > 0 and training_load >= current_ctl * 1.5:
-            qualifying_activities.append(activity)
-            continue
-        if distribution in {"HIIT", "Polarized"}:
-            qualifying_activities.append(activity)
-            continue
-        if distribution != "Threshold":
-            continue
-
-        rpe = _as_float(activity.get("perceived_exertion", activity.get("rpe")))
-        if training_load >= 50 or rpe >= 7:
-            qualifying_activities.append(activity)
+    ]
 
     for activity in sorted(
         qualifying_activities,

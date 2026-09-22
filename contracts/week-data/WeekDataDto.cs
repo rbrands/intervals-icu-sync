@@ -88,6 +88,9 @@ public class ActivityDto
     [JsonPropertyName("training_distribution_reason")]
     public string? TrainingDistributionReason { get; set; }
 
+    [JsonPropertyName("is_hard_session")]
+    public bool? IsHardSession { get; set; }
+
     [JsonPropertyName("z1_z2_pct")]
     public double? Z1Z2Pct { get; set; }
 

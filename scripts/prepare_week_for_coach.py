@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from intervals_icu.training_readiness import compute_training_readiness
+from intervals_icu.training_readiness import annotate_hard_sessions, compute_training_readiness
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 _ROOT = SCRIPTS_DIR.parent
@@ -246,6 +246,7 @@ def consolidate() -> None:
         activities if isinstance(activities, list) else [],
         fueling_data if isinstance(fueling_data, dict) else None,
     )
+    activities = annotate_hard_sessions(activities, current_ctl=week_data.get("ctl"))
 
     coach_input = {
         "schema_version": _SCHEMA_VERSION,

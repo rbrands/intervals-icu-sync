@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Added `activities[].is_hard_session` to consolidated coach data, using the same CTL, distribution, load, and RPE rules as hard-session recency.
+
 ## [1.3.3] - 2026-09-19
 
 ### Changed

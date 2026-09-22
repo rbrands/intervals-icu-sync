@@ -71,6 +71,9 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 Activity-level FTP fields are separate from the current athlete Metrics:
 `activities[].activity_ftp` is the FTP value stored with the activity, and
 `activities[].activity_eftp` is the activity-specific eFTP from intervals.icu.
+`activities[].is_hard_session` marks whether the activity meets the same
+CTL-relative load, training-distribution, or RPE rules used by
+`week_summary.days_since_last_hard_session`.
 
 ---
 

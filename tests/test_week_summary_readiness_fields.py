@@ -128,6 +128,7 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
     def test_week_data_schema_places_ctl_atl_in_week_summary(self):
         metric_fields = week_data_schema.Metrics.model_fields
         summary_fields = week_data_schema.WeekSummary.model_fields
+        activity_fields = week_data_schema.Activity.model_fields
 
         self.assertNotIn("ctl", metric_fields)
         self.assertNotIn("atl", metric_fields)
@@ -135,6 +136,7 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
         self.assertIn("atl", summary_fields)
         self.assertIn("training_readiness", summary_fields)
         self.assertNotIn("training_readiness", metric_fields)
+        self.assertIn("is_hard_session", activity_fields)
 
     def test_main_saves_form_when_week_has_no_rides(self):
         with (
@@ -265,6 +267,40 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
                 current_ctl=60,
             )
         )
+
+    def test_hard_session_classifier_supports_exported_activity_fields(self):
+        activity = {
+            "training_distribution": "Threshold",
+            "training_load": 38,
+            "rpe": 8,
+        }
+
+        self.assertTrue(analyze_week.is_hard_session(activity, current_ctl=60))
+
+    def test_annotate_hard_sessions_adds_boolean_to_every_activity(self):
+        activities = [
+            {
+                "training_distribution": "Base",
+                "training_distribution_reason": "Mostly Z1/Z2",
+                "training_load": 90,
+            },
+            {
+                "training_distribution": "Base",
+                "training_distribution_reason": "Mostly Z1/Z2",
+                "training_load": 40,
+            },
+        ]
+
+        annotated = prepare_week_for_coach.annotate_hard_sessions(
+            activities,
+            current_ctl=60,
+        )
+
+        self.assertEqual([activity["is_hard_session"] for activity in annotated], [True, False])
+        keys = list(annotated[0])
+        reason_index = keys.index("training_distribution_reason")
+        self.assertEqual(keys[reason_index + 1], "is_hard_session")
+        self.assertNotIn("is_hard_session", activities[0])
 
     def test_fueling_form_prioritizes_durability_limited_flag(self):
         fueling_data = {

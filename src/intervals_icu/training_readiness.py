@@ -1,6 +1,57 @@
 """Compute an explainable daily training-readiness signal."""
 
 
+def _as_float(value: object) -> float:
+    try:
+        return float(value) if value is not None else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def is_hard_session(
+    activity: dict,
+    current_ctl: float | None = None,
+    distribution: str | None = None,
+) -> bool:
+    """Return whether an activity creates meaningful recovery demand."""
+    training_load = _as_float(
+        activity.get("icu_training_load", activity.get("training_load"))
+    )
+    ctl = _as_float(current_ctl)
+    if ctl > 0 and training_load >= ctl * 1.5:
+        return True
+
+    distribution = distribution or activity.get("training_distribution")
+    if distribution in {"HIIT", "Polarized"}:
+        return True
+    if distribution != "Threshold":
+        return False
+
+    rpe = _as_float(activity.get("perceived_exertion", activity.get("rpe")))
+    return training_load >= 50 or rpe >= 7
+
+
+def annotate_hard_sessions(
+    activities: list[dict],
+    current_ctl: float | None = None,
+) -> list[dict]:
+    """Add the shared hard-session classification to exported activities."""
+    annotated_activities = []
+    for activity in activities:
+        hard_session = is_hard_session(activity, current_ctl=current_ctl)
+        annotated = {}
+        for key, value in activity.items():
+            if key == "is_hard_session":
+                continue
+            annotated[key] = value
+            if key == "training_distribution_reason":
+                annotated["is_hard_session"] = hard_session
+        if "is_hard_session" not in annotated:
+            annotated["is_hard_session"] = hard_session
+        annotated_activities.append(annotated)
+    return annotated_activities
+
+
 def _readiness_signal(name: str, contribution: int | None, reason: str) -> dict:
     if contribution is None:
         status = "unavailable"

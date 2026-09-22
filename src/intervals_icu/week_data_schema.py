@@ -226,6 +226,7 @@ class Activity(_SchemaModel):
     polarization_index: float | int | None = None
     training_distribution: str | None = None
     training_distribution_reason: str | None = None
+    is_hard_session: bool | None = None
     z1_z2_pct: float | int | None = None
     z3_z4_pct: float | int | None = None
     z5_plus_pct: float | int | None = None

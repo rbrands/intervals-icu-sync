@@ -33,7 +33,7 @@ from intervals_icu.client import (
     get_library_folders,
     get_library_workouts,
 )
-from intervals_icu.training_readiness import compute_training_readiness
+from intervals_icu.training_readiness import annotate_hard_sessions, compute_training_readiness
 from intervals_icu.config import API_KEY, ATHLETE_ID
 from intervals_icu.prompt_templates import render_coach_prompt
 PROCESSED_DIR = _ROOT / "data" / "processed"
@@ -505,6 +505,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
         lookback_days=lookback_days,
     )
     activities, fueling_data = _merge_fueling_into_activities(activities, fueling_data)
+    activities = annotate_hard_sessions(activities, current_ctl=week_data.get("ctl"))
 
     coach_input = {
         "schema_version": _SCHEMA_VERSION,
