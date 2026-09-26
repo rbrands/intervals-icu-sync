@@ -288,7 +288,7 @@ The GitHub Actions workflow deploys both `agent.yaml` and `agent-staging.yaml`.
 Staging inherits the production definition and overrides its agent name plus
 its vector store, skill, and toolbox names. Any nested agent field can be
 overridden in `agent-staging.yaml` for experiments without changing production.
-Production uses the `gpt-5.6-luna` model deployment; staging uses `gpt-6-luna`.
+Production uses the `gpt-5.6-luna` model deployment; staging uses `gpt-6-sol`.
 When invoking staging, set `AGENT_NAME=training-architect-agent-staging`; the
 request format and structured inputs are unchanged. Start a fresh chat when
 switching agents. A `MODEL` environment variable overrides the model in either
@@ -393,10 +393,10 @@ to agents, with these defaults:
 | ------------------ | ------- | --- | -------------- |
 | `gpt-5.6-luna` | `2026-07-09` | `GlobalStandard` | 500 |
 | `gpt-6-luna` | `2026-09-22` | `GlobalStandard` | 500 |
-| `gpt-6-sol` | `2026-09-22` | `GlobalStandard` | 50 |
+| `gpt-6-sol` | `2026-09-22` | `GlobalStandard` | 100 |
 
 The Luna settings match the existing portal deployments inspected on 2026-09-26.
-Sol uses the catalog version and a starting capacity of 50; subscription quota
+Sol uses the catalog version and a starting capacity of 100; subscription quota
 must be checked before deployment. Edit this list in Bicep to change the shared
 defaults, or override the entire `additionalModelDeployments` array in a local
 parameter file. Deployment names must be unique and must not duplicate
