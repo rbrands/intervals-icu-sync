@@ -271,8 +271,8 @@ same instance for the agent traces to keep monitoring consolidated.
 
 ## CI/CD deployment
 
-`deploy_agent.py` publishes a new agent version, (re)builds the vector store,
-and deploys the training-plan skill in one run. It authenticates with
+`deploy_agent.py` publishes a new agent version, (re)builds its configured
+vector store, and deploys the configured training-plan skill in one run. It authenticates with
 `DefaultAzureCredential`, so it works locally (`az login`) and in GitHub Actions
 via OIDC.
 
@@ -284,18 +284,28 @@ $env:FOUNDRY_PROJECT_ENDPOINT = "https://<resource>.services.ai.azure.com/api/pr
 python foundry-agent/deploy_agent.py
 ```
 
+The GitHub Actions workflow deploys both `agent.yaml` and `agent-staging.yaml`.
+Staging inherits the production definition and overrides its agent name plus
+its vector store, skill, and toolbox names. Any nested agent field can be
+overridden in `agent-staging.yaml` for experiments without changing production.
+To deploy staging locally, select its configuration explicitly:
+
+```powershell
+python foundry-agent/deploy_agent.py --config foundry-agent/agent-staging.yaml
+```
+
 The script:
 
-1. Reuses the vector store named `coach-logic` (or creates it on first run),
-   refreshing its files from the four knowledge files each time.
-2. Builds the `training-plan-generation` skill from `coach-logic/skill/SKILL.md`
+1. Reuses the vector store named in the selected configuration (or creates it
+  on first run), refreshing its files from the knowledge files each time.
+2. Builds the configured skill from `coach-logic/skill/SKILL.md`
   with references to `decision-process.md` and `workout-library.md`, then
   promotes the created version as default.
-3. Builds/updates `training-plan-toolbox` with a skill reference and promotes
+3. Builds/updates the configured toolbox with a skill reference and promotes
   the created toolbox version as default.
 4. Embeds all discipline profiles into the instructions placeholder.
-5. Sets the vector store id on the `file_search` tool.
-6. Upserts the agent version through the Azure AI Projects SDK.
+5. Sets the selected vector store id on the `file_search` tool.
+6. Upserts the selected agent version through the Azure AI Projects SDK.
 
 ### Dry run (preview without deploying)
 
@@ -340,9 +350,9 @@ python foundry-agent/deploy_agent.py --skill-only
 ### GitHub Actions
 
 The workflow [`.github/workflows/deploy-agent.yml`](../.github/workflows/deploy-agent.yml)
-runs the script on changes to `foundry-agent/**`, `coach-logic/**`, or the
-discipline prompts, and can also be triggered manually. The discipline is no
-longer a deploy-time choice — it is selected at runtime via the `discipline`
+runs the script twice on changes to `foundry-agent/**`, `coach-logic/**`, or the
+discipline prompts: once for production and once for staging. It can also be
+triggered manually. The discipline is no longer a deploy-time choice — it is selected at runtime via the `discipline`
 structured input.
 
 Required GitHub secrets (the OIDC ones already exist for the webservice deploy):

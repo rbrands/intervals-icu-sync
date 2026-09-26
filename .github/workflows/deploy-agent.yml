@@ -42,7 +42,12 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy agent and rebuild vector store
+      - name: Deploy production agent
         env:
           FOUNDRY_PROJECT_ENDPOINT: ${{ secrets.FOUNDRY_PROJECT_ENDPOINT }}
-        run: python foundry-agent/deploy_agent.py
+        run: python foundry-agent/deploy_agent.py --config foundry-agent/agent.yaml
+
+      - name: Deploy staging agent
+        env:
+          FOUNDRY_PROJECT_ENDPOINT: ${{ secrets.FOUNDRY_PROJECT_ENDPOINT }}
+        run: python foundry-agent/deploy_agent.py --config foundry-agent/agent-staging.yaml

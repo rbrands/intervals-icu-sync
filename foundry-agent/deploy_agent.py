@@ -1,14 +1,14 @@
 """Deploy the Foundry prompt agent and (re)build its coach-logic vector store.
 
-This script is the CI/CD entry point for publishing a new version of the
-``training-architect-agent`` Foundry prompt agent. It performs five steps:
+This script is the CI/CD entry point for publishing a new version of a Foundry
+prompt agent. It performs five steps:
 
-1. Build (or refresh) a vector store from the ``coach-logic/`` knowledge files.
-2. Build a new version of the ``training-plan-generation`` skill from
+1. Build (or refresh) a configured vector store from the ``coach-logic/`` knowledge files.
+2. Build a new version of the configured skill from
     ``coach-logic/skill/SKILL.md`` and selected reference files.
-3. Build/update ``training-plan-toolbox`` with a skill reference to the
+3. Build/update the configured toolbox with a skill reference to the
     deployed skill version.
-4. Assemble the final agent definition from ``agent.yaml`` — embedding all
+4. Assemble the final agent definition from the selected YAML configuration — embedding all
    discipline profiles and the freshly created vector store id. The discipline
    is selected at runtime via the ``{{discipline}}`` structured input.
 5. Upsert a new agent version via the Foundry agents data-plane REST API.
@@ -18,6 +18,8 @@ Authentication uses ``DefaultAzureCredential`` so it works both locally
 
 Flags
 -----
+- ``--config PATH`` — select a YAML config (defaults to ``foundry-agent/agent.yaml``).
+    Configs may inherit another file with ``extends`` and override selected values.
 - ``--dry-run`` — render the assembled definition to ``foundry-agent/.rendered/``
   without contacting Foundry or building a vector store.
 - ``--vector-store-only`` — only build/refresh the ``coach-logic`` vector store
@@ -31,11 +33,10 @@ Required environment variables
 
 Optional environment variables
 -------------------------------
-- ``AGENT_NAME`` — defaults to the ``name`` field in ``agent.yaml``
-- ``MODEL`` — overrides ``definition.model`` from ``agent.yaml``
-- ``VECTOR_STORE_NAME`` — defaults to ``coach-logic``
-- ``SKILL_NAME`` — defaults to ``training-plan-generation``
-- ``TOOLBOX_NAME`` — defaults to ``training-plan-toolbox``
+- ``AGENT_NAME`` — overrides the ``name`` field in the selected config
+- ``MODEL`` — overrides ``definition.model`` in the selected config
+- ``VECTOR_STORE_NAME``, ``SKILL_NAME``, ``TOOLBOX_NAME`` — override the selected config's
+    ``deployment`` names (or the production defaults when not configured)
 """
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ from __future__ import annotations
 import io
 import json
 import hashlib
+import argparse
 import os
 import sys
 import zipfile
@@ -59,6 +61,7 @@ _SKILL_DIR = _COACH_LOGIC_DIR / "skill"
 
 _PROFILES_PLACEHOLDER = "<<INSERT DISCIPLINE PROFILES HERE>>"
 _VECTOR_STORE_PLACEHOLDER = "<VECTOR_STORE_ID>"
+_DEFAULT_VECTOR_STORE_NAME = "coach-logic"
 _DEFAULT_SKILL_NAME = "training-plan-generation"
 _DEFAULT_TOOLBOX_NAME = "training-plan-toolbox"
 
@@ -144,8 +147,29 @@ def _require_env(name: str) -> str:
     return value
 
 
-def _load_agent_definition() -> dict:
-    return yaml.safe_load(_AGENT_FILE.read_text(encoding="utf-8"))
+def _merge_config(base: dict, overrides: dict) -> dict:
+    merged = dict(base)
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merge_config(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _load_agent_definition(agent_file: Path = _AGENT_FILE) -> dict:
+    definition = yaml.safe_load(agent_file.read_text(encoding="utf-8"))
+    base_config = definition.pop("extends", None)
+    if not base_config:
+        return definition
+
+    base_definition = _load_agent_definition(agent_file.parent / base_config)
+    return _merge_config(base_definition, definition)
+
+
+def _deployment_setting(definition: dict, key: str, env_name: str, default: str) -> str:
+    deployment = definition.get("deployment", {})
+    return os.environ.get(env_name) or deployment.get(key) or default
 
 
 def _embed_discipline_profiles(instructions: str) -> str:
@@ -205,8 +229,8 @@ def _clear_vector_store_files(client, store_id: str) -> None:
                 print(f"  WARNING: could not delete file {file_id}: {exc}")
 
 
-def _build_vector_store(client) -> str:
-    name = os.environ.get("VECTOR_STORE_NAME", "coach-logic")
+def _build_vector_store(client, name: str | None = None) -> str:
+    name = name or os.environ.get("VECTOR_STORE_NAME", _DEFAULT_VECTOR_STORE_NAME)
 
     store = _find_vector_store(client, name)
     if store is None:
@@ -268,7 +292,7 @@ def _zip_skill() -> bytes:
     return buf.getvalue()
 
 
-def _build_skill(project_client) -> tuple[str, str, bool]:
+def _build_skill(project_client, skill_name: str | None = None) -> tuple[str, str, bool]:
     """Create/update skill only when content changed. Returns (name, version, changed)."""
     from azure.core.exceptions import HttpResponseError
 
@@ -277,7 +301,7 @@ def _build_skill(project_client) -> tuple[str, str, bool]:
         print("       Upgrade foundry-agent dependencies and try again.")
         sys.exit(1)
 
-    skill_name = os.environ.get("SKILL_NAME", _DEFAULT_SKILL_NAME)
+    skill_name = skill_name or os.environ.get("SKILL_NAME", _DEFAULT_SKILL_NAME)
     desired_files = _read_skill_source_files()
     desired_hash = _hash_skill_file_map(desired_files)
 
@@ -328,11 +352,13 @@ def _toolbox_version_uses_skill(project_client, toolbox_name: str, toolbox_versi
     return False
 
 
-def _build_toolbox(project_client, skill_name: str, skill_version: str) -> tuple[str, str, bool]:
+def _build_toolbox(
+    project_client, skill_name: str, skill_version: str, toolbox_name: str | None = None
+) -> tuple[str, str, bool]:
     """Create/update toolbox only when skill reference differs. Returns (name, version, changed)."""
     from azure.core.exceptions import HttpResponseError
 
-    toolbox_name = os.environ.get("TOOLBOX_NAME", _DEFAULT_TOOLBOX_NAME)
+    toolbox_name = toolbox_name or os.environ.get("TOOLBOX_NAME", _DEFAULT_TOOLBOX_NAME)
 
     if not hasattr(project_client, "beta") or not hasattr(project_client.beta, "toolboxes"):
         print("WARNING: this azure-ai-projects version does not expose beta.toolboxes operations.")
@@ -403,13 +429,16 @@ def _dry_run(definition: dict) -> None:
 def main() -> None:
     _load_env()
 
-    dry_run = "--dry-run" in sys.argv
-    vector_store_only = "--vector-store-only" in sys.argv
-    skill_only = "--skill-only" in sys.argv
+    parser = argparse.ArgumentParser(description="Deploy a Foundry prompt agent.")
+    parser.add_argument("--config", type=Path, default=_AGENT_FILE)
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--vector-store-only", action="store_true")
+    parser.add_argument("--skill-only", action="store_true")
+    args = parser.parse_args()
 
-    definition = _load_agent_definition()
+    definition = _load_agent_definition(args.config)
 
-    if dry_run:
+    if args.dry_run:
         _dry_run(definition)
         return
 
@@ -421,15 +450,21 @@ def main() -> None:
 
     project_client = AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True)
 
-    if skill_only:
-        skill_name, skill_version, skill_changed = _build_skill(project_client)
+    if args.skill_only:
+        skill_name = _deployment_setting(
+            definition, "skill_name", "SKILL_NAME", _DEFAULT_SKILL_NAME
+        )
+        skill_name, skill_version, skill_changed = _build_skill(project_client, skill_name)
         status = "updated" if skill_changed else "unchanged"
         print(f"Skill only — agent NOT updated. Skill: {skill_name} version {skill_version} ({status})")
         return
 
-    if vector_store_only:
+    if args.vector_store_only:
         client = _openai_client(endpoint, credential)
-        vector_store_id = _build_vector_store(client)
+        vector_store_name = _deployment_setting(
+            definition, "vector_store_name", "VECTOR_STORE_NAME", _DEFAULT_VECTOR_STORE_NAME
+        )
+        vector_store_id = _build_vector_store(client, vector_store_name)
         print(f"Vector store only — agent NOT updated. Vector store id: {vector_store_id}")
         return
 
@@ -441,9 +476,18 @@ def main() -> None:
     inner["instructions"] = _embed_discipline_profiles(inner.get("instructions", ""))
 
     client = _openai_client(endpoint, credential)
-    vector_store_id = _build_vector_store(client)
-    skill_name, skill_version, skill_changed = _build_skill(project_client)
-    toolbox_name, toolbox_version, toolbox_changed = _build_toolbox(project_client, skill_name, skill_version)
+    vector_store_name = _deployment_setting(
+        definition, "vector_store_name", "VECTOR_STORE_NAME", _DEFAULT_VECTOR_STORE_NAME
+    )
+    skill_name = _deployment_setting(definition, "skill_name", "SKILL_NAME", _DEFAULT_SKILL_NAME)
+    toolbox_name = _deployment_setting(
+        definition, "toolbox_name", "TOOLBOX_NAME", _DEFAULT_TOOLBOX_NAME
+    )
+    vector_store_id = _build_vector_store(client, vector_store_name)
+    skill_name, skill_version, skill_changed = _build_skill(project_client, skill_name)
+    toolbox_name, toolbox_version, toolbox_changed = _build_toolbox(
+        project_client, skill_name, skill_version, toolbox_name
+    )
 
     for tool in inner.get("tools", []):
         if tool.get("type") == "file_search":

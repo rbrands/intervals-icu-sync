@@ -14,6 +14,27 @@ spec.loader.exec_module(deploy_agent)
 
 
 class DeployAgentTests(unittest.TestCase):
+    def test_staging_config_inherits_agent_and_uses_isolated_resources(self):
+        production = deploy_agent._load_agent_definition()
+        staging = deploy_agent._load_agent_definition(
+            _REPO_ROOT / "foundry-agent" / "agent-staging.yaml"
+        )
+
+        self.assertEqual(production["definition"]["model"], "gpt-5.6-luna")
+        self.assertEqual(staging["name"], "training-architect-agent-staging")
+        self.assertEqual(staging["definition"]["model"], production["definition"]["model"])
+        self.assertEqual(
+            staging["definition"]["instructions"],
+            production["definition"]["instructions"],
+        )
+        self.assertEqual(staging["deployment"]["vector_store_name"], "coach-logic-staging")
+        self.assertEqual(
+            staging["deployment"]["skill_name"], "training-plan-generation-staging"
+        )
+        self.assertEqual(
+            staging["deployment"]["toolbox_name"], "training-plan-toolbox-staging"
+        )
+
     def test_embed_discipline_profiles_replaces_placeholder(self):
         rendered = deploy_agent._embed_discipline_profiles(
             f"before\n{deploy_agent._PROFILES_PLACEHOLDER}\nafter"

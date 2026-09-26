@@ -189,6 +189,7 @@ intervals-icu-sync/
 │       └── WeekDataJson.cs         # C# JSON serialize/deserialize helper for WeekDataDto
 ├── foundry-agent/
 │   ├── agent.yaml                  # Microsoft Foundry prompt agent definition (MCP + coach-logic knowledge)
+│   ├── agent-staging.yaml          # Staging overrides with isolated Foundry resources
 │   ├── deploy_agent.py             # Deploy/update agent versions and refresh vector store
 │   ├── invoke_agent.py             # Invoke agent locally (single-turn and chat mode)
 │   ├── requirements.txt            # Foundry-agent specific Python dependencies
