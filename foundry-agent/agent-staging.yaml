@@ -2,7 +2,7 @@ extends: agent.yaml
 name: training-architect-agent-staging
 description: "Staging cycling coach agent for testing prompt and model changes."
 definition:
-  model: gpt-5.6-luna
+  model: gpt-6-luna
 deployment:
   vector_store_name: coach-logic-staging
   skill_name: training-plan-generation-staging
