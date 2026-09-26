@@ -1,11 +1,35 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.43.8.12551",
-      "templateHash": "1518749479851502816"
+      "version": "0.47.16.16243",
+      "templateHash": "10391795768768134961"
+    }
+  },
+  "definitions": {
+    "additionalModelDeployment": {
+      "type": "object",
+      "properties": {
+        "deploymentName": {
+          "type": "string"
+        },
+        "modelName": {
+          "type": "string"
+        },
+        "modelVersion": {
+          "type": "string"
+        },
+        "skuName": {
+          "type": "string"
+        },
+        "capacity": {
+          "type": "int",
+          "minValue": 1
+        }
+      }
     }
   },
   "parameters": {
@@ -76,6 +100,38 @@
         "description": "Deployment capacity (tokens-per-minute units, in thousands)."
       }
     },
+    "additionalModelDeployments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/additionalModelDeployment"
+      },
+      "defaultValue": [
+        {
+          "deploymentName": "gpt-5.6-luna",
+          "modelName": "gpt-5.6-luna",
+          "modelVersion": "2026-07-09",
+          "skuName": "GlobalStandard",
+          "capacity": 500
+        },
+        {
+          "deploymentName": "gpt-6-luna",
+          "modelName": "gpt-6-luna",
+          "modelVersion": "2026-09-22",
+          "skuName": "GlobalStandard",
+          "capacity": 500
+        },
+        {
+          "deploymentName": "gpt-6-sol",
+          "modelName": "gpt-6-sol",
+          "modelVersion": "2026-09-22",
+          "skuName": "GlobalStandard",
+          "capacity": 50
+        }
+      ],
+      "metadata": {
+        "description": "Additional OpenAI deployments. Names must be unique and differ from modelDeploymentName. Match existing deployments before applying."
+      }
+    },
     "deployPrincipalId": {
       "type": "string",
       "defaultValue": "",
@@ -103,8 +159,8 @@
       }
     }
   },
-  "resources": [
-    {
+  "resources": {
+    "account": {
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2025-04-01-preview",
       "name": "[parameters('foundryAccountName')]",
@@ -123,7 +179,7 @@
         "publicNetworkAccess": "Enabled"
       }
     },
-    {
+    "project": {
       "type": "Microsoft.CognitiveServices/accounts/projects",
       "apiVersion": "2025-04-01-preview",
       "name": "[format('{0}/{1}', parameters('foundryAccountName'), parameters('foundryProjectName'))]",
@@ -134,10 +190,10 @@
       },
       "properties": {},
       "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]"
+        "account"
       ]
     },
-    {
+    "modelDeployment": {
       "type": "Microsoft.CognitiveServices/accounts/deployments",
       "apiVersion": "2025-04-01-preview",
       "name": "[format('{0}/{1}', parameters('foundryAccountName'), parameters('modelDeploymentName'))]",
@@ -153,10 +209,36 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]"
+        "account"
       ]
     },
-    {
+    "additionalDeployments": {
+      "copy": {
+        "name": "additionalDeployments",
+        "count": "[length(parameters('additionalModelDeployments'))]",
+        "mode": "serial",
+        "batchSize": 1
+      },
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('foundryAccountName'), parameters('additionalModelDeployments')[copyIndex()].deploymentName)]",
+      "sku": {
+        "name": "[parameters('additionalModelDeployments')[copyIndex()].skuName]",
+        "capacity": "[parameters('additionalModelDeployments')[copyIndex()].capacity]"
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[parameters('additionalModelDeployments')[copyIndex()].modelName]",
+          "version": "[parameters('additionalModelDeployments')[copyIndex()].modelVersion]"
+        }
+      },
+      "dependsOn": [
+        "account",
+        "modelDeployment"
+      ]
+    },
+    "deployRoleAssignment": {
       "condition": "[not(empty(parameters('deployPrincipalId')))]",
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
@@ -168,10 +250,10 @@
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('deployRoleDefinitionId'))]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]"
+        "account"
       ]
     }
-  ],
+  },
   "outputs": {
     "accountId": {
       "type": "string",
@@ -193,6 +275,19 @@
         "description": "Model deployment name to use in agent.yaml."
       },
       "value": "[parameters('modelDeploymentName')]"
+    },
+    "additionalModelDeploymentNames": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "metadata": {
+        "description": "Additional model deployment names available to agent definitions."
+      },
+      "copy": {
+        "count": "[length(parameters('additionalModelDeployments'))]",
+        "input": "[parameters('additionalModelDeployments')[copyIndex()].deploymentName]"
+      }
     },
     "projectEndpoint": {
       "type": "string",

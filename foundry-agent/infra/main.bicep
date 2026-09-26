@@ -6,7 +6,7 @@ targetScope = 'resourceGroup'
 // Covers the CONTROL-PLANE resources only:
 //   - Azure AI Services (Foundry) account
 //   - Foundry project
-//   - Model deployment (e.g. gpt-4.1-mini)
+//   - Model deployments for production and staging agents
 //   - RBAC for the deployment service principal (data-plane access)
 //
 // The AGENT itself and the VECTOR STORE / knowledge files are data-plane
@@ -46,6 +46,40 @@ param modelSkuName string = 'GlobalStandard'
 
 @description('Deployment capacity (tokens-per-minute units, in thousands).')
 param modelCapacity int = 50
+
+type additionalModelDeployment = {
+  deploymentName: string
+  modelName: string
+  modelVersion: string
+  skuName: string
+  @minValue(1)
+  capacity: int
+}
+
+@description('Additional OpenAI deployments. Names must be unique and differ from modelDeploymentName. Match existing deployments before applying.')
+param additionalModelDeployments additionalModelDeployment[] = [
+  {
+    deploymentName: 'gpt-5.6-luna'
+    modelName: 'gpt-5.6-luna'
+    modelVersion: '2026-07-09'
+    skuName: 'GlobalStandard'
+    capacity: 500
+  }
+  {
+    deploymentName: 'gpt-6-luna'
+    modelName: 'gpt-6-luna'
+    modelVersion: '2026-09-22'
+    skuName: 'GlobalStandard'
+    capacity: 500
+  }
+  {
+    deploymentName: 'gpt-6-sol'
+    modelName: 'gpt-6-sol'
+    modelVersion: '2026-09-22'
+    skuName: 'GlobalStandard'
+    capacity: 100
+  }
+]
 
 @description('Object (principal) id of the deployment service principal that runs deploy_agent.py. Leave empty to skip the role assignment.')
 param deployPrincipalId string = ''
@@ -116,6 +150,26 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
   }
 }
 
+@batchSize(1)
+resource additionalDeployments 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = [for deployment in additionalModelDeployments: {
+  parent: account
+  name: deployment.deploymentName
+  sku: {
+    name: deployment.skuName
+    capacity: deployment.capacity
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: deployment.modelName
+      version: deployment.modelVersion
+    }
+  }
+  dependsOn: [
+    modelDeployment
+  ]
+}]
+
 // ---------------------------------------------------------------------------
 // RBAC: grant the deployment service principal data-plane access on the account
 // ---------------------------------------------------------------------------
@@ -137,6 +191,9 @@ output projectId string = project.id
 
 @description('Model deployment name to use in agent.yaml.')
 output modelDeploymentName string = modelDeployment.name
+
+@description('Additional model deployment names available to agent definitions.')
+output additionalModelDeploymentNames string[] = [for deployment in additionalModelDeployments: deployment.deploymentName]
 
 @description('Foundry project endpoint for FOUNDRY_PROJECT_ENDPOINT (deploy_agent.py / invoke_agent.py).')
 output projectEndpoint string = 'https://${customSubDomainName}.services.ai.azure.com/api/projects/${foundryProjectName}'

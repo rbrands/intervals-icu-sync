@@ -382,8 +382,37 @@ That principal needs:
 
 The Foundry **control-plane** resources are described in
 [`infra/main.bicep`](infra/main.bicep): the Azure AI Services (Foundry) account,
-the Foundry project, the model deployment (`gpt-4.1-mini`), and an RBAC role
+the Foundry project, model deployments, and an RBAC role
 assignment that grants the deployment service principal data-plane access.
+
+The existing single-model parameters continue to manage `gpt-4.1-mini`.
+The `additionalModelDeployments` parameter declares the other models available
+to agents, with these defaults:
+
+| Deployment / model | Version | SKU | Capacity units |
+| ------------------ | ------- | --- | -------------- |
+| `gpt-5.6-luna` | `2026-07-09` | `GlobalStandard` | 500 |
+| `gpt-6-luna` | `2026-09-22` | `GlobalStandard` | 500 |
+| `gpt-6-sol` | `2026-09-22` | `GlobalStandard` | 50 |
+
+The Luna settings match the existing portal deployments inspected on 2026-09-26.
+Sol uses the catalog version and a starting capacity of 50; subscription quota
+must be checked before deployment. Edit this list in Bicep to change the shared
+defaults, or override the entire `additionalModelDeployments` array in a local
+parameter file. Deployment names must be unique and must not duplicate
+`modelDeploymentName`. Deployments are applied sequentially.
+
+The manual infrastructure workflow uses these defaults without new secrets.
+`FOUNDRY_MODEL_VERSION` still applies only to the original `gpt-4.1-mini`
+deployment. Adding a model here does not change either agent's `definition.model`.
+The separate agent deployment workflow publishes agent versions, not model
+deployments.
+
+For an existing account, keep the same account, resource group, and deployment
+names to manage portal-created deployments in place. Always inspect `what-if`
+before applying, especially for changes to existing capacity, model versions,
+or service policies. Use incremental deployment mode; removing an entry from
+the list does not delete the corresponding Azure deployment in that mode.
 
 The agent and the vector store are **data-plane** objects and stay with
 `deploy_agent.py` — they are intentionally not in Bicep.
@@ -422,7 +451,7 @@ Or use the manual workflow
 | `FOUNDRY_ACCOUNT_NAME` | Foundry (AI Services) account name |
 | `FOUNDRY_PROJECT_NAME` | Foundry project name |
 | `FOUNDRY_LOCATION` | Region (e.g. `swedencentral`) |
-| `FOUNDRY_MODEL_VERSION` | Model version for the deployment |
+| `FOUNDRY_MODEL_VERSION` | Model version for the original `gpt-4.1-mini` deployment |
 | `FOUNDRY_DEPLOY_PRINCIPAL_ID` | Object id of the deploy service principal |
 
 `FOUNDRY_DEPLOY_PRINCIPAL_ID` should be the object id of that same deployment

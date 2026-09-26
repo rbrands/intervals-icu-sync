@@ -194,8 +194,9 @@ intervals-icu-sync/
 │   ├── invoke_agent.py             # Invoke agent locally (single-turn and chat mode)
 │   ├── requirements.txt            # Foundry-agent specific Python dependencies
 │   ├── infra/
-│   │   ├── main.bicep              # Foundry control-plane IaC (account, project, model, RBAC)
+│   │   ├── main.bicep              # Foundry control-plane IaC (account, project, models, RBAC)
 │   │   ├── main.bicepparam         # Parameter template for Foundry infra deployment
+│   │   ├── main.json               # Generated ARM template from main.bicep
 │   │   └── main.local.bicepparam   # Local parameter file for Foundry infra deployment (git-ignored)
 │   └── README.md                   # Setup: structured inputs, vector store, MCP server, deployment
 ├── docs/
@@ -247,6 +248,12 @@ intervals-icu-sync/
 ```
 
 ## Setup
+
+Foundry infrastructure manages `gpt-4.1-mini` plus `gpt-5.6-luna`, `gpt-6-luna`,
+and `gpt-6-sol`. The additional models are configured in
+`foundry-agent/infra/main.bicep` via `additionalModelDeployments`; agent model
+selection remains separate. See the [Foundry infrastructure guide](foundry-agent/README.md#infrastructure-bicep)
+for versions, capacities, and the manual preview/apply workflow.
 
 > macOS note: if `python`/`pip` are not available (or point to Python 2), use `python3` and `pip3` for all commands below.
 
