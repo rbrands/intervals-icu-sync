@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.5] - 2026-09-27
+
+### Added
+
+- Added `ctl_delta`, `atl_delta`, and `form_absolute_delta` to exported activities, comparing each activity with the chronologically previous exported activity. Delta fields appear beside their corresponding values and are null when no comparison is available.
+- Documented activity-level delta semantics in the coach input schema.
+
 ## [1.3.4] - 2026-09-23
 
 ### Added

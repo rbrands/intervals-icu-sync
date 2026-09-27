@@ -502,8 +502,11 @@ def _extract_training_load_state(activity: dict) -> dict:
     form_absolute = ctl - atl if ctl is not None and atl is not None else None
     return {
         "ctl": round(ctl, 1) if ctl is not None else None,
+        "ctl_delta": None,
         "atl": round(atl, 1) if atl is not None else None,
+        "atl_delta": None,
         "form_absolute": round(form_absolute, 1) if form_absolute is not None else None,
+        "form_absolute_delta": None,
     }
 
 
@@ -592,6 +595,19 @@ def extract_fields(
     return result
 
 
+def _add_training_load_deltas(activities: list[dict]) -> None:
+    for index, activity in enumerate(activities):
+        previous = activities[index + 1] if index + 1 < len(activities) else None
+        for field in ("ctl", "atl", "form_absolute"):
+            current_value = activity.get(field)
+            previous_value = previous.get(field) if previous is not None else None
+            activity[f"{field}_delta"] = (
+                round(current_value - previous_value, 1)
+                if current_value is not None and previous_value is not None
+                else None
+            )
+
+
 def main() -> None:
     today = date.today()
     monday = today - timedelta(days=today.weekday())
@@ -618,6 +634,7 @@ def main() -> None:
             )
         )
 
+    _add_training_load_deltas(output)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_file.write_text(json.dumps(output, indent=2))
 

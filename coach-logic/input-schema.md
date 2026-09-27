@@ -78,6 +78,12 @@ CTL-relative load, training-distribution, or RPE rules used by
 fitness, fatigue and form (CTL−ATL) values *after* that activity, as reported
 by intervals.icu. Read them in date order to see the CTL/ATL/TSB trajectory;
 `week_summary.ctl`/`atl` remain the current (today) snapshot.
+`activities[].ctl_delta` / `activities[].atl_delta` /
+`activities[].form_absolute_delta` are the current activity's values minus those
+of the chronologically previous *exported* activity (the next entry in the
+newest-first list). Positive values indicate an increase; negative values a
+decrease. Each delta is rounded to one decimal place and is null if either
+value is missing or no previous exported activity exists.
 
 ---
 

@@ -54,6 +54,61 @@ def _zone_times(z1: int = 0, z2: int = 0, z3: int = 0, z4: int = 0, z5: int = 0)
 
 
 class ActivityMetricFilteringTests(unittest.TestCase):
+    def test_training_load_deltas_compare_previous_exported_activity(self):
+        newest = _activity(
+            id="newest", tags=[], icu_training_load=55,
+            icu_ctl=45.2, icu_atl=52.1,
+        )
+        excluded = _activity(
+            id="excluded", tags=[], icu_training_load=None,
+            start_date_local=(date.today() - timedelta(days=1)).isoformat() + "T09:00:00",
+            icu_ctl=44.8, icu_atl=51.0,
+        )
+        oldest = _activity(
+            id="oldest", tags=[], icu_training_load=60,
+            start_date_local=(date.today() - timedelta(days=2)).isoformat() + "T09:00:00",
+            icu_ctl=44.1, icu_atl=53.3,
+        )
+
+        rides = prepare_activities.filter_activities([oldest, excluded, newest])
+        rides.sort(key=lambda activity: activity.get("start_date_local") or "", reverse=True)
+        exported = [prepare_activities.extract_fields(activity) for activity in rides]
+        prepare_activities._add_training_load_deltas(exported)
+
+        self.assertEqual([activity["id"] for activity in exported], ["newest", "oldest"])
+        serialized_keys = list(json.loads(json.dumps(exported))[0])
+        for field in ("ctl", "atl", "form_absolute"):
+            self.assertEqual(serialized_keys.index(f"{field}_delta"), serialized_keys.index(field) + 1)
+        self.assertEqual(
+            (exported[0]["ctl"], exported[0]["atl"], exported[0]["form_absolute"]),
+            (45.2, 52.1, -6.9),
+        )
+        self.assertEqual(
+            (exported[0]["ctl_delta"], exported[0]["atl_delta"], exported[0]["form_absolute_delta"]),
+            (1.1, -1.2, 2.3),
+        )
+        self.assertEqual(
+            (exported[1]["ctl_delta"], exported[1]["atl_delta"], exported[1]["form_absolute_delta"]),
+            (None, None, None),
+        )
+
+    def test_training_load_deltas_are_independently_null_when_values_are_missing(self):
+        exported = [
+            prepare_activities.extract_fields(_activity(icu_ctl=46, icu_atl=None)),
+            prepare_activities.extract_fields(_activity(icu_ctl=44, icu_atl=47)),
+            prepare_activities.extract_fields(_activity(icu_ctl=41, icu_atl=48)),
+        ]
+
+        prepare_activities._add_training_load_deltas(exported)
+
+        self.assertEqual(exported[0]["ctl_delta"], 2.0)
+        self.assertIsNone(exported[0]["atl_delta"])
+        self.assertIsNone(exported[0]["form_absolute_delta"])
+        self.assertEqual(exported[1]["ctl_delta"], 3.0)
+        self.assertEqual(exported[1]["atl_delta"], -1.0)
+        self.assertEqual(exported[1]["form_absolute_delta"], 4.0)
+        self.assertIsNone(exported[2]["ctl_delta"])
+
     def test_tagged_activity_without_metrics_is_dropped(self):
         empty = _activity()
 
