@@ -310,6 +310,59 @@ If a check fails, correct steps or plan composition first, then re-verify.
 
 ---
 
+### 3c. Optionaler Saisonfokus / Optional Seasonal Focus
+
+Diesen Zusatz bei Bedarf an Prompt 3a oder 3b anhängen. Er ergänzt die gewählte Disziplin und ersetzt sie nicht.
+
+#### Deutsch
+
+```
+Zusätzlicher Saisonfokus: Winter-Rennen, zum Beispiel ein Zwift-Rennen pro Woche.
+
+- Behandle meine im System-Prompt gewählte Disziplin weiterhin als primäres
+       Trainingsziel. Dieser Saisonfokus ergänzt ihre Prioritäten und überschreibt
+       keine disziplinspezifischen Pflichtreize.
+- Plane das Zwift-Rennen als intensive, rennspezifische Einheit ein. Falls es
+       nicht in den geplanten Einheiten oder Events enthalten ist, berücksichtige
+       es an folgendem Tag: [Tag eintragen].
+- Bewerte anhand des tatsächlichen Rennverlaufs, welche Reize es liefert.
+       Zähle es als intensive Belastung, aber nicht automatisch als vollständigen
+       Ersatz für einen Schwellen- oder VO2max-Reiz.
+- Plane standardmäßig keine zusätzliche VO2max- oder rennspezifische harte
+       Einheit neben dem Rennen. Füge eine weitere intensive Einheit nur hinzu,
+       wenn Disziplin, Trainingsphase, Wochenziel und Erholung sie sinnvoll erlauben.
+- Erhalte die zentralen Anforderungen meiner Disziplin, sofern Belastbarkeit,
+       Wochenziel und Erholung das zulassen. Beim Climber bleiben insbesondere die
+       Schwellen-Einheit und die lange Ausfahrt relevant; quetsche sie nicht in eine
+       überladene Woche, sondern begründe nötige Anpassungen.
+- Verteile intensive Einheiten mit ausreichender Erholung und beachte die
+       Planungsprioritäten aus dem System-Prompt.
+```
+
+#### English
+
+```
+Additional seasonal focus: winter racing, for example one Zwift race per week.
+
+- Keep the discipline selected in the system prompt as the primary training
+       goal. This seasonal focus supplements its priorities and does not override
+       discipline-specific key requirements.
+- Schedule the Zwift race as an intense, race-specific session. If it is not
+       included in the planned workouts or events, schedule it on: [enter day].
+- Assess the stimuli it provides from the actual race demands. Count it as an
+       intense load, but do not automatically treat it as a complete replacement
+       for a threshold or VO2max stimulus.
+- By default, do not schedule another hard VO2max or race-specific session in
+       addition to the race. Add another intense session only when the discipline,
+       training phase, weekly target, and recovery make it appropriate.
+- Preserve the key requirements of the selected discipline when training
+       capacity, weekly target, and recovery allow. For a Climber, threshold work
+       and the long ride remain relevant; do not cram them into an overloaded week,
+       and explain any necessary adjustments.
+- Space intense sessions to allow adequate recovery and follow the planning
+       priorities from the system prompt.
+```
+
 ## 4. Fueling-Analyse / Fueling Analysis
 
 ### Deutsch
