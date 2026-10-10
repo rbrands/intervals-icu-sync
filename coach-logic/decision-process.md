@@ -79,8 +79,10 @@ steady aerobic pacing, fueling mandatory (below).
 - Recovery: when fatigue high, HRV low, or after key sessions.
 
 ### Race-specific
-For criterium / road-race goals (discipline block). Hard anaerobic effort
-(Z6) + threshold consolidation (Z4), full recovery between sets.
+For criterium / road-race goals (discipline block). Select breakaway sets
+(Z6 + Z4) or criterium microbursts (Z6 + Z2) from workout-library.md.
+Breakaway sets use full recovery between sets; microbursts use incomplete
+recovery within a block and full recovery between blocks.
 Use one or more "race-specific-<level>" tags; downstream logic derives the
 race classification from those tags.
 

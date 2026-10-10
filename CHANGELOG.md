@@ -7,6 +7,14 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [1.3.6] - 2026-10-10
 
+### Added
+
+- Added criterium microburst examples to the workout library with low, moderate, and high doses, using 15 s Z6 efforts and 45 s Z2 recovery within blocks.
+
+### Changed
+
+- Updated race-specific selection rules to include criterium microbursts as an alternative to breakaway sets, clarifying recovery between blocks and the distinction from VO2max intervals.
+
 ### Fixed
 
 - Prevented long workout descriptions and appended fueling guidance from being truncated during upload, preserving the complete workout notes for criterium sessions with many intervals.

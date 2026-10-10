@@ -73,7 +73,7 @@ This keeps the base prompt stable while allowing the athlete profile to be swapp
 | `decision-process.md` | How interpreted data is turned into concrete weekly planning actions |
 | `training-zones.md` | Power, HR and RPE zone definitions used by the coach |
 | `input-schema.md` | Description of the JSON input schema passed to the coach |
-| `workout-library.md` | Workout catalog by domain and dose level, including canonical tags |
+| `workout-library.md` | Workout catalog by domain and dose level, including canonical tags, breakaway sets, and criterium microbursts |
 
 The combination of:
 - structured data (intervals.icu)

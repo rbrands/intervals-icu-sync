@@ -68,6 +68,31 @@ consolidation (Z4). Full recovery (Z1) between sets, not partial.
 | Low      | 2×(2 min Z6 + 3 min Z4), 5 min full rec between sets | race-specific-low |
 
 
+## Race-Specific / Criterium Microbursts (Z6 + Z2)
+
+An alternative to the breakaway sets above for repeated short attacks and
+accelerations out of corners. Each repetition pairs 15 s in Z6 with 45 s
+in Z2: incomplete recovery within a block, full recovery in Z1 between
+blocks.
+
+| Dose     | Structure                                             | Tag |
+| -------- | ----------------------------------------------------- | --- |
+| High     | 3×8×(15 s Z6 + 45 s Z2), 5 min Z1 between blocks | race-specific-high |
+| Moderate | 2×8×(15 s Z6 + 45 s Z2), 5 min Z1 between blocks | race-specific-moderate |
+| Low      | 2×5×(15 s Z6 + 45 s Z2), 5 min Z1 between blocks | race-specific-low |
+
+These are controlled anaerobic efforts, not all-out Z7 sprints. Preserve
+repeatable power and technique; reduce the number of repetitions or stop
+the block if either deteriorates.
+
+Select this structure for criterium attack repeatability, not as an
+additional mandatory session. Dose and placement follow decision-process.md.
+A short work/recovery format alone does not determine the training domain:
+Z5 intervals targeting aerobic capacity use vo2max-<level> tags; these Z6
+attack-repeatability blocks use race-specific-<level> tags. Do not assume
+they replace the required VO2max session solely because they are microbursts.
+
+
 
 ## Recovery (Z1)
 
