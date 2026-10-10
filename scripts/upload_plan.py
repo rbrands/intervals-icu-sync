@@ -38,7 +38,6 @@ from intervals_icu.config import API_KEY, ATHLETE_ID
 
 DEFAULT_PLAN = Path(__file__).resolve().parents[1] / "data" / "plans" / "week_plan.json"
 MAX_ACTIVITY_NAME_LENGTH = 127
-MAX_ACTIVITY_DESCRIPTION_LENGTH = 512
 
 
 def _truncate_field(value: str, max_len: int) -> str:
@@ -157,7 +156,6 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
                 parts.append(f"{total_carbs}g total")
             if parts:
                 description = f"{description}\nFueling: {', '.join(parts)}" if description else f"Fueling: {', '.join(parts)}"
-        description = _truncate_field(description, MAX_ACTIVITY_DESCRIPTION_LENGTH)
         # Steps can be at the top level ("steps") or nested under a "workout" key
         raw_library_workout_doc = library_workout.get("workout_doc") if library_workout else None
         workout_doc = workout.get("workout")

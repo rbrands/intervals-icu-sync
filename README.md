@@ -727,7 +727,7 @@ Use `activity_type` for non-ride planned activities. Supported upload values are
 
 Plan JSON Schema: `contracts/week-plan/week-plan.schema.json` (supports both accepted top-level formats: bare workout array or `{ "week": "...", "workouts": [...] }`).
 
-Field limits on upload: `name` is truncated to 127 characters and `description`/notes to 512 characters.
+Field handling on upload: `name` is truncated to 127 characters. Descriptions and notes, including appended fueling guidance, are sent in full without local truncation. Structured `steps` are uploaded as a ZWO workout file rather than embedded in the description.
 
 Tag handling: the plan format should always use `tags`, including for a single tag. For backward compatibility, `upload_plan.py` still accepts a legacy single `tag` string and internally treats it as a one-item `tags` list.
 

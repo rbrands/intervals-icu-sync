@@ -1,3 +1,4 @@
+import base64
 import contextlib
 import importlib.util
 import io
@@ -303,7 +304,7 @@ class UploadPlanRegressionTests(unittest.TestCase):
             module.upload_plan(plan, dry_run=True)
         self.assertIn("1 steps", output.getvalue())
 
-    def test_upload_plan_truncates_name_and_description(self):
+    def test_upload_plan_truncates_name_but_preserves_description(self):
         module = _load_upload_plan_module()
         captured: dict[str, str] = {}
 
@@ -332,8 +333,91 @@ class UploadPlanRegressionTests(unittest.TestCase):
 
         self.assertEqual(len(captured["name"]), 127)
         self.assertEqual(captured["name"], "N" * 127)
-        self.assertEqual(len(captured["description"]), 512)
-        self.assertEqual(captured["description"], "D" * 512)
+        self.assertEqual(captured["description"], "D" * 800)
+
+    def test_upload_plan_preserves_complete_microburst_description_on_create_and_update(self):
+        description = (
+            "Race-specific session for repeated accelerations out of corners, attacks, "
+            "and incomplete recovery. Keep the hard efforts explosive but technically "
+            "controlled, with easy running power between them. TSS: 71. Fueling: take "
+            "60\u201390 g carbohydrate per hour and drink consistently before the harder repetitions."
+        )
+        steps = [
+            {"duration_seconds": 900, "power_pct_ftp": 50},
+            {"duration_seconds": 600, "power_pct_ftp": 70},
+        ]
+        for block, repetitions in enumerate((8, 8, 8)):
+            if block:
+                steps.append({"duration_seconds": 300, "power_pct_ftp": 55})
+            for _ in range(repetitions):
+                steps.extend([
+                    {"duration_seconds": 30, "power_pct_ftp": 140},
+                    {"duration_seconds": 30, "power_pct_ftp": 55},
+                ])
+        steps.append({"duration_seconds": 900, "power_pct_ftp": 50})
+        self.assertEqual(len(steps), 53)
+        self.assertEqual(sum(step["duration_seconds"] for step in steps), 74 * 60)
+
+        plan = [{
+            "date": "2026-10-16",
+            "name": "Criterium Microburst Session",
+            "duration_minutes": 74,
+            "description": description,
+            "steps": steps,
+        }]
+
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                module = _load_upload_plan_module()
+                events = [{
+                    "id": 123,
+                    "name": plan[0]["name"],
+                    "start_date_local": "2026-10-16T00:00:00",
+                }] if existing else []
+                with (
+                    patch.object(module, "get_events", return_value=events),
+                    patch.object(module, "create_activity", return_value={"id": 123}) as create,
+                    patch.object(module, "update_event", return_value={"id": 123}) as update,
+                    contextlib.redirect_stdout(io.StringIO()),
+                ):
+                    module.upload_plan(plan)
+
+                if existing:
+                    create.assert_not_called()
+                    update.assert_called_once()
+                    payload = update.call_args.args[3]
+                else:
+                    update.assert_not_called()
+                    create.assert_called_once()
+                    payload = create.call_args.kwargs
+                self.assertEqual(payload["description"], description)
+                if existing:
+                    zwo = base64.b64decode(payload["file_contents_base64"]).decode()
+                    self.assertEqual(zwo.count("<SteadyState "), len(steps))
+                else:
+                    self.assertEqual(payload["duration"], 74 * 60)
+                    self.assertEqual(payload["workout"], {"steps": steps})
+
+    def test_upload_plan_preserves_long_description_with_appended_fueling(self):
+        module = _load_upload_plan_module()
+        description = "Coaching notes. " * 50
+        plan = [{
+            "date": "2026-10-16",
+            "name": "Endurance ride",
+            "duration_minutes": 60,
+            "description": description,
+            "fueling": {"carbs_per_hour": 60, "total_carbs": 60},
+        }]
+        with (
+            patch.object(module, "get_events", return_value=[]),
+            patch.object(module, "create_activity", return_value={"id": 123}) as create,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            module.upload_plan(plan)
+        self.assertEqual(
+            create.call_args.kwargs["description"],
+            description + "\nFueling: 60g carbs/h, 60g total",
+        )
 
     def test_upload_plan_uses_library_workout_content(self):
         module = _load_upload_plan_module()
@@ -343,7 +427,7 @@ class UploadPlanRegressionTests(unittest.TestCase):
             "name": "Stored VO2Max",
             "type": "Ride",
             "moving_time": 3600,
-            "description": "Stored execution notes",
+            "description": "Stored execution notes. " * 50,
             "tags": ["vo2max-moderate"],
             "workout_doc": {
                 "steps": [
@@ -378,7 +462,7 @@ class UploadPlanRegressionTests(unittest.TestCase):
 
         self.assertEqual(captured["name"], "Stored VO2Max")
         self.assertEqual(captured["duration"], 3600)
-        self.assertEqual(captured["description"], "Stored execution notes")
+        self.assertEqual(captured["description"], library_workout["description"])
         self.assertEqual(captured["tags"], ["vo2max-moderate"])
         self.assertEqual(captured["raw_workout_doc"], library_workout["workout_doc"])
         self.assertEqual(captured["activity_type"], "Ride")
