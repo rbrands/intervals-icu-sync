@@ -15,6 +15,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Switched the production Foundry cycling coach agent to the `gpt-6-luna` model deployment.
 - Made `check_athlete_data` return a native MCP structured JSON object with an output schema instead of a serialized JSON string; local CLI text/JSON output remains unchanged.
 - Updated the consistency prompt to prefer the deterministic tool, added activity-feedback checks, and clarified boundary thresholds and manual fallback behavior.
 

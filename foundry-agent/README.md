@@ -288,7 +288,8 @@ The GitHub Actions workflow deploys both `agent.yaml` and `agent-staging.yaml`.
 Staging inherits the production definition and overrides its agent name plus
 its vector store, skill, and toolbox names. Any nested agent field can be
 overridden in `agent-staging.yaml` for experiments without changing production.
-Production uses the `gpt-5.6-luna` model deployment; staging uses `gpt-6-sol`.
+Production and staging use the `gpt-6-luna` model deployment. Staging keeps
+separate vector store, skill, and toolbox resources for isolated testing.
 When invoking staging, set `AGENT_NAME=training-architect-agent-staging`; the
 request format and structured inputs are unchanged. Start a fresh chat when
 switching agents. A `MODEL` environment variable overrides the model in either

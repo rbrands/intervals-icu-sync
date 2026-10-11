@@ -20,9 +20,9 @@ class DeployAgentTests(unittest.TestCase):
             _REPO_ROOT / "foundry-agent" / "agent-staging.yaml"
         )
 
-        self.assertEqual(production["definition"]["model"], "gpt-5.6-luna")
+        self.assertEqual(production["definition"]["model"], "gpt-6-luna")
         self.assertEqual(staging["name"], "training-architect-agent-staging")
-        self.assertEqual(staging["definition"]["model"], "gpt-6-sol")
+        self.assertEqual(staging["definition"]["model"], "gpt-6-luna")
         self.assertEqual(staging["definition"]["tools"], production["definition"]["tools"])
         self.assertEqual(
             staging["definition"]["instructions"],
