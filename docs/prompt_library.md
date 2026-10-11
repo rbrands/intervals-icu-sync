@@ -516,12 +516,31 @@ Keep the summary compact and action-oriented.
 
 ## 6. Datenkonsistenz / Data Consistency Check
 
+The deterministic `check_athlete_data` MCP tool is preferred when available.
+It accepts an existing JSON string and returns seven checks plus a compact
+summary without fetching again. The [data-quality rules](../README.md#deterministic-data-quality-check)
+define the authoritative thresholds and edge cases for both prompts below.
+
 ### Deutsch
 
 ```
 Lies die aktuellen Daten aus intervals über prepare_week_data. Prüfe die Athletendaten auf Vollständigkeit und interne Konsistenz.
 Dies ist ein Datenqualitäts-Check, kein Coaching-Interpretation; gib hier keine Trainingsempfehlungen, sondern nur an, was vorhanden, fehlt oder inkonsistent ist und warum das für spätere Bewertungen und Pläne relevant ist.
 Wenn die aktuellen Daten aus prepare_week_data bereits im Chat vorhanden sind und noch relevant sind, verwende sie erneut und rufe prepare_week_data nicht noch einmal auf.
+
+If check_athlete_data is available, pass the existing complete JSON as
+athlete_data and present its seven checks and summary in German without
+changing statuses. Otherwise apply the rules below with these clarifications:
+missing/non-positive FTP or W' comparisons are Missing; 10-20% includes both
+boundaries; >20% is Missing/inconsistent; a plan without a current-week entry
+is Missing. Use the inclusive current_date - lookback_days through current_date
+window, excluding future activities. Also check activity feedback: OK when
+every activity has non-null rpe and carbs_ingested_g (zero counts); Missing
+when there are no activities or either field is missing for all activities;
+Warning for other gaps. Missing feedback limits exertion/fueling comparisons.
+Count all seven areas for the overall result; p20min context does not lower it.
+Prioritize Missing before Warning, then season plan, wellness, FTP, W',
+feedback, density, historical targets; no fix is required if everything is OK.
 
 Bewerte jede unten genannte Stelle. Für jede Stelle gib einen Status (`OK`, `Warning` oder `Missing`) und eine ein Satz lange Erklärung an, welche praktische Auswirkung das hat, wenn er nicht `OK` ist. Nutze die genauen Schwellenwerte; erfinde keine eigenen.
 
@@ -575,15 +594,22 @@ Fetch the current data from intervals via prepare_week_data. Check the athlete d
 This is a data-quality check, not a coaching interpretation — do not give training recommendations here, only report what is present, missing, or inconsistent and why it matters for future assessments and plans.
 If current-week data from prepare_week_data is already present in this chat and still relevant, reuse it and do not call prepare_week_data again.
 
+If check_athlete_data is available, pass the existing complete JSON as
+athlete_data and use its seven checks and summary without changing statuses.
+Otherwise apply the manual rules below.
+
 Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Missing`) and a one-sentence explanation of the practical impact if it is not `OK`. Use the exact thresholds given; do not invent your own.
 
 **Season plan / macrocycle**
 - `OK` if `week_summary.training_plan` is present and contains an entry for the current week.
 - `Missing` if `week_summary.training_plan` is absent or empty.
+- A plan containing only other weeks is also `Missing`.
 - Impact when `Missing`: no phase, weekly load target, or day constraints are available; plan generation falls back to a readiness-based plan without a target to work toward.
 
 **FTP consistency**
 - Compare `ftp` against `rolling_ftp` and `eftp`.
+- Use absolute percentage differences relative to `ftp`; missing or
+  non-positive comparison values are `Missing`, and 10-20% includes both boundaries.
 - `OK` if both differ from `ftp` by less than 10%.
 - `Warning` if either differs by 10-20%.
 - `Missing`/flag as inconsistent if either differs by more than 20%.
@@ -591,6 +617,9 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Mi
 
 **W' consistency**
 - Compare `w_prime` against `rolling_w_prime`.
+- Use absolute percentage differences relative to `w_prime`; missing or
+  non-positive values are `Missing`, 10-20% includes both boundaries, and
+  more than 20% is `Missing` with an inconsistent flag.
 - `OK` if they differ by less than 10%.
 - `Warning` if they differ by 10-20%.
 - Flag as inconsistent if they differ by more than 20%.
@@ -603,10 +632,19 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Mi
 
 **Recent activity density**
 - Count entries in `activities` within the `lookback_days` window.
+- Include `current_date - lookback_days` through `current_date`, both
+  boundaries inclusive, excluding future activities.
 - `OK` if 3 or more activities are present.
 - `Warning` if 1-2 activities are present.
 - `Missing` if 0 activities are present.
 - Impact when `Warning` or `Missing`: recent-load and intensity-distribution interpretations are based on very little data and have low confidence.
+
+**Activity feedback tracking**
+- In the same window, check `rpe` and `carbs_ingested_g`.
+- `OK` if both are non-null for every activity; zero counts as recorded.
+- `Missing` if there are no activities or either field is absent/null for all activities.
+- `Warning` for other gaps.
+- Impact: subjective exertion and actual fueling cannot be reliably compared with load.
 
 **Load target history**
 - Check `weekly_load_target` across all entries in `training_load_history`.
@@ -618,6 +656,9 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Mi
 End with one line: overall data completeness as `Good` (all areas `OK`), `Partial` (only `Warning`/`Missing` areas, no more than two), or `Limited` (three or more `Warning`/`Missing` areas). Follow this with one sentence on which single fix would improve the data quality most (e.g. "connecting a wellness tracker" or "setting up a season plan in intervals.icu").
 
 Keep the response compact: one short line per area, not a full paragraph.
+Prioritize `Missing` before `Warning`, then season plan, wellness, FTP, W',
+feedback, density, and historical targets. If all seven areas are `OK`, no
+fix is required. The p20min contextual note does not lower any status.
 ```
 
 ---

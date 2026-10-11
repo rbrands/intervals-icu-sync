@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.7] - 2026-10-11
+
+### Added
+
+- Added deterministic athlete-data completeness and consistency checks as a shared Python function and the `check_athlete_data` tool in both local and hosted MCP servers, accepting existing JSON without additional API calls.
+- Added seven-area status reports, comparison evidence, contextual 20-minute power notes, overall completeness, a single data-quality fix, and regression coverage for thresholds and missing data.
+- Added a local `check_athlete_data.py` CLI with text/JSON output and a data-quality report in the weekly summary notebook, both using the shared deterministic checks.
+
+### Changed
+
+- Made `check_athlete_data` return a native MCP structured JSON object with an output schema instead of a serialized JSON string; local CLI text/JSON output remains unchanged.
+- Updated the consistency prompt to prefer the deterministic tool, added activity-feedback checks, and clarified boundary thresholds and manual fallback behavior.
+
 ## [1.3.6] - 2026-10-10
 
 ### Added

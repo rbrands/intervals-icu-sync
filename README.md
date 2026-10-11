@@ -82,6 +82,59 @@ The combination of:
 
 creates a lightweight but powerful coaching system. The full system prompt is maintained in [`prompts/system_prompt.md`](prompts/system_prompt.md).
 
+### Deterministic data-quality check
+
+Both MCP servers expose `check_athlete_data(athlete_data)`. Pass the **JSON
+string** already returned by `prepare_week_data`, or an existing coach-input
+export. The tool makes no API calls, stores nothing, and gives no training
+recommendations. Python callers can use
+`intervals_icu.data_quality.check_athlete_data(payload_dict)` directly.
+
+The MCP response is a native JSON object in `structuredContent`, with a
+declared output schema, not a serialized JSON string in a `result` field.
+It contains `checks` (seven areas, each with `area`, `status`,
+`explanation`, `evidence`, and `context`), `overall`, `non_ok_count`,
+`suggested_fix`, `report_text`, and the input date/window metadata.
+`report_text` contains one line per area plus one summary line; explanations
+are in English and can be translated by the caller without changing statuses.
+
+| Area | Deterministic rule |
+|---|---|
+| Season plan | `OK` when `week_summary.training_plan` has an entry whose `week` matches `week_starting`; otherwise `Missing`, including next-week-only plans. Presence does not certify that every plan field is populated. |
+| FTP consistency | Compare `metrics.rolling_ftp` and `metrics.eftp` with `metrics.ftp`, using absolute percentage differences relative to FTP. Below 10%: `OK`; 10–20% inclusive: `Warning`; above 20%: `Missing` with an explicit inconsistent flag. Missing or non-positive values also produce `Missing`; the worst comparison determines the area status. |
+| W' consistency | Apply the same thresholds to `metrics.rolling_w_prime`, relative to `metrics.w_prime`. |
+| Wellness | `OK` if any of `metrics.resting_hr`, `metrics.hrv`, or `metrics.sleep_secs` is non-null; otherwise `Missing`. |
+| Activity density | Count activities dated from `current_date - lookback_days` through `current_date`, both inclusive, matching the preparation pipeline's lower boundary while excluding future entries. At least 3: `OK`; 1–2: `Warning`; 0: `Missing`. |
+| Activity feedback | In that same window, `OK` if every activity has non-null `rpe` and `carbs_ingested_g` (zero counts as recorded); `Missing` if there are no activities or either field is absent/null for every activity; otherwise incomplete feedback is `Warning`. |
+| Historical targets | `OK` if any `training_load_history` entry has a non-null `weekly_load_target` (including zero); otherwise `Missing`. |
+
+If `0.95 * metrics.power_profile.p20min.watts` is more than 20% below FTP,
+the FTP check adds context about the power-profile window and potentially
+missing sustained maximal efforts. This is **not** a data error and does not
+change the status or overall rating.
+
+Overall completeness is `Good` for zero non-OK areas, `Partial` for one or
+two, and `Limited` for three or more. The single suggested fix uses a stable
+priority: `Missing` before `Warning`, then season plan, wellness, FTP, W',
+feedback, activity density, and historical targets. This is a data-quality
+priority, not a training prescription; complete data requires no fix.
+
+`current_date`, `week_starting`, and a positive integer `lookback_days` are
+required. Dates must use `YYYY-MM-DD`, and `week_starting` must be the Monday
+of `current_date`. Missing optional sections are assessed as missing data;
+malformed JSON, wrong field types, invalid dates, and non-finite numbers
+raise an explicit MCP tool error rather than returning a completeness rating.
+Unrelated additive fields are ignored.
+
+The consistency prompt prefers this tool when available and retains manual
+fallback rules for clients without it.
+
+For a local console report, run `python scripts/check_athlete_data.py`.
+It reads the current week's `data/processed/coach_input_{monday}.json` by
+default; it does not fetch fresh data or silently select an older export.
+Use `--input` to check another consolidated export, or `--json` for the full
+structured report. Raw API activity lists are not valid inputs.
+
 ## How to Use
 
 ![alt text](docs/tiers-square.png)
@@ -159,6 +212,7 @@ intervals-icu-sync/
 │   ├── fueling_planner.py          # Generate carbohydrate targets per session
 │   ├── validate_plan.py            # Validate week_plan JSON against upload schema
 │   ├── check_plan_tss.py           # Check plan TSS against deterministic step-based reference
+│   ├── check_athlete_data.py       # Check consolidated athlete-data quality locally
 │   ├── upload_plan.py              # Upload JSON training plan to intervals.icu
 │   ├── wbal_analysis.py            # Compute W'bal time series from power stream
 │   ├── prepare_week_for_coach.py   # Run all scripts in sequence
@@ -214,6 +268,7 @@ intervals-icu-sync/
 │       ├── __init__.py
 │       ├── client.py               # HTTP client (intervals.icu API)
 │       ├── config.py               # Loads API_KEY, ATHLETE_ID from .env
+│       ├── data_quality.py         # Shared deterministic athlete-data quality checks
 │       ├── training_readiness.py   # Shared readiness traffic-light calculation
 │       ├── week_data_schema.py     # Pydantic models for consolidated week_data JSON schema
 │       └── wbal.py                 # Shared W'bal computation (Skiba differential model)
@@ -222,6 +277,7 @@ intervals-icu-sync/
 │   ├── processed/                  # Derived JSON exports (git-ignored)
 │   └── plans/                      # Training plan JSON files
 ├── tests/
+│   ├── test_data_quality.py        # Data-quality thresholds and MCP tool regression tests
 │   └── test_upload_plan_regressions.py  # Regression tests for upload_plan.py and ZWO generation
 ├── .env.example
 ├── .pre-commit-config.yaml       # Git hook config (strips Jupyter outputs before commit)
@@ -671,6 +727,31 @@ FastMCP server that exposes the training data pipeline and plan upload as MCP to
 
 ---
 
+### `check_athlete_data.py`
+
+Checks a consolidated coach-input export using the same deterministic
+seven-area data-quality rules as the MCP tool.
+
+```bash
+# Check the current week's consolidated export (no fresh API fetch)
+python scripts/check_athlete_data.py
+
+# Check a specific export
+python scripts/check_athlete_data.py --input data/processed/coach_input_2026-10-05.json
+
+# Print the full structured report as JSON
+python scripts/check_athlete_data.py --json
+```
+
+Default output: seven compact status lines plus overall completeness and a
+single data-quality fix. `--json` prints the full report with evidence and
+context. No file is written. Exit code `0` means the check ran successfully,
+including `Partial` or `Limited` results; `1` means the file could not be read
+or the input was invalid. Use the consolidated export, not a raw activity
+list. To refresh input first, run `prepare_week_for_coach.py`.
+
+---
+
 ### `check_plan_tss.py`
 
 Checks whether a generated plan's stated TSS values match the deterministic step-based calculation and whether the weekly total is within the requested target tolerance.
@@ -784,6 +865,7 @@ Exit code behavior:
 Interactive Jupyter notebook that loads the consolidated `coach_input_{monday}.json` and displays a structured overview of the current training week:
 
 - **Athlete Metrics**: FTP, eFTP, VO2Max, W\', HRV, weight — FTP values shown in W and W/kg
+- **Data Quality Check**: deterministic seven-area completeness/consistency report and status table, using the loaded consolidated export without a new API fetch; activities-only exports show an explicit unavailable message.
 - **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling (only from Base/Pyramidal/Threshold rides ≥ 90 min; shows `"no durability data"` if no eligible rides exist)
 - **Training Readiness**: CTL, ATL, Form Zone, HRV, and a color-coded readiness traffic light with score, confidence, recommendation, contributing signals, and safety limits (`ctl`, `atl`, and `training_readiness` are read from `week_summary`)
 - **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling (labeled only for Base/Pyramidal/Threshold rides ≥ 90 min), and carbohydrate data

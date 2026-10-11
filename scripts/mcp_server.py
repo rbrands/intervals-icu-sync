@@ -36,6 +36,7 @@ from intervals_icu.client import (
 from intervals_icu.training_readiness import annotate_hard_sessions, compute_training_readiness
 from intervals_icu.config import API_KEY, ATHLETE_ID
 from intervals_icu.prompt_templates import render_coach_prompt
+from intervals_icu.data_quality import QualityReport, check_athlete_data_payload
 PROCESSED_DIR = _ROOT / "data" / "processed"
 PLANS_DIR = _ROOT / "data" / "plans"
 
@@ -366,6 +367,21 @@ def coach_prompt_consistency(response_language: str = "de") -> str:
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
+
+@mcp.tool()
+def check_athlete_data(athlete_data: str) -> QualityReport:
+    """Check completeness and consistency of existing athlete_data JSON.
+
+    Pass the complete JSON returned by prepare_week_data, or an attached coach
+    input payload. No API calls, persistence or training recommendations.
+    Returns a native structured JSON object with seven checks (OK/Warning/Missing),
+    evidence, contextual p20min notes,
+    overall completeness (Good/Partial/Limited), one suggested data-quality fix,
+    and a compact report_text. Dates and lookback_days come only from the input.
+    Malformed input raises a tool error; absent metrics produce Missing checks.
+    """
+    return check_athlete_data_payload(athlete_data)
+
 
 @mcp.tool()
 def prepare_week_data(lookback_days: int = 7) -> str:
