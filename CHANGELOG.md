@@ -9,7 +9,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Limited next-best-training prose to 100 words and added week-plan-compatible upload JSON for the main recommendation only, without automatic upload; rest returns an empty workout list.
+- Limited next-best-training prose to 100 words and reused the weekly plan's existing output contract and save/validate/upload workflow for one workout; upload requires an explicit user request, and rest recommendations remain prose only.
 
 ### Added
 

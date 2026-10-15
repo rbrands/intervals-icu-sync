@@ -668,7 +668,8 @@ fix is required. The p20min contextual note does not lower any status.
 Recommends one session for **today** without follow-up questions, or a preliminary
 session for tomorrow if already trained today. Output is limited to 100 words of
 prose plus upload JSON for the main recommendation; the alternative is prose only.
-Nothing is uploaded automatically. Rest produces an empty `workouts` array.
+The user can request upload afterwards, just as with the weekly plan.
+Rest recommendations are prose only.
 
 ### Deutsch
 
@@ -703,37 +704,26 @@ Berücksichtige dabei:
 Ist die Readiness "Unknown" oder fehlen zentrale Daten, benenne das explizit und
 empfiehl konservativ, statt nachzufragen.
 
-**Ausgabe: kurze Empfehlung + Upload-JSON**
-Behandle dies als Workout-Erstellung, nicht als Analyse. Gib genau zwei Teile aus:
-1. Insgesamt maximal 100 Wörter Fließtext: Zieldatum (morgen als vorläufig markieren),
-   Einheitstyp, Dauer, Zielzone, TSS und Carbs/h; EIN kurzer Satz zur Begründung;
-   EIN Satz mit leichterer Alternative und Abbruch-/Downgrade-Kriterium.
-   Keine separate Analyse, Metriktabelle oder Begründung je Entscheidungsfaktor.
-2. Die Hauptempfehlung als gültiges Upload-JSON im bestehenden Wochenplan-Format:
-   ein Objekt mit `workouts`-Array und genau einer Einheit. Die Alternative nicht
-   aufnehmen. Einen json-Codeblock zwischen BEGIN_UPLOAD_JSON und END_UPLOAD_JSON
-   setzen, beide Marker auf eigener Zeile; danach nichts ausgeben.
-   Weder upload_week_plan aufrufen noch automatisch etwas hochladen.
-
 Nutze `current_date` aus den Athletendaten für heute; wurde heute bereits trainiert,
 addiere einen Kalendertag und prüfe Plan, Wochenziel und Constraints dieses Zieltags.
 Die heutige Readiness ist kein Messwert für morgen.
-Jede Einheit enthält `date` (YYYY-MM-DD), `name`, `duration_minutes`, `activity_type`,
-`description`, ganzzahliges `tss`, nicht leere kanonische `tags` sowie nicht leere
-`steps` mit ganzzahligem `duration_seconds` > 0 und `power_pct_ftp`.
-Nutze die bestehenden Trainingszonen und Tags; Ride nur für Radtraining vorbelegen.
-Steps enthalten Warmup, Hauptteil und Cooldown; ihre Gesamtdauer muss
-`duration_minutes` * 60 entsprechen. TSS aus den finalen Steps neu berechnen:
-round(sum((duration_seconds / 3600) * (power_pct_ftp / 100)^2 * 100)).
-Dieselbe TSS-Zahl und Fueling-Hinweise in die kurze `description` aufnehmen.
-Bei Einheiten ohne Leistungssteuerung Power-Steps weglassen und weder FTP noch
-TSS erfinden; nicht verfügbare `tss` weglassen und Dauer, HF/RPE-Hinweise sowie den
-passenden `activity_type` verwenden.
-Ist Ruhe die Hauptempfehlung oder fehlen wesentliche Daten für eine sichere,
-ausführbare Einheit, stattdessen {"workouts": []} ausgeben; keine Einheit erfinden
-und keinen Ruhetag mit Dauer null erzeugen. Innerhalb des Wortlimits kurz begründen.
-Vor der Ausgabe JSON, Feldtypen, Zieldatum, Constraints, Step-Dauern und TSS still
-prüfen. Diese Prüfungen und zusätzliche Kommentare nicht ausgeben.
+
+**Empfehlung und Upload**
+Nutze dasselbe Ausgabeformat für die Workout-Erstellung und denselben Upload-Ablauf
+wie beim Wochenplan, aber für genau eine Einheit:
+- Maximal 100 Wörter Fließtext: Datum, Einheitstyp, Dauer, Zielzone, TSS und Carbs/h,
+  eine kurze Begründung und eine leichtere Alternative mit Abbruch-/Downgrade-Kriterium.
+  Keine separate Analyse oder Metriktabelle.
+- Anschließend Upload-JSON für die Hauptempfehlung nach dem bestehenden Schema,
+  den Markern und TSS-Regeln des System-Prompts erzeugen. Die Alternative bleibt
+  ausschließlich im Fließtext.
+- Der User prüft die Empfehlung. Erst auf ausdrücklichen Upload-Wunsch den bestehenden
+  Speichern-/Validieren-/Upload-Ablauf des Wochenplans verwenden.
+  Nicht automatisch hochladen und jetzt keine Bestätigung abfragen.
+
+Wird Ruhe empfohlen oder fehlen wesentliche Workout-Daten, kurz begründen, statt
+eine Einheit zu erfinden. Wenn keine Einheit erstellt wird, gilt die reine
+Textausgabe des System-Prompts.
 ```
 
 ### English
@@ -769,36 +759,25 @@ Take the following into account:
 If readiness is "Unknown" or key data is missing, state this explicitly and
 recommend conservatively instead of asking.
 
-**Output: short recommendation + upload JSON**
-Treat this as workout generation, not an analysis. Output exactly two parts:
-1. At most 100 words of prose in total: target date (mark tomorrow as preliminary),
-   session type, duration, target zone, TSS, and carbs/h; ONE short sentence explaining
-   the decision; ONE sentence with an easier alternative and a downgrade/stop criterion.
-   Do not output a separate analysis, metrics table, or reasoning per decision factor.
-2. The main recommendation as valid upload JSON in the existing week-plan format:
-   an object with a `workouts` array containing exactly one workout. Do not include
-   the alternative. Enclose a fenced json block between BEGIN_UPLOAD_JSON and
-   END_UPLOAD_JSON, each on its own line; nothing may follow the closing marker.
-   Do not call upload_week_plan or upload anything automatically.
-
 Use the athlete data's `current_date` for today; if already trained today, add one
 calendar day and evaluate that day's plan, week target, and constraints instead.
 Do not treat today's readiness as tomorrow's measured readiness.
-Each workout must contain `date` (YYYY-MM-DD), `name`, `duration_minutes`,
-`activity_type`, `description`, integer `tss`, non-empty canonical `tags`, and
-non-empty `steps` with integer `duration_seconds` > 0 and `power_pct_ftp`.
-Use the existing training zones and tags; default to Ride only for cycling.
-Put warmup, main set, and cooldown in steps; their total duration must equal
-`duration_minutes` * 60. Recompute TSS from the final steps:
-round(sum((duration_seconds / 3600) * (power_pct_ftp / 100)^2 * 100)).
-Include that same TSS and fueling guidance in the short `description`.
-For non-power activities, omit power steps and do not invent FTP or TSS; omit
-unavailable `tss` and use duration, HR/RPE guidance, and the correct `activity_type`.
-If rest is the main recommendation or essential data for a safe, executable workout
-is missing, return {"workouts": []} instead of inventing a workout or a zero-duration
-rest event. Briefly explain this within the prose limit.
-Before output, silently check JSON validity, field types, target date, constraints,
-step durations, and TSS. Do not print the checks or any additional commentary.
+
+**Recommendation and upload**
+Use the same workout-generation output contract and upload workflow as the weekly
+plan, but for exactly one workout:
+- At most 100 words of prose: date, session type, duration, target zone, TSS and
+  carbs/h, one short reason, and an easier alternative with a downgrade/stop criterion.
+  No separate analysis or metrics table.
+- Then generate upload JSON for the main recommendation using the system prompt's
+  existing schema, markers, and TSS rules. The alternative stays in prose only.
+- Let the user review the recommendation. Upload only after the user explicitly
+  requests it, using the existing weekly-plan save/validate/upload workflow.
+  Do not upload automatically or ask for confirmation now.
+
+If rest is recommended or essential workout data is missing, explain briefly
+instead of inventing a workout. Follow the system prompt's prose-only rule when
+no workout is created.
 ```
 
 ---

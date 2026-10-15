@@ -16,15 +16,12 @@ class NextBestTrainingPromptTests(unittest.TestCase):
         for requirement in (
             "At most 100 words of prose",
             "exactly one workout",
-            "Do not include\n   the alternative",
-            "BEGIN_UPLOAD_JSON",
-            "END_UPLOAD_JSON",
-            "Do not call upload_week_plan",
-            '{"workouts": []}',
-            "duration_minutes",
-            "duration_seconds",
-            "power_pct_ftp",
-            "Recompute TSS",
+            "The alternative stays in prose only",
+            "system prompt's\n  existing schema, markers, and TSS rules",
+            "Upload only after the user explicitly\n  requests it",
+            "save/validate/upload workflow",
+            "Do not upload automatically or ask for confirmation now",
+            "system prompt's prose-only rule",
             "`current_date`",
             "calendar day",
             "Do not treat today's readiness as tomorrow's",
@@ -32,6 +29,7 @@ class NextBestTrainingPromptTests(unittest.TestCase):
             with self.subTest(requirement=requirement):
                 self.assertIn(requirement, prompt)
         self.assertNotIn("One sentence of reasoning per decision factor", prompt)
+        self.assertNotIn("duration_seconds", prompt)
         self.assertTrue(prompt.endswith("Please respond in de."))
 
     def test_documented_english_prompt_matches_template(self):

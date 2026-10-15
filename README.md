@@ -949,8 +949,9 @@ Covers seven use cases:
 format as a weekly plan, between `BEGIN_UPLOAD_JSON` / `END_UPLOAD_JSON` markers.
 Save the JSON block as a plan file for `scripts/upload_plan.py --plan <file>`,
 or explicitly call `save_week_plan` with its JSON, then `upload_week_plan`.
-Rest or insufficient data
-produces `{"workouts": []}`, not a zero-duration calendar event.
+The user reviews the recommendation and requests upload explicitly, just as with
+a weekly plan. The prompt reuses the system prompt's output contract and TSS rules.
+Rest or insufficient data produces prose only, not a zero-duration calendar event.
 
 All prompts assume the MCP server connection or a manually pasted `coach_input_{monday}.json` as data source.
 
