@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.8] - 2026-10-15
+
+### Added
+
+- Added the `fitness` discipline profile (`prompts/discipline_fitness.md`) for athletes without a race goal: VO2max maintenance, stable CTL band, consistency over peaking, no taper, Peak phase reinterpreted as a benchmark week, and strength training recommended in prose only.
+- Registered `fitness` as a runtime discipline in the Foundry agent (`agent.yaml`, `deploy_agent.py`), the Chainlit and invoke test clients, and the documentation tables.
+
 ## [1.3.7] - 2026-10-11
 
 ### Added
