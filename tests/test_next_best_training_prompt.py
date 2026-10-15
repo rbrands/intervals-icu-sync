@@ -1,0 +1,82 @@
+import json
+import unittest
+from pathlib import Path
+
+from jsonschema import Draft202012Validator
+
+from src.intervals_icu.prompt_templates import render_coach_prompt
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class NextBestTrainingPromptTests(unittest.TestCase):
+    def test_short_output_and_upload_contract(self):
+        prompt = render_coach_prompt("next_best_training", "de")
+        for requirement in (
+            "At most 100 words of prose",
+            "exactly one workout",
+            "Do not include\n   the alternative",
+            "BEGIN_UPLOAD_JSON",
+            "END_UPLOAD_JSON",
+            "Do not call upload_week_plan",
+            '{"workouts": []}',
+            "duration_minutes",
+            "duration_seconds",
+            "power_pct_ftp",
+            "Recompute TSS",
+            "`current_date`",
+            "calendar day",
+            "Do not treat today's readiness as tomorrow's",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, prompt)
+        self.assertNotIn("One sentence of reasoning per decision factor", prompt)
+        self.assertTrue(prompt.endswith("Please respond in de."))
+
+    def test_documented_english_prompt_matches_template(self):
+        library = (ROOT / "docs/prompt_library.md").read_text(encoding="utf-8")
+        template = (
+            ROOT / "prompts/library/07_next_best_training.md"
+        ).read_text(encoding="utf-8").strip()
+        self.assertIn(template, library)
+
+    def test_single_workout_and_rest_match_existing_upload_schema(self):
+        schema = json.loads(
+            (ROOT / "contracts/week-plan/week-plan.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        validator = Draft202012Validator(schema)
+        workout = {
+            "date": "2026-10-16",
+            "name": "Easy Endurance",
+            "duration_minutes": 60,
+            "activity_type": "Ride",
+            "description": "Easy endurance, 41 TSS, 30 g carbs/h.",
+            "tss": 41,
+            "tags": ["aerobic-threshold-low"],
+            "steps": [
+                {"duration_seconds": 600, "power_pct_ftp": 50},
+                {"duration_seconds": 2400, "power_pct_ftp": 70},
+                {"duration_seconds": 600, "power_pct_ftp": 50},
+            ],
+        }
+        validator.validate({"workouts": [workout]})
+        validator.validate({"workouts": []})
+        self.assertEqual(
+            sum(step["duration_seconds"] for step in workout["steps"]),
+            workout["duration_minutes"] * 60,
+        )
+        self.assertEqual(
+            round(sum(
+                step["duration_seconds"] / 3600
+                * (step["power_pct_ftp"] / 100) ** 2 * 100
+                for step in workout["steps"]
+            )),
+            workout["tss"],
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

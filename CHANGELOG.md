@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [1.3.9] - 2026-10-15
 
+### Changed
+
+- Limited next-best-training prose to 100 words and added week-plan-compatible upload JSON for the main recommendation only, without automatic upload; rest returns an empty workout list.
+
 ### Added
 
 - Added the `next_best_training` prompt (`prompts/library/07_next_best_training.md`): recommends exactly one training session for today (plus a fallback) based on training readiness, load balance, plan context, and missing stimuli, without follow-up questions; if a session was already completed today, it gives a preliminary recommendation for the next day.

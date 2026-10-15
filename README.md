@@ -280,6 +280,7 @@ intervals-icu-sync/
 │   └── plans/                      # Training plan JSON files
 ├── tests/
 │   ├── test_data_quality.py        # Data-quality thresholds and MCP tool regression tests
+│   ├── test_next_best_training_prompt.py  # Compact recommendation and upload prompt contract
 │   └── test_upload_plan_regressions.py  # Regression tests for upload_plan.py and ZWO generation
 ├── .env.example
 ├── .pre-commit-config.yaml       # Git hook config (strips Jupyter outputs before commit)
@@ -942,7 +943,14 @@ Covers seven use cases:
 | **Fueling Analysis** | Dedicated fueling strategy review with pattern detection and recommendations |
 | **Metrics & Wellness Summary** | Compact overview of current performance metrics, HRV, sleep, and form state with load recommendation |
 | **Data Consistency Check** | Completeness and consistency report of the athlete data without coaching interpretation |
-| **Next Best Training** | Exactly one session recommendation for today (plus a fallback) based on readiness, load, plan context, and missing stimuli — no follow-up questions |
+| **Next Best Training** | At most 100 words plus upload JSON for one session today (preliminary tomorrow if already trained); easier alternative in prose only, no automatic upload |
+
+`coach_prompt_next_best_training` returns the same `{"workouts": [...]}` upload
+format as a weekly plan, between `BEGIN_UPLOAD_JSON` / `END_UPLOAD_JSON` markers.
+Save the JSON block as a plan file for `scripts/upload_plan.py --plan <file>`,
+or explicitly call `save_week_plan` with its JSON, then `upload_week_plan`.
+Rest or insufficient data
+produces `{"workouts": []}`, not a zero-duration calendar event.
 
 All prompts assume the MCP server connection or a manually pasted `coach_input_{monday}.json` as data source.
 

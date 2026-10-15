@@ -25,13 +25,36 @@ Take the following into account:
 - Which stimulus is still missing (VO2max, threshold, base, recovery)? Use the activity tags.
 - Fueling pattern of the recent sessions
 
-**Recommendation**
-Give exactly ONE main recommendation and one alternative for the case that I feel
-worse than the data suggests:
-- Session type, duration, target zones (power/HR/RPE), interval structure
-- Expected TSS and fueling target (g carbs/h)
-- One sentence of reasoning per decision factor (readiness, plan, missing stimulus)
-- Abort/downgrade criteria during the session (e.g. HR decoupling, RPE)
-
 If readiness is "Unknown" or key data is missing, state this explicitly and
 recommend conservatively instead of asking.
+
+**Output: short recommendation + upload JSON**
+Treat this as workout generation, not an analysis. Output exactly two parts:
+1. At most 100 words of prose in total: target date (mark tomorrow as preliminary),
+   session type, duration, target zone, TSS, and carbs/h; ONE short sentence explaining
+   the decision; ONE sentence with an easier alternative and a downgrade/stop criterion.
+   Do not output a separate analysis, metrics table, or reasoning per decision factor.
+2. The main recommendation as valid upload JSON in the existing week-plan format:
+   an object with a `workouts` array containing exactly one workout. Do not include
+   the alternative. Enclose a fenced json block between BEGIN_UPLOAD_JSON and
+   END_UPLOAD_JSON, each on its own line; nothing may follow the closing marker.
+   Do not call upload_week_plan or upload anything automatically.
+
+Use the athlete data's `current_date` for today; if already trained today, add one
+calendar day and evaluate that day's plan, week target, and constraints instead.
+Do not treat today's readiness as tomorrow's measured readiness.
+Each workout must contain `date` (YYYY-MM-DD), `name`, `duration_minutes`,
+`activity_type`, `description`, integer `tss`, non-empty canonical `tags`, and
+non-empty `steps` with integer `duration_seconds` > 0 and `power_pct_ftp`.
+Use the existing training zones and tags; default to Ride only for cycling.
+Put warmup, main set, and cooldown in steps; their total duration must equal
+`duration_minutes` * 60. Recompute TSS from the final steps:
+round(sum((duration_seconds / 3600) * (power_pct_ftp / 100)^2 * 100)).
+Include that same TSS and fueling guidance in the short `description`.
+For non-power activities, omit power steps and do not invent FTP or TSS; omit
+unavailable `tss` and use duration, HR/RPE guidance, and the correct `activity_type`.
+If rest is the main recommendation or essential data for a safe, executable workout
+is missing, return {"workouts": []} instead of inventing a workout or a zero-duration
+rest event. Briefly explain this within the prose limit.
+Before output, silently check JSON validity, field types, target date, constraints,
+step durations, and TSS. Do not print the checks or any additional commentary.
