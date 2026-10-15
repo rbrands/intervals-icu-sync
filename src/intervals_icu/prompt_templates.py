@@ -14,6 +14,7 @@ _PROMPT_FILE_NAMES = {
     "fueling_analysis": "04_fueling_analysis.md",
     "metrics_wellness_summary": "05_metrics_wellness_summary.md",
     "consistency": "06_consistency.md",
+    "next_best_training": "07_next_best_training.md",
 }
 
 _PROMPT_ALIASES = {
@@ -25,6 +26,7 @@ _PROMPT_ALIASES = {
     "fueling_analysis": "fueling_analysis",
     "metrics_wellness_summary": "metrics_wellness_summary",
     "consistency": "consistency",
+    "next_best_training": "next_best_training",
     # Short aliases
     "single": "single_workout_analysis",
     "week": "weekly_analysis",
@@ -35,6 +37,9 @@ _PROMPT_ALIASES = {
     "metrics": "metrics_wellness_summary",
     "check": "consistency",
     "consistency_check": "consistency",
+    "next": "next_best_training",
+    "next_training": "next_best_training",
+    "today": "next_best_training",
 }
 
 _DEFAULT_PROMPT = "weekly_analysis"
