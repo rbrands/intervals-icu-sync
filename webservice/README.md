@@ -25,6 +25,8 @@ MCP server for Azure App Service. Exposes tools over SSE transport, with credent
 | `coach_prompt_training_plan_generation_automatic` | Predefined prompt for automatic training-plan generation. |
 | `coach_prompt_fueling_analysis` | Predefined prompt for fueling analysis. |
 | `coach_prompt_metrics_wellness_summary` | Predefined prompt for metrics and wellness summary. |
+| `coach_prompt_consistency` | Predefined prompt for the data consistency check. |
+| `coach_prompt_next_best_training` | Predefined prompt for a single next-best training session recommendation for today. |
 
 ## Authentication
 

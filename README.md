@@ -932,7 +932,7 @@ Covers the core workflow: fetching data from intervals.icu, enriching it with th
 
 A curated collection of copy-paste prompts for use with ChatGPT, Claude, or any other AI assistant. Each prompt is provided in both German and English.
 
-Covers five use cases:
+Covers seven use cases:
 
 | Prompt | Purpose |
 |---|---|
@@ -941,6 +941,8 @@ Covers five use cases:
 | **Training Plan Generation** | Generate a structured training plan for the coming week |
 | **Fueling Analysis** | Dedicated fueling strategy review with pattern detection and recommendations |
 | **Metrics & Wellness Summary** | Compact overview of current performance metrics, HRV, sleep, and form state with load recommendation |
+| **Data Consistency Check** | Completeness and consistency report of the athlete data without coaching interpretation |
+| **Next Best Training** | Exactly one session recommendation for today (plus a fallback) based on readiness, load, plan context, and missing stimuli — no follow-up questions |
 
 All prompts assume the MCP server connection or a manually pasted `coach_input_{monday}.json` as data source.
 

@@ -663,6 +663,98 @@ fix is required. The p20min contextual note does not lower any status.
 
 ---
 
+## 7. Nächstbeste Trainingseinheit / Next Best Training
+
+Empfiehlt genau eine Einheit für **heute** auf Basis von Training Readiness, Belastungsbilanz, Plan-Kontext und fehlenden Reizen – ohne Rückfragen. Wurde heute bereits trainiert, wird stattdessen eine vorläufige Empfehlung für den nächsten Tag gegeben.
+
+Recommends exactly one session for **today** based on training readiness, load balance, plan context, and missing stimuli – without follow-up questions. If a session was already completed today, a preliminary recommendation for the next day is given instead.
+
+### Deutsch
+
+```
+Lies die aktuellen Daten aus intervals.icu über prepare_week_data und empfiehl mir die
+nächstbeste Trainingseinheit für heute. Stelle keine Rückfragen – entscheide auf Basis
+der vorliegenden Daten.
+Wenn die aktuellen Daten aus prepare_week_data bereits im Chat vorhanden und noch
+relevant sind, verwende sie erneut und rufe prepare_week_data nicht noch einmal auf.
+
+Falls heute bereits eine Einheit absolviert wurde, gib stattdessen eine Empfehlung
+für den nächsten Tag – und kennzeichne sie als vorläufig, da Schlaf/HRV von morgen
+noch fehlen (dann morgen früh nochmal prüfen).
+
+Berücksichtige dabei:
+
+**Ausgangslage**
+- Training Readiness (`week_summary.training_readiness`): Ampel, Score und Begründungen
+- CTL/ATL/TSB sowie die Belastung der letzten 48–72 h (letzte harte Einheit?)
+- Wellness: Schlaf, HRV, Ruhepuls – nur wenn vorhanden
+
+**Plan-Kontext**
+- Aktuelle Phase (Base/Build/Peak) und Wochenziel (`weekly_load_target` bzw. Zeitziel)
+- Bereits absolvierte Wochen-TSS vs. Restbudget für die verbleibenden Tage
+- Heute geplantes Workout aus dem Kalender (falls vorhanden) – passt es noch?
+- Nächste Rennen (RACE_A/B/C) und Tagesconstraints (Sick/Travel)
+
+**Lücken der Woche**
+- Welcher Reiz fehlt noch (VO2max, Schwelle, Grundlage, Erholung)? Nutze die Activity-Tags.
+- Fueling-Muster der letzten Einheiten
+
+**Empfehlung**
+Gib genau EINE Hauptempfehlung und eine Alternative für den Fall, dass ich mich
+schlechter fühle, als die Daten vermuten lassen:
+- Einheitstyp, Dauer, Zielzonen (Power/HF/RPE), Struktur der Intervalle
+- Erwartete TSS und Fueling-Ziel (g Carbs/h)
+- Ein Satz Begründung je Entscheidungsfaktor (Readiness, Plan, fehlender Reiz)
+- Abbruch-/Downgrade-Kriterien während der Einheit (z. B. HF-Entkopplung, RPE)
+
+Ist die Readiness "Unknown" oder fehlen zentrale Daten, benenne das explizit und
+empfiehl konservativ, statt nachzufragen.
+```
+
+### English
+
+```
+Fetch the current data from intervals.icu via prepare_week_data and recommend the
+next best training session for today. Do not ask follow-up questions; decide based
+on the available data.
+If current-week data from prepare_week_data is already present in this chat and
+still relevant, reuse it and do not call prepare_week_data again.
+
+If a session has already been completed today, give a recommendation for the
+next day instead and mark it as preliminary, because tomorrow's sleep and HRV
+are not yet available (re-check in the morning).
+
+Take the following into account:
+
+**Starting point**
+- Training readiness (`week_summary.training_readiness`): traffic light, score, and reasons
+- CTL/ATL/TSB and the load of the last 48-72 hours (last hard session?)
+- Wellness: sleep, HRV, resting heart rate - only if available
+
+**Plan context**
+- Current phase (Base/Build/Peak) and weekly target (`weekly_load_target` or time target)
+- Weekly TSS completed so far vs. remaining budget for the remaining days
+- Today's planned workout from the calendar (if any) - does it still fit?
+- Upcoming races (RACE_A/B/C) and day constraints (Sick/Travel)
+
+**Gaps in the week**
+- Which stimulus is still missing (VO2max, threshold, base, recovery)? Use the activity tags.
+- Fueling pattern of the recent sessions
+
+**Recommendation**
+Give exactly ONE main recommendation and one alternative for the case that I feel
+worse than the data suggests:
+- Session type, duration, target zones (power/HR/RPE), interval structure
+- Expected TSS and fueling target (g carbs/h)
+- One sentence of reasoning per decision factor (readiness, plan, missing stimulus)
+- Abort/downgrade criteria during the session (e.g. HR decoupling, RPE)
+
+If readiness is "Unknown" or key data is missing, state this explicitly and
+recommend conservatively instead of asking.
+```
+
+---
+
 ## Hinweise zur Verwendung / Usage Notes
 
 ## MCP Prompt-Aufruf je Client / MCP Prompt Invocation by Client
@@ -682,7 +774,8 @@ The prompts are not only stored as Markdown files, but also exposed by the MCP s
 | Fueling-Analyse / Fueling analysis | `coach_prompt_fueling_analysis` |
 | Metriken & Wellness / Metrics & wellness | `coach_prompt_metrics_wellness_summary` |
 | Datenkonsistenz / Data consistency | `coach_prompt_consistency` |
-| Generischer Einstieg / Generic entry point | `coach_prompt` with `prompt_name` = `single_workout_analysis`, `weekly_analysis`, `training_plan_generation_manual`, `training_plan_generation_automatic`, `fueling_analysis`, `metrics_wellness_summary`, or `consistency` |
+| Nächstbeste Trainingseinheit / Next best training | `coach_prompt_next_best_training` |
+| Generischer Einstieg / Generic entry point | `coach_prompt` with `prompt_name` = `single_workout_analysis`, `weekly_analysis`, `training_plan_generation_manual`, `training_plan_generation_automatic`, `fueling_analysis`, `metrics_wellness_summary`, `consistency`, or `next_best_training` |
 
 Alle Prompt-Endpunkte akzeptieren zusätzlich `response_language`, zum Beispiel `de` oder `en`.
 

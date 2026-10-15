@@ -364,6 +364,12 @@ def coach_prompt_consistency(response_language: str = "de") -> str:
     return render_coach_prompt("consistency", response_language)
 
 
+@mcp.prompt(title="Coach Prompt - Next Best Training", description="Next best training session recommendation prompt from prompts/library.")
+def coach_prompt_next_best_training(response_language: str = "de") -> str:
+    """Return the next best training session coaching prompt."""
+    return render_coach_prompt("next_best_training", response_language)
+
+
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
