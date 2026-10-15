@@ -41,7 +41,11 @@ plan, but for exactly one workout:
 - Then generate upload JSON for the main recommendation using the system prompt's
   existing schema, markers, and TSS rules. The alternative stays in prose only.
 - Let the user review the recommendation. Upload only after the user explicitly
-  requests it, using the existing weekly-plan save/validate/upload workflow.
+  requests it, using the existing weekly-plan workflow:
+  local MCP: save_week_plan(plan_json=...), then validate_week_plan(), then
+  upload_week_plan(); hosted MCP: validate_week_plan(plan_json=...), then
+  upload_week_plan(plan_json=...) with the same JSON (no save tool).
+  Upload only if validation succeeds.
   Do not upload automatically or ask for confirmation now.
 
 If rest is recommended or essential workout data is missing, explain briefly

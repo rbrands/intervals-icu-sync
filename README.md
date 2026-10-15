@@ -947,8 +947,16 @@ Covers seven use cases:
 
 `coach_prompt_next_best_training` returns the same `{"workouts": [...]}` upload
 format as a weekly plan, between `BEGIN_UPLOAD_JSON` / `END_UPLOAD_JSON` markers.
-Save the JSON block as a plan file for `scripts/upload_plan.py --plan <file>`,
-or explicitly call `save_week_plan` with its JSON, then `upload_week_plan`.
+Upload options (only after an explicit user request):
+- **Local scripts:** save the JSON block as a plan file, run
+  `python scripts/validate_plan.py --plan <file>`, then
+  `python scripts/upload_plan.py --plan <file>` if validation succeeds.
+- **Local MCP server:** call `save_week_plan(plan_json=...)`, then
+  `validate_week_plan()` on the saved file, and only on success `upload_week_plan()`.
+- **Hosted MCP server:** call `validate_week_plan(plan_json=...)`, then only on
+  success `upload_week_plan(plan_json=...)` with the same JSON. No save step is
+  needed or available.
+
 The user reviews the recommendation and requests upload explicitly, just as with
 a weekly plan. The prompt reuses the system prompt's output contract and TSS rules.
 Rest or insufficient data produces prose only, not a zero-duration calendar event.

@@ -19,7 +19,7 @@ class NextBestTrainingPromptTests(unittest.TestCase):
             "The alternative stays in prose only",
             "system prompt's\n  existing schema, markers, and TSS rules",
             "Upload only after the user explicitly\n  requests it",
-            "save/validate/upload workflow",
+            "existing weekly-plan workflow",
             "Do not upload automatically or ask for confirmation now",
             "system prompt's prose-only rule",
             "`current_date`",
@@ -31,6 +31,21 @@ class NextBestTrainingPromptTests(unittest.TestCase):
         self.assertNotIn("One sentence of reasoning per decision factor", prompt)
         self.assertNotIn("duration_seconds", prompt)
         self.assertTrue(prompt.endswith("Please respond in de."))
+
+    def test_local_and_hosted_upload_workflows_require_validation(self):
+        prompt = render_coach_prompt("next_best_training", "en")
+        local, hosted = prompt.split("local MCP: ", 1)[1].split("hosted MCP: ", 1)
+        self.assertIn(
+            "save_week_plan(plan_json=...), then validate_week_plan(), then\n"
+            "  upload_week_plan()",
+            local,
+        )
+        self.assertIn(
+            "validate_week_plan(plan_json=...), then\n"
+            "  upload_week_plan(plan_json=...) with the same JSON (no save tool)",
+            hosted,
+        )
+        self.assertIn("Upload only if validation succeeds.", hosted)
 
     def test_documented_english_prompt_matches_template(self):
         library = (ROOT / "docs/prompt_library.md").read_text(encoding="utf-8")
