@@ -24,7 +24,7 @@ The response language is also runtime-controlled with `response_language`
 in different languages per request.
 
 At deploy time, `deploy_agent.py` replaces the `<<INSERT DISCIPLINE PROFILES HERE>>`
-placeholder with the four discipline blocks:
+placeholder with the five discipline blocks:
 
 | Discipline value | Source file |
 | ---------------- | ----------- |
@@ -32,6 +32,7 @@ placeholder with the four discipline blocks:
 | `criterium` | `../prompts/discipline_criterium.md` |
 | `marathon` | `../prompts/discipline_marathon.md` |
 | `roadrace` | `../prompts/discipline_roadrace.md` |
+| `fitness` | `../prompts/discipline_fitness.md` |
 
 The `structured_inputs.discipline` schema in `agent.yaml` defaults to `climber`,
 and `response_language` defaults to `de`, so the agent works without supplying

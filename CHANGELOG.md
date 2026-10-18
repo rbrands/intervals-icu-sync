@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
-## [1.3.8] - 2026-10-18
+## [1.3.10] - 2026-10-18
 
 ### Added
 
@@ -15,6 +15,30 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Clarified phase handling in the coaching logic: `phase` is an optional plan-provided training phase, distinct from `week_type`; standard periodization phase "base" applies when no usable phase is available.
 - Simplified coach-facing training plan entries to include only the optional `phase` tag, removing the plan name and phase date boundaries. Updated the schema, DTO, and notebook output accordingly.
+
+### Fixed
+
+- Fixed the deployed MCP validation tool so the plan schema is available in the Azure App Service package: the deployment artifact now includes the `contracts/` tree, which restores access to `contracts/week-plan/week-plan.schema.json` during `validate_week_plan` checks.
+- Fixed `get_latest_activities` so compact activity results also include `Run`, `TrailRun`, and `VirtualRun` entries and expose each entry's `type` field for clients that rely on the compact list.
+
+## [1.3.9] - 2026-10-15
+
+### Changed
+
+- Limited next-best-training prose to 100 words and reused the weekly plan's existing output contract and save/validate/upload workflow for one workout; upload requires an explicit user request, and rest recommendations remain prose only.
+
+### Added
+
+- Added the `next_best_training` prompt (`prompts/library/07_next_best_training.md`): recommends exactly one training session for today (plus a fallback) based on training readiness, load balance, plan context, and missing stimuli, without follow-up questions; if a session was already completed today, it gives a preliminary recommendation for the next day.
+- Registered the new prompt in the prompt loader (aliases `next`, `next_training`, `today`) and exposed it as `coach_prompt_next_best_training` in the local and hosted MCP servers.
+- Documented the prompt in German and English in `docs/prompt_library.md`.
+
+## [1.3.8] - 2026-10-15
+
+### Added
+
+- Added the `fitness` discipline profile (`prompts/discipline_fitness.md`) for athletes without a race goal: VO2max maintenance, stable CTL band, consistency over peaking, no taper, Peak phase reinterpreted as a benchmark week, and strength training recommended in prose only.
+- Registered `fitness` as a runtime discipline in the Foundry agent (`agent.yaml`, `deploy_agent.py`), the Chainlit and invoke test clients, and the documentation tables.
 
 ## [1.3.7] - 2026-10-11
 

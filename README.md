@@ -61,6 +61,7 @@ Before passing the prompt to the coach, copy the contents of the matching `disci
 | `discipline_criterium.md` | Criterium racer / W\' and repeatability focus |
 | `discipline_roadrace.md` | Road racer / aerobic durability and FTP focus |
 | `discipline_marathon.md` | Mountain marathon (L'Etape du Tour, Ötztaler) / ultra-long endurance focus |
+| `discipline_fitness.md` | Fitness / health athlete without a race goal / VO2max maintenance, consistency, no taper |
 
 This keeps the base prompt stable while allowing the athlete profile to be swapped out per use.
 
@@ -225,6 +226,7 @@ intervals-icu-sync/
 │   ├── system_prompt.md            # System prompt for the AI coach (LLM instructions)
 │   ├── discipline_climber.md       # Athlete profile block: climber / FTP focus
 │   ├── discipline_criterium.md     # Athlete profile block: criterium / W' focus
+│   ├── discipline_fitness.md       # Athlete profile block: fitness / health, no race goal
 │   ├── discipline_marathon.md      # Athlete profile block: mountain marathon / ultra-long endurance
 │   └── discipline_roadrace.md      # Athlete profile block: road race / durability focus
 ├── coach-logic/
@@ -278,6 +280,7 @@ intervals-icu-sync/
 │   └── plans/                      # Training plan JSON files
 ├── tests/
 │   ├── test_data_quality.py        # Data-quality thresholds and MCP tool regression tests
+│   ├── test_next_best_training_prompt.py  # Compact recommendation and upload prompt contract
 │   └── test_upload_plan_regressions.py  # Regression tests for upload_plan.py and ZWO generation
 ├── .env.example
 ├── .pre-commit-config.yaml       # Git hook config (strips Jupyter outputs before commit)
@@ -930,7 +933,7 @@ Covers the core workflow: fetching data from intervals.icu, enriching it with th
 
 A curated collection of copy-paste prompts for use with ChatGPT, Claude, or any other AI assistant. Each prompt is provided in both German and English.
 
-Covers five use cases:
+Covers seven use cases:
 
 | Prompt | Purpose |
 |---|---|
@@ -939,6 +942,24 @@ Covers five use cases:
 | **Training Plan Generation** | Generate a structured training plan for the coming week |
 | **Fueling Analysis** | Dedicated fueling strategy review with pattern detection and recommendations |
 | **Metrics & Wellness Summary** | Compact overview of current performance metrics, HRV, sleep, and form state with load recommendation |
+| **Data Consistency Check** | Completeness and consistency report of the athlete data without coaching interpretation |
+| **Next Best Training** | At most 100 words plus upload JSON for one session today (preliminary tomorrow if already trained); easier alternative in prose only, no automatic upload |
+
+`coach_prompt_next_best_training` returns the same `{"workouts": [...]}` upload
+format as a weekly plan, between `BEGIN_UPLOAD_JSON` / `END_UPLOAD_JSON` markers.
+Upload options (only after an explicit user request):
+- **Local scripts:** save the JSON block as a plan file, run
+  `python scripts/validate_plan.py --plan <file>`, then
+  `python scripts/upload_plan.py --plan <file>` if validation succeeds.
+- **Local MCP server:** call `save_week_plan(plan_json=...)`, then
+  `validate_week_plan()` on the saved file, and only on success `upload_week_plan()`.
+- **Hosted MCP server:** call `validate_week_plan(plan_json=...)`, then only on
+  success `upload_week_plan(plan_json=...)` with the same JSON. No save step is
+  needed or available.
+
+The user reviews the recommendation and requests upload explicitly, just as with
+a weekly plan. The prompt reuses the system prompt's output contract and TSS rules.
+Rest or insufficient data produces prose only, not a zero-duration calendar event.
 
 All prompts assume the MCP server connection or a manually pasted `coach_input_{monday}.json` as data source.
 

@@ -33,7 +33,7 @@ definition:
     Field names and tag values stay in English regardless of response_language.
 
     Apply ONLY the discipline profile below whose heading matches
-    `{{discipline}}` (climber, criterium, marathon, or roadrace). Ignore the
+    `{{discipline}}` (climber, criterium, marathon, roadrace, or fitness). Ignore the
     other profiles. If `{{discipline}}` is empty or does not match any profile,
     ask the user once which discipline applies before coaching.
 
@@ -232,7 +232,7 @@ definition:
 
   structured_inputs:
     discipline:
-      description: "Athlete discipline to coach for: climber | criterium | marathon | roadrace."
+      description: "Athlete discipline to coach for: climber | criterium | marathon | roadrace | fitness."
       required: false
       default_value: "climber"
       schema:

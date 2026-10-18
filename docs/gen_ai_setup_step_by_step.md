@@ -31,6 +31,7 @@ Before passing the prompt to the coach, copy the contents of the matching `disci
 | `discipline_criterium.md` | Criterium racer / W' and repeatability focus |
 | `discipline_roadrace.md` | Road racer / aerobic durability and FTP focus |
 | `discipline_marathon.md` | Mountain marathon rider / aerobic durability + climbing endurance focus |
+| `discipline_fitness.md` | Fitness / health athlete without a race goal / VO2max maintenance, consistency, no taper |
 
 ## `coach-logic/` – domain knowledge modules
 

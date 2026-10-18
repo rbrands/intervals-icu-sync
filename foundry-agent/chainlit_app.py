@@ -65,7 +65,7 @@ def _settings_text(structured_inputs: dict[str, str]) -> str:
         f"- discipline: {structured_inputs['discipline']}\n"
         f"- response_language: {structured_inputs['response_language']}\n"
         "\nCommands\n"
-        "- /discipline <climber|criterium|marathon|roadrace>\n"
+        "- /discipline <climber|criterium|marathon|roadrace|fitness>\n"
         "- /language <de|en|...>\n"
         "- /settings"
     )
@@ -121,7 +121,7 @@ async def on_message(message: cl.Message) -> None:
 
     if content.startswith("/discipline "):
         new_value = content.split(" ", 1)[1].strip()
-        allowed = {"climber", "criterium", "marathon", "roadrace"}
+        allowed = {"climber", "criterium", "marathon", "roadrace", "fitness"}
         if new_value not in allowed:
             await cl.Message(content=f"Usage: /discipline <{'|'.join(sorted(allowed))}>").send()
             return
