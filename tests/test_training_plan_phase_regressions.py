@@ -192,16 +192,19 @@ class TrainingPlanPhaseRegressionTests(unittest.TestCase):
         current_week_phases = get_training_plan.find_week_phases(events, date(2026, 7, 13))
 
         self.assertEqual(current_week_phases, [{
-            "plan_name": "TdF Alpen",
             "phase": "Peak",
             "sport_type": "Ride",
-            "start": "2026-06-15",
-            "end": "2026-07-20",
         }])
 
         boundary_week_phases = get_training_plan.find_week_phases(events, date(2026, 7, 20))
 
         self.assertEqual(boundary_week_phases, [])
+
+        untagged_events = [{key: value for key, value in events[0].items() if key != "tags"}]
+        self.assertEqual(
+            get_training_plan.find_week_phases(untagged_events, date(2026, 7, 13)),
+            [{"sport_type": "Ride"}],
+        )
 
     def test_next_week_without_phase_does_not_inherit_current_phase_in_summary(self):
         monday = date(2026, 7, 13)
@@ -237,6 +240,8 @@ class TrainingPlanPhaseRegressionTests(unittest.TestCase):
         summary = prepare_week_for_coach._extract_ride_plan_summary(plan_data, monday)
 
         self.assertEqual(summary[0]["phase"], "Peak")
+        for field in ("plan_name", "start", "end"):
+            self.assertNotIn(field, summary[0])
         self.assertNotIn("phase", summary[1])
         self.assertEqual(summary[1]["weekly_load_target"], 250)
         self.assertEqual(summary[1]["day_constraints"][0]["type"], "TRAVEL")
@@ -302,6 +307,8 @@ class TrainingPlanPhaseRegressionTests(unittest.TestCase):
 
         assert summary is not None
         self.assertEqual(summary[0]["phase"], "Peak")
+        for field in ("plan_name", "start", "end"):
+            self.assertNotIn(field, summary[0])
         self.assertNotIn("phase", summary[1])
         self.assertEqual(summary[1]["weekly_load_target"], 250)
         self.assertEqual(summary[1]["week_type"], "RACE")

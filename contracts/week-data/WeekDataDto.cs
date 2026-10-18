@@ -637,23 +637,8 @@ public class TrainingPlanEntryDto
     [JsonPropertyName("week")]
     public string? Week { get; set; }
 
-    [JsonPropertyName("plan_name")]
-    public string? PlanName { get; set; }
-
     [JsonPropertyName("phase")]
     public string? Phase { get; set; }
-
-    [JsonPropertyName("start")]
-    public string? Start { get; set; }
-
-    [JsonPropertyName("end")]
-    public string? End { get; set; }
-
-    [JsonPropertyName("phase_start")]
-    public string? PhaseStart { get; set; }
-
-    [JsonPropertyName("phase_end")]
-    public string? PhaseEnd { get; set; }
 
     [JsonPropertyName("weekly_load_target")]
     public double? WeeklyLoadTarget { get; set; }

@@ -111,10 +111,8 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
         entry: dict = {"week": week_monday.isoformat()}
         if phase_list:
             p = phase_list[0]
-            entry["plan_name"] = p.get("plan_name")
-            entry["phase"] = p.get("phase")
-            entry["phase_start"] = p.get("start")
-            entry["phase_end"] = p.get("end")
+            if p.get("phase") is not None:
+                entry["phase"] = p["phase"]
         if targets:
             _copy_target_fields(entry, targets[0])
             entry["week_type"] = targets[0].get("week_type", "NORMAL")

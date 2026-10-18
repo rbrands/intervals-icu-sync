@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.8] - 2026-10-18
+
+### Added
+
+- Added `completed_tss` to `check_plan_tss` so current-week validation compares completed and planned load against the full weekly target; it defaults to zero for future weeks.
+
+### Changed
+
+- Clarified phase handling in the coaching logic: `phase` is an optional plan-provided training phase, distinct from `week_type`; standard periodization phase "base" applies when no usable phase is available.
+- Simplified coach-facing training plan entries to include only the optional `phase` tag, removing the plan name and phase date boundaries. Updated the schema, DTO, and notebook output accordingly.
+
 ## [1.3.7] - 2026-10-11
 
 ### Added

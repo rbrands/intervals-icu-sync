@@ -68,7 +68,7 @@ def fetch_all_events(start: str, end: str) -> list:
 def find_active_phases(events: list, today: date) -> list:
     """Return all active training phases (PLAN events covering today).
 
-    Each entry: {plan_name, phase, sport_type, start, end}
+    Each entry contains the phase tag when present and its sport type.
     Phases that start on 'today' take priority (sorted first).
     """
     result = []
@@ -79,16 +79,13 @@ def find_active_phases(events: list, today: date) -> list:
         end = ev.get("end_date_local", "")[:10]
         if start <= today.isoformat() <= end:
             tags = ev.get("tags") or []
-            result.append({
-                "plan_name": ev.get("name") or "Training Plan",
-                "phase": tags[0] if tags else None,
-                "sport_type": ev.get("type"),
-                "start": start,
-                "end": end,
-            })
+            phase = {"sport_type": ev.get("type")}
+            if tags:
+                phase["phase"] = tags[0]
+            result.append((start, phase))
     # Prefer phases that start on 'today' (latest start date first)
-    result.sort(key=lambda p: p["start"], reverse=True)
-    return result
+    result.sort(key=lambda p: p[0], reverse=True)
+    return [phase for _, phase in result]
 
 
 def find_week_phases(events: list, monday: date) -> list:
@@ -319,9 +316,9 @@ def main() -> None:
     today = date.today()
     end_date = today + timedelta(weeks=LOOKAHEAD_WEEKS)
     # Look back far enough to capture PLAN events that started before today
-    phase_start = today - timedelta(weeks=LOOKBACK_WEEKS)
+    lookback_start = today - timedelta(weeks=LOOKBACK_WEEKS)
 
-    phase_events = fetch_all_events(phase_start.isoformat(), end_date.isoformat())
+    phase_events = fetch_all_events(lookback_start.isoformat(), end_date.isoformat())
     monday = today - timedelta(days=today.weekday())
     next_monday = monday + timedelta(weeks=1)
     active_phases = find_week_phases(phase_events, monday)
@@ -357,11 +354,12 @@ def main() -> None:
     if active_phases:
         for p in active_phases:
             sport = p["sport_type"] or "All"
-            phase_label = f"#{p['phase']}" if p["phase"] else "(no tag)"
+            phase = p.get("phase")
+            phase_label = f"#{phase}" if phase else "(no tag)"
             load = load_by_type.get(p["sport_type"]) or load_by_type.get(None)
             load_str = f"{load} TSS" if load is not None else "(none)"
             week_type = week_type_by_type.get(p["sport_type"]) or week_type_by_type.get(None) or "NORMAL"
-            print(f"Plan: {p['plan_name']!r:<20}  Sport: {sport:<8}  Phase: {phase_label:<12}  Weekly target: {load_str}  Week type: {week_type}")
+            print(f"Sport: {sport:<8}  Phase: {phase_label:<12}  Weekly target: {load_str}  Week type: {week_type}")
     else:
         print("Current phase:      (none found)")
         for lt in load_targets:

@@ -138,12 +138,7 @@ class DayConstraint(_SchemaModel):
 
 class TrainingPlanEntry(_SchemaModel):
     week: str | None = None
-    plan_name: str | None = None
     phase: str | None = None
-    start: str | None = None
-    end: str | None = None
-    phase_start: str | None = None
-    phase_end: str | None = None
     weekly_load_target: float | int | None = None
     weekly_time_target_hours: float | int | None = None
     week_type: str | None = None

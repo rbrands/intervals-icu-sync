@@ -80,10 +80,8 @@ def load_training_plan(today: date) -> list[dict] | None:
         entry: dict = {"week": week_monday.isoformat()}
         if phase_list:
             p = phase_list[0]
-            entry["plan_name"] = p.get("plan_name")
-            entry["phase"] = p.get("phase")
-            entry["phase_start"] = p.get("start")
-            entry["phase_end"] = p.get("end")
+            if p.get("phase") is not None:
+                entry["phase"] = p["phase"]
         if targets:
             t = targets[0]
             _copy_target_fields(entry, t)
@@ -554,7 +552,6 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
     m = metrics
     if training_plan:
         current = training_plan[0]
-        plan_name = current.get("plan_name") or "Training Plan"
         phase = current.get("phase")
         phase_str = f"#{phase}" if phase else "(no phase)"
         target_str = _format_weekly_target(current) or "(none)"
@@ -563,7 +560,7 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
             next_target = _format_weekly_target(training_plan[1])
             if next_target is not None:
                 next_str = f"  |  Next week: {next_target}"
-        print(f"Plan:                {plan_name}  |  Phase: {phase_str}  |  Weekly target: {target_str}{next_str}")
+        print(f"Training phase:      {phase_str}  |  Weekly target: {target_str}{next_str}")
     print()
     print("=== Weekly Training Summary ===")
     print(f"Total Load:          {m['total_training_load']}")

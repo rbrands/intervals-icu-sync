@@ -2270,18 +2270,6 @@
           "default": null,
           "title": "Week"
         },
-        "plan_name": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Plan Name"
-        },
         "phase": {
           "anyOf": [
             {
@@ -2293,54 +2281,6 @@
           ],
           "default": null,
           "title": "Phase"
-        },
-        "start": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Start"
-        },
-        "end": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "End"
-        },
-        "phase_start": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Phase Start"
-        },
-        "phase_end": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Phase End"
         },
         "weekly_load_target": {
           "anyOf": [

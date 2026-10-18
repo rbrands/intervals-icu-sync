@@ -938,7 +938,8 @@ def _extract_ride_plan_summary(plan_data: dict | None, monday: date) -> list[dic
         entry: dict = {"week": week_monday.isoformat()}
         if phase_list:
             p = phase_list[0]
-            entry.update({k: p.get(k) for k in ("plan_name", "phase", "start", "end")})
+            if p.get("phase") is not None:
+                entry["phase"] = p["phase"]
         if targets:
             t = targets[0]
             _copy_target_fields(entry, t)
@@ -1846,6 +1847,7 @@ def check_plan_tss(
     plan_json: str,
     load_target: float,
     tolerance_pct: float = 10,
+    completed_tss: float = 0,
 ) -> str:
     """Check whether a generated week plan matches a deterministic TSS reference.
 
@@ -1871,10 +1873,13 @@ def check_plan_tss(
                    ]
         load_target: Weekly TSS target used for the deviation check.
         tolerance_pct: Allowed weekly deviation in percent; defaults to 10.
+        completed_tss: TSS already completed this week. Pass the full weekly
+            target and this value for the current week; leave at 0 for a future week.
     """
     with _tool_span("mcp.tool/check_plan_tss") as span:
         span.set_attribute("load_target", load_target)
         span.set_attribute("tolerance_pct", tolerance_pct)
+        span.set_attribute("completed_tss", completed_tss)
 
         try:
             json.loads(plan_json)
@@ -1904,6 +1909,8 @@ def check_plan_tss(
                     str(load_target),
                     "--tolerance-pct",
                     str(tolerance_pct),
+                    "--completed-tss",
+                    str(completed_tss),
                 ],
                 capture_output=True,
                 text=True,

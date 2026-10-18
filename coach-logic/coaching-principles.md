@@ -34,12 +34,16 @@ athlete/discipline block.
   this level; mesocycles are usually defined externally.
 
 ### External Planning Systems (IMPORTANT)
-When a structured plan is provided (e.g. from intervals.icu):
-- use its phases (Base, Build, Peak, Transition) and weekly load (TSS) targets
-- respect and follow it whenever available
+The training phase and weekly targets are provided in the input
+(from intervals.icu or set by the athlete):
+- use the provided phase (Base, Build, Peak, Transition) and weekly
+  load (TSS) target
+- if no phase is provided, treat the week as Base
 
-It is NOT mandatory: if missing, inconsistent, or clearly inappropriate,
-apply standard Friel-based periodization instead.
+The coach does not derive the phase from training data; the input
+window is too short to determine the athlete's position in the season.
+If the provided target is clearly inappropriate for the current state
+(fatigue, recovery), safety rules in decision-process.md take precedence.
 
 ---
 

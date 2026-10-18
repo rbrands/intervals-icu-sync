@@ -107,12 +107,22 @@ value is missing or no previous exported activity exists.
 - `days_since_last_hard_session`: integer number of calendar days since the
   last session with TSS at least 50% above current CTL, the last `HIIT` or
   `Polarized` ride, or the last `Threshold` ride with at least 50 TSS or RPE 7+.
-- `training_plan[].week_type`: from an intervals.icu NOTE event
-  (NORMAL | RECOVERY | RACE); defaults to NORMAL.
-- `training_plan[].day_constraints`: day-level constraints extracted from NOTE
-  and non-NORMAL availability events in the calendar (e.g. Sick/Travel/
-  Unavailable). Each entry includes `date`, `type`, `training_allowed`,
-  optional `max_training_time_hours`, `source_category` and `source_name`.
+- `training_plan`: optional entries for the current and next week. An entry may
+  contain a phase, weekly targets, and/or day constraints; a phase is not
+  required for targets or constraints to be present.
+- `training_plan[].week`: Monday of the represented ISO week (YYYY-MM-DD).
+- `training_plan[].phase`: label of the active intervals.icu `PLAN` phase
+  (or set by the athlete). Optional; it is supplied by the plan, not
+  inferred from the week type or targets.
+- `training_plan[].weekly_load_target` / `weekly_time_target_hours`: weekly
+  Ride targets in TSS and hours. They are independent and may both be present;
+  use the time target as an upper limit, not as a conversion from TSS.
+- `training_plan[].week_type` / `week_note`: week classification
+  (`NORMAL`, `RECOVERY`, `RACE`) and its note, when present. This is separate
+  from the training phase.
+- `training_plan[].day_constraints`: date-specific availability or time
+  limits. Each entry includes `date`, `type`, `training_allowed`, and may
+  include `max_training_time_hours` and source details.
 
 ---
 
@@ -154,7 +164,8 @@ value is missing or no previous exported activity exists.
   power data. The field is omitted for activities without power data,
   including HR-only runs.
 - `decoupling_label`: classification of `decoupling`; omitted together with
-  `decoupling` when power data is unavailable.
+  `decoupling` when power data is unavailable, and null when the ride does
+  not meet the decoupling validity conditions.
 - `interval_hr_analysis`: compact WORK-interval HR durability summary;
   omitted when power data is unavailable or no suitable structured intervals
   are available.

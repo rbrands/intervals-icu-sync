@@ -38,7 +38,7 @@ Resolve conflicts in this order:
    - fresh + clear limiter → add stimulus in the limiter domain
    - optimal fatigue + limiter → continue structured progression
    - high fatigue → reduce intensity, prioritize recovery, keep frequency if possible
-6. **Apply phase**
+6. **Apply phase** (if no phase is provided, apply Base)
    - Base → volume, limit high intensity
    - Build → VO2max + threshold, moderate–high intensity
    - Peak → reduce volume, maintain intensity, increase specificity
@@ -140,14 +140,20 @@ Session fueling strategy (write into the workout description):
 - Increase load only if fatigue is low/optimal AND fueling is adequate.
 - Reduce load if fatigue is high, HRV is low, or performance is declining.
 - Use `training_load_history` to distinguish a one-week outlier from a repeated
-   pattern of over- or under-achieving weekly Ride load targets.
+  pattern of over- or under-achieving weekly Ride load targets.
 - Treat the four-week history as secondary context. Current form, ATL, HRV,
-   recovery, and performance signals take precedence.
+  recovery, and performance signals take precedence.
 - Never compensate for missed historical load by adding it to the current or
-   next week.
-- Keep the provided next-week target authoritative unless repeated historical
-   deviation and current readiness together justify a safer adjustment.
-
+  next week.
+- The weekly time target (hours) is an upper bound: completed plus planned
+  workout durations in that week must not exceed it.
+- The weekly load target (TSS) is the planning reference: completed plus
+  planned load in that week should be within ±10% of it (matching the
+  `check_plan_tss` default tolerance). Go further below
+  only when safety rules (readiness, fatigue) or repeated historical
+  over-/under-achievement together with current readiness justify a safer
+  week. Never add intensity solely to reach it.
+ 
 ---
 
 ## Workout Modeling

@@ -496,7 +496,8 @@ def prepare_week_data(lookback_days: int = 7) -> str:
             entry: dict = {"week": week_monday.isoformat()}
             if phase_list:
                 p = phase_list[0]
-                entry.update({k: p.get(k) for k in ("plan_name", "phase", "start", "end")})
+                if p.get("phase") is not None:
+                    entry["phase"] = p["phase"]
             if targets:
                 t = targets[0]
                 _copy_target_fields(entry, t)

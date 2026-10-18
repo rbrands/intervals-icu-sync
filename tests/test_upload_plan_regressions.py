@@ -619,6 +619,28 @@ class UploadPlanRegressionTests(unittest.TestCase):
 
 
 class CheckPlanTssRegressionTests(unittest.TestCase):
+    def test_current_week_checks_completed_and_planned_tss_against_full_target(self):
+        module = _load_check_plan_tss_module()
+        plan = [
+            {
+                "date": "2026-10-18",
+                "tss": 160,
+                "library_workout_id": 77,
+            },
+        ]
+
+        result = module.evaluate_plan(
+            plan,
+            load_target=400,
+            completed_tss=200,
+            tolerance_pct=10,
+        )
+
+        self.assertEqual(result["week"]["completed_tss"], 200)
+        self.assertEqual(result["week"]["planned_tss"], 160)
+        self.assertEqual(result["week"]["total_tss"], 360)
+        self.assertTrue(result["week"]["within_tolerance"])
+
     def test_evaluate_plan_detects_mismatch_and_target_deviation(self):
         module = _load_check_plan_tss_module()
         plan = [

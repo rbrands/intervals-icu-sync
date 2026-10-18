@@ -32,10 +32,15 @@ def _normalize_plan(data):
     raise ValueError("Plan file must contain a JSON array or an object with a 'workouts' array.")
 
 
-def evaluate_plan(plan: list[dict], load_target: float | None = None, tolerance_pct: float = 10.0) -> dict:
+def evaluate_plan(
+    plan: list[dict],
+    load_target: float | None = None,
+    tolerance_pct: float = 10.0,
+    completed_tss: float = 0.0,
+) -> dict:
     warnings: list[str] = []
     workout_results: list[dict] = []
-    total_tss = 0
+    planned_tss = 0
 
     for workout in plan:
         if not isinstance(workout, dict):
@@ -75,8 +80,10 @@ def evaluate_plan(plan: list[dict], load_target: float | None = None, tolerance_
                 "mismatch": mismatch,
             }
         )
-        total_tss += computed_tss
+        planned_tss += computed_tss
 
+    completed_tss = float(completed_tss)
+    total_tss = planned_tss + completed_tss
     load_target = float(load_target) if load_target is not None else None
     if load_target in (None, 0):
         deviation_pct = 0.0
@@ -92,13 +99,15 @@ def evaluate_plan(plan: list[dict], load_target: float | None = None, tolerance_
                 else "Reduce duration or intensity before finalizing"
             )
             warnings.append(
-                f"Weekly total {total_tss} TSS is {abs(deviation_pct):.1f}% {direction} the target of {int(load_target)} TSS (tolerance ±{tolerance_pct}%). {guidance}; do not modify anchored planned_workouts."
+                f"Weekly total {total_tss:g} TSS is {abs(deviation_pct):.1f}% {direction} the target of {int(load_target)} TSS (tolerance ±{tolerance_pct}%). {guidance}; do not modify anchored planned_workouts."
             )
 
     valid = not any(workout["mismatch"] for workout in workout_results) and within_tolerance
     return {
         "workouts": workout_results,
         "week": {
+            "completed_tss": completed_tss,
+            "planned_tss": planned_tss,
             "total_tss": total_tss,
             "load_target": load_target if load_target is not None else 0,
             "deviation_pct": deviation_pct,
@@ -114,6 +123,12 @@ def main() -> None:
     parser.add_argument("--plan", type=Path, required=True, help="Path to the plan JSON file.")
     parser.add_argument("--load-target", type=float, default=None, help="Weekly TSS target for the plan.")
     parser.add_argument("--tolerance-pct", type=float, default=10.0, help="Allowed weekly deviation as a percentage.")
+    parser.add_argument(
+        "--completed-tss",
+        type=float,
+        default=0.0,
+        help="TSS already completed this week; compared together with planned TSS against the full weekly target.",
+    )
     args = parser.parse_args()
 
     try:
@@ -121,12 +136,19 @@ def main() -> None:
             raise FileNotFoundError(f"Plan file not found: {args.plan}")
         data = json.loads(args.plan.read_text(encoding="utf-8"))
         workouts = _normalize_plan(data)
-        result = evaluate_plan(workouts, load_target=args.load_target, tolerance_pct=args.tolerance_pct)
+        result = evaluate_plan(
+            workouts,
+            load_target=args.load_target,
+            tolerance_pct=args.tolerance_pct,
+            completed_tss=args.completed_tss,
+        )
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
         result = {
             "workouts": [],
             "week": {
-                "total_tss": 0,
+                "completed_tss": float(args.completed_tss),
+                "planned_tss": 0,
+                "total_tss": float(args.completed_tss),
                 "load_target": float(args.load_target) if args.load_target is not None else 0,
                 "deviation_pct": 0,
                 "within_tolerance": True,
