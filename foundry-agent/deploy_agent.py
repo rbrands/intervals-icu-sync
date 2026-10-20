@@ -67,7 +67,7 @@ _DEFAULT_TOOLBOX_NAME = "training-plan-toolbox"
 
 # Discipline blocks embedded into the instructions; selected at runtime via the
 # {{discipline}} structured input.
-_DISCIPLINES = ["climber", "criterium", "marathon", "roadrace", "fitness"]
+_DISCIPLINES = ["climber", "criterium", "marathon", "roadrace", "fitness", "cross"]
 
 _KNOWLEDGE_FILES = [
     "coaching-principles.md",

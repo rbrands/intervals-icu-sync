@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.11] - 2026-10-20
+
+### Added
+
+- Added the `cross` discipline profile (`prompts/discipline_cross.md`) for cyclocross racers: race weekends act as the key session, standing starts and low-cadence microbursts as race-specific stimuli, race fueling rules for sub-1 h events, and a conservative handling of unseen running load.
+- Added a "Standing Starts (Z7)" structure to the workout library with low, moderate, and high doses and full recovery between efforts.
+- Registered `cross` as a runtime discipline in the Foundry agent (`agent.yaml`, `deploy_agent.py`), the Chainlit and invoke test clients, and the documentation tables.
+
+### Changed
+
+- Extended race-specific selection in `decision-process.md` to cyclocross goals and to the new standing-start structure.
+- Clarified in the workout library that cyclocross microbursts are ridden from low cadence / low speed.
+
 ## [1.3.10] - 2026-10-18
 
 ### Added

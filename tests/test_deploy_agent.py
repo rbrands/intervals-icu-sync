@@ -46,9 +46,11 @@ class DeployAgentTests(unittest.TestCase):
         self.assertIn("after", rendered)
 
         self.assertIn("fitness", deploy_agent._DISCIPLINES)
+        self.assertIn("cross", deploy_agent._DISCIPLINES)
         for discipline in deploy_agent._DISCIPLINES:
             self.assertIn(f"### {discipline}", rendered)
         self.assertIn("Discipline: Fitness / Health (no race goal)", rendered)
+        self.assertIn("Discipline: Cyclocross", rendered)
 
 
 if __name__ == "__main__":

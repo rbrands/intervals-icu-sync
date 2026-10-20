@@ -79,10 +79,12 @@ steady aerobic pacing, fueling mandatory (below).
 - Recovery: when fatigue high, HRV low, or after key sessions.
 
 ### Race-specific
-For criterium / road-race goals (discipline block). Select breakaway sets
-(Z6 + Z4) or criterium microbursts (Z6 + Z2) from workout-library.md.
+For criterium / road-race / cyclocross goals (discipline block). Select
+breakaway sets (Z6 + Z4), criterium microbursts (Z6 + Z2), or standing
+starts (Z7) from workout-library.md.
 Breakaway sets use full recovery between sets; microbursts use incomplete
-recovery within a block and full recovery between blocks.
+recovery within a block and full recovery between blocks; standing starts
+use full recovery between every effort.
 Use one or more "race-specific-<level>" tags; downstream logic derives the
 race classification from those tags.
 

@@ -92,6 +92,26 @@ Z5 intervals targeting aerobic capacity use vo2max-<level> tags; these Z6
 attack-repeatability blocks use race-specific-<level> tags. Do not assume
 they replace the required VO2max session solely because they are microbursts.
 
+For cyclocross, ride the bursts from low cadence / low speed to mimic
+accelerations out of corners and after obstacles.
+
+
+## Race-Specific / Standing Starts (Z7)
+
+Simulates the race start in cyclocross and criterium: a maximal effort
+from a standing or near-standing start. Z7 is neuromuscular; quality
+collapses quickly, so recovery between efforts is full (Z1) and the
+set ends as soon as peak power drops noticeably.
+
+| Dose     | Structure                        | Tag |
+| -------- | -------------------------------- | --- |
+| High     | 8×30 s Z7, 5 min Z1 between      | race-specific-high |
+| Moderate | 6×20 s Z7, 4 min Z1 between      | race-specific-moderate |
+| Low      | 4×15 s Z7, 4 min Z1 between      | race-specific-low |
+
+Place after a thorough warmup with 2–3 short Z5 primers. Not a VO2max
+substitute: the total work time is too short for an aerobic stimulus.
+
 
 
 ## Recovery (Z1)

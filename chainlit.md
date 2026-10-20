@@ -11,7 +11,7 @@ Use this page to test the Foundry agent locally via Chainlit.
 ## In-Chat Commands
 
 - `/settings` shows current runtime settings.
-- `/discipline <climber|criterium|roadrace|marathon|fitness>` sets the discipline for the session.
+- `/discipline <climber|criterium|roadrace|marathon|fitness|cross>` sets the discipline for the session.
 - `/language <de|en|...>` sets the response language for the session.
 
 ## Notes
