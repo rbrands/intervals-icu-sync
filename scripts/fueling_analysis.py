@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -103,7 +104,17 @@ def _is_long_ride(duration: float, interval_summary) -> bool:
 
 _SHORT_INTERVAL_PATTERNS = ["2m", "3m", "4m", "5m"]
 _LONG_INTERVAL_PATTERNS = ["8m", "10m", "12m", "15m", "20m"]
-_SPRINT_PATTERNS = ["10s", "15s", "20s", "30s"]
+# Standalone seconds-only durations (e.g. "6x 6s 650w"); a preceding minute
+# part such as "5m26s" has no word boundary before the digits and is excluded.
+_SPRINT_DURATION_RE = re.compile(r"\b(\d{1,2})s\b")
+_SPRINT_MAX_SECONDS = 30
+
+
+def _has_sprint_intervals(summary_lower: str) -> bool:
+    return any(
+        int(m.group(1)) <= _SPRINT_MAX_SECONDS
+        for m in _SPRINT_DURATION_RE.finditer(summary_lower)
+    )
 
 
 def classify_ride(activity: dict) -> str:
@@ -119,7 +130,7 @@ def classify_ride(activity: dict) -> str:
 
     has_long_intervals = any(p in summary_lower for p in _LONG_INTERVAL_PATTERNS)
     has_vo2_intervals = any(p in summary_lower for p in _SHORT_INTERVAL_PATTERNS)
-    has_sprint_intervals = any(p in summary_lower for p in _SPRINT_PATTERNS)
+    has_sprint_intervals = _has_sprint_intervals(summary_lower)
 
     # 0. Tag-based override — most explicit signal
     if any(t.startswith("vo2") for t in tags):

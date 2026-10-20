@@ -49,6 +49,9 @@ Discipline: Cyclocross
   fatigue exceeds what ride load explains, assume off-bike load, choose the
   conservative option and state the assumption; do not ask the athlete
 - two hard days in a row only when they are the two race days of a weekend
+- embed K2 sprints (20 s, workout-library.md) into the Z2 ride during the
+  8 weeks before the season and in race weeks without a midweek start/burst
+  session; K1 (6 s) year-round
 
 ## Discipline Workouts
 - standing starts (Z7, full recovery) → tag race-specific-<level>

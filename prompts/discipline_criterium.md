@@ -20,6 +20,8 @@ Discipline: Criterium
 - simulate race dynamics: accelerations out of corners, attacks,
   incomplete recovery between efforts
 - avoid as primary focus: long steady rides, long threshold intervals
+- embed K1/K2 sprints (6 s / 20 s, workout-library.md) into the
+  volume-maintenance ride; K2 from late Base onward
 
 ## Discipline Workouts
 - 30/30, 40/20 (VO2max/anaerobic) → tag vo2max-<level>

@@ -5,18 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
-## [1.3.11] - 2026-10-20
+## [1.4.0] - 2026-10-20
 
 ### Added
 
-- Added the `cross` discipline profile (`prompts/discipline_cross.md`) for cyclocross racers: race weekends act as the key session, standing starts and low-cadence microbursts as race-specific stimuli, race fueling rules for sub-1 h events, and a conservative handling of unseen running load.
-- Added a "Standing Starts (Z7)" structure to the workout library with low, moderate, and high doses and full recovery between efforts.
+- Added the `cross` discipline profile (`prompts/discipline_cross.md`) for cyclocross racers: race weekends act as the key session, standing starts and low-cadence microbursts as race-specific stimuli, race fueling rules for sub-1 h events, and a conservative handling of unseen running load. Phase and race category are followed as deliberate athlete inputs; only `RACE_A` in a Base phase is flagged.
 - Registered `cross` as a runtime discipline in the Foundry agent (`agent.yaml`, `deploy_agent.py`), the Chainlit and invoke test clients, and the documentation tables.
+- Added a "Standing Starts (Z7)" structure to the workout library with low, moderate, and high doses and full recovery between efforts.
+- Added "Embedded Neuromuscular Sprints" to the workout library: K1 (6 s, alactic, year-round) and K2 (20 s, lactic, late Base onward) sprints placed in the first hour of a Z2 ride, keeping the ride's `aerobic-threshold` tag. Referenced from the fitness, cross, and criterium profiles and from the endurance rules in `decision-process.md`.
+- Added a Z7 representation rule to `training-zones.md`: sprint steps use a nominal `power_pct_ftp` of 160 as a floor for display and TSS, while the description states "maximal effort".
+- Added a "Training Environment" rule to `decision-process.md`: the coach derives an indoor/outdoor default from the `activities[].type` majority in the input window (explicit chat statements win, fewer than two rides default to outdoor) and states a data-derived default in the plan text without asking.
+- Exposed `activity_type` in the coach output contract (`system_prompt.md`, `agent.yaml`): `VirtualRide` for indoor workouts, omitted for outdoor; the workout step model now follows `activity_type` instead of an unspecified indoor/outdoor notion.
+- Added `tests/test_fueling_sprint_detection.py` covering sprint detection and ride classification.
 
 ### Changed
 
 - Extended race-specific selection in `decision-process.md` to cyclocross goals and to the new standing-start structure.
 - Clarified in the workout library that cyclocross microbursts are ridden from low cadence / low speed.
+- `fueling_analysis.py` now detects sprint intervals via standalone seconds-only durations up to 30 s (so `6x 6s` counts) instead of a fixed pattern list, and no longer matches the seconds part of minute durations such as `5m26s`.
+- Outdoor workout modeling: embedded sprints are described in the workout description rather than as steps.
 
 ## [1.3.10] - 2026-10-18
 

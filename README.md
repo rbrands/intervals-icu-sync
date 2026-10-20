@@ -551,7 +551,7 @@ Output: `data/processed/coach_input_{monday}.json`
 
 ### `fueling_analysis.py`
 
-Analyzes carbohydrate fueling quality per activity and for the active lookback window (`LOOKBACK_DAYS`, default: `7`). Classifies fueling based on duration (no fueling needed / optional / required), computes carbs/h and fueling ratio, detects underfueled sessions, and generates coaching recommendations. Long rides in this context are counted with the script's long-ride rule and surfaced as `weekly_summary.number_of_long_rides`.
+Analyzes carbohydrate fueling quality per activity and for the active lookback window (`LOOKBACK_DAYS`, default: `7`). Classifies fueling based on duration (no fueling needed / optional / required), computes carbs/h and fueling ratio, detects underfueled sessions, and generates coaching recommendations. Long rides in this context are counted with the script's long-ride rule and surfaced as `weekly_summary.number_of_long_rides`. Rides whose interval summary contains standalone efforts of 30 s or less (e.g. `6x 6s`) with little Z5+ time are classified as `endurance_with_sprint`.
 
 ```bash
 python scripts/fueling_analysis.py
@@ -788,7 +788,7 @@ Each entry in the JSON file must have:
 
 Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `activity_type` (intervals.icu activity type; defaults to `Ride`), `steps` (structured workout intervals → uploaded as a ZWO file), and `library_workout_id` (copies the exact stored library workout, including its `type` and `workout_doc`, instead of generated steps).
 
-Use `activity_type` for non-ride planned activities. Supported upload values are `Ride`, `VirtualRide`, `MountainBikeRide`, `GravelRide`, `Run`, `TrailRun`, `VirtualRun`, and `WeightTraining`. `Run` and `WeightTraining` entries can be uploaded without `steps`; in that case the event is created from duration, notes, and tags only.
+Use `activity_type` for non-ride planned activities and for indoor rides. Supported upload values are `Ride`, `VirtualRide`, `MountainBikeRide`, `GravelRide`, `Run`, `TrailRun`, `VirtualRun`, and `WeightTraining`. The coach sets `VirtualRide` for workouts it expects to be ridden indoors (derived from the recent `activities[].type` majority or an explicit statement in the chat; see `coach-logic/decision-process.md`, "Training Environment") and omits the field for outdoor rides. `Run` and `WeightTraining` entries can be uploaded without `steps`; in that case the event is created from duration, notes, and tags only.
 
 ```json
 {

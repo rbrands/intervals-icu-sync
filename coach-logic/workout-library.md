@@ -53,6 +53,37 @@ brief Z5 spikes.
 Steady Z2 (upper Z2 preferred for performance gains). Avoid early Z3 spikes
 on long rides to protect durability.
 
+### Embedded Neuromuscular Sprints (Z7, within a Z2 ride)
+
+Short maximal sprints placed in the first hour of an endurance ride.
+Not a separate session: the ride keeps its aerobic-threshold tag and its
+Z2 character, the sprints are a small neuromuscular stimulus that also
+breaks the monotony of a base ride. Two variants:
+
+| Variant | Effort | Energy system | Recovery between | When |
+| ------- | ------ | ------------- | ---------------- | ---- |
+| K1 | 6 s, standing or flying start, maximal cadence | alactic (ATP-CP) | 3 min Z2 | year-round |
+| K2 | 20 s, standing or flying start, maximal cadence | lactic | 4–5 min Z2 | late Base, Build, race season |
+
+| Dose     | K1          | K2          |
+| -------- | ----------- | ----------- |
+| High     | 8×6 s       | 6×20 s      |
+| Moderate | 6×6 s       | 4×20 s      |
+| Low      | 4×6 s       | 3×20 s      |
+
+Rules:
+- Tag stays `aerobic-threshold-<level>` of the host ride; the dose above
+  is independent of the tag level, which is set by ride duration.
+- Vary gearing between sprints (heavy / light); seated and standing.
+- Place after at least 15 min of Z2 warmup; stop the set when peak power
+  or cadence drops noticeably — quality over quantity.
+- Z7 steps use the nominal power value defined in training-zones.md and the
+  description must say "maximal effort". The TSS contribution is small
+  (well under 10 TSS per set); this is intended and no reason to add load.
+- Indoor (`VirtualRide`): model the sprints as explicit steps. Outdoor: keep
+  the simplified step model and describe the sprint set in the description so
+  the athlete can pick safe, suitable road sections.
+
 
 
 ## Race-Specific / Breakaway (Z6 + Z4)
@@ -111,6 +142,9 @@ set ends as soon as peak power drops noticeably.
 
 Place after a thorough warmup with 2–3 short Z5 primers. Not a VO2max
 substitute: the total work time is too short for an aerobic stimulus.
+Z7 steps use the nominal power value defined in training-zones.md.
+For the embedded, non-race variant of short sprints see "Embedded
+Neuromuscular Sprints" above.
 
 
 

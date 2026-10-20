@@ -53,6 +53,12 @@ These are zone-level rules that apply across all sessions:
   Fresh state → allow the upper range of the target zone.
 - **Recovery rides:** Z1 only.
 - **Endurance rides:** Z2 dominant; occasional Z3 depending on fatigue.
+- **Z7 steps (sprints):** a sprint is maximal by definition and cannot be
+  prescribed as a power target — the athlete produces what they can.
+  In workout steps, write every Z7 effort with a nominal
+  `power_pct_ftp` of 160. This value is a floor for display and for the
+  deterministic TSS formula, never a goal. The description must state
+  "maximal effort, maximal cadence" so the number is not read as a target.
 
 Ride-type → zone-band selection for specific workouts (e.g. which zone a
 VO2max or threshold session targets) is defined with the workout library

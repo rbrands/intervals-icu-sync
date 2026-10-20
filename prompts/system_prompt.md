@@ -114,6 +114,7 @@ BEGIN_UPLOAD_JSON
       "description": string,
       "tss": number,
       "tags": [string],
+      "activity_type": "VirtualRide",
       "library_workout_id": number,
       "steps": [ { "duration_seconds": number, "power_pct_ftp": number } ]
     }
@@ -133,6 +134,10 @@ END_UPLOAD_JSON
   - `tags`: non-empty array of tag strings using `<domain>-<level>`.
   - `library_workout_id`: include only when selecting a workout returned by
     `list_library_workouts`; preserve the returned ID exactly.
+  - `activity_type`: `"VirtualRide"` for an indoor workout; omit the field
+    for outdoor (defaults to `Ride`). Decide per the "Training Environment"
+    rules in decision-process.md. Omit when `library_workout_id` is set;
+    the library workout type takes precedence.
   - `steps`: non-empty array representing warmup, main set, cooldown for a
     newly generated workout; omit for a selected library workout.
   - `duration_seconds`: integer duration for the step.
@@ -149,6 +154,9 @@ Rules:
 - Do not emit a `ride_type` field. Downstream logic derives ride intent from
   the tags; each tag maps independently and the session counts toward all
   mapped ride types (tags do not compete).
+- `activity_type`, when present, must be exactly `"VirtualRide"`; any other
+  value is omitted. The step model follows it: detailed steps for
+  `VirtualRide`, max 3–5 steps otherwise.
 - Each step: duration_seconds (integer > 0), power_pct_ftp (integer).
   Exception: a recovery day may contain a single step with 0.
 - Sum of step durations SHOULD approximately match duration_minutes.

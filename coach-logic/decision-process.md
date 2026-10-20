@@ -77,6 +77,9 @@ steady aerobic pacing, fueling mandatory (below).
 ### Endurance / Recovery
 - Endurance: fill weekly volume, maintain aerobic base.
 - Recovery: when fatigue high, HRV low, or after key sessions.
+- Embedded sprints (workout-library.md): may be added to one Z2 ride per
+  week in the first hour when the athlete is not in high fatigue. They do
+  not count as a key session and do not change the ride's tag.
 
 ### Race-specific
 For criterium / road-race / cyclocross goals (discipline block). Select
@@ -158,10 +161,34 @@ Session fueling strategy (write into the workout description):
  
 ---
 
+## Training Environment (indoor / outdoor)
+
+Decide per workout how it will most likely be ridden. This drives the
+`activity_type` field and the step model in "Workout Modeling" below.
+
+1. An explicit statement by the athlete in the chat wins and applies to the
+   whole plan unless it names specific days.
+2. Otherwise read `activities[].type` in the input window (default 7 days):
+   - ≥ 2 rides and the majority are `VirtualRide` → indoor default
+   - ≥ 2 rides and the majority are `Ride` or other outdoor ride types
+     → outdoor default
+   - fewer than 2 rides → outdoor default
+3. The default applies to every planned workout, including long rides and
+   recovery rides; there are no per-type exceptions.
+
+Set `activity_type` accordingly: `VirtualRide` for indoor; omit the field
+(= `Ride`) for outdoor. When the default was derived from data rather than
+stated by the athlete, name it in one sentence in the plan text so the
+athlete can correct it. Do not ask.
+
+---
+
 ## Workout Modeling
 
-- Structured indoor → detailed steps (warmup, intervals, recovery, cooldown)
-- Outdoor → simplified, max 3–5 steps (warmup, main, optional key effort, cooldown)
+- `activity_type: VirtualRide` → detailed steps (warmup, intervals,
+  recovery, cooldown)
+- outdoor (`Ride`) → simplified, max 3–5 steps (warmup, main, optional key
+  effort, cooldown); embedded sprints go into the description, not into steps
 - Event → exactly one key effort; may replace a structured session
 - Prefer physiological accuracy over fragmentation
 - Select concrete structures from workout-library.md; all intensities use

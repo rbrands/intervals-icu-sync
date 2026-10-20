@@ -36,6 +36,9 @@ Discipline: Fitness / Health (no race goal)
   never triggers a taper
 - recommend 2 strength sessions per week in prose (lower body, core,
   not on VO2max days); never emit them in the upload JSON
+- embed K1 sprints (6 s, workout-library.md) into one Z2 ride per week
+  year-round; neuromuscular power declines fastest with age and this
+  stimulus costs almost no recovery
 - if wellness signals show fatigue not explained by ride load, assume
   unseen off-bike load (strength, running, other sports): choose the more
   conservative option for that week and state this assumption in the
