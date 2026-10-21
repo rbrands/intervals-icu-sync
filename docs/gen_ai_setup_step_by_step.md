@@ -33,6 +33,7 @@ Before passing the prompt to the coach, copy the contents of the matching `disci
 | `discipline_marathon.md` | Mountain marathon rider / aerobic durability + climbing endurance focus |
 | `discipline_fitness.md` | Fitness / health athlete without a race goal / VO2max maintenance, consistency, no taper |
 | `discipline_cross.md` | Cyclocross racer / starts, low-speed accelerations, race weekends as key sessions |
+| `discipline_zwift.md` | Zwift racer / start block, VO2max, threshold under constant pressure, race-frequency cap |
 
 ## `coach-logic/` – domain knowledge modules
 

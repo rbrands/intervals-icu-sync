@@ -312,7 +312,7 @@ If a check fails, correct steps or plan composition first, then re-verify.
 
 ### 3c. Optionaler Saisonfokus / Optional Seasonal Focus
 
-Diesen Zusatz bei Bedarf an Prompt 3a oder 3b anhängen. Er ergänzt die gewählte Disziplin und ersetzt sie nicht.
+Diesen Zusatz bei Bedarf an Prompt 3a oder 3b anhängen. Er ergänzt die gewählte Disziplin und ersetzt sie nicht. Wenn Zwift-Rennen das Hauptziel sind, stattdessen die Disziplin `discipline_zwift.md` wählen — sie enthält die Rennfrequenz-Regel, die Erkennung spontaner Rennen und die Start-Simulation.
 
 #### Deutsch
 

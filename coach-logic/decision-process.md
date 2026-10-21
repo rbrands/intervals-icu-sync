@@ -82,12 +82,14 @@ steady aerobic pacing, fueling mandatory (below).
   not count as a key session and do not change the ride's tag.
 
 ### Race-specific
-For criterium / road-race / cyclocross goals (discipline block). Select
-breakaway sets (Z6 + Z4), criterium microbursts (Z6 + Z2), or standing
-starts (Z7) from workout-library.md.
+For criterium / road-race / cyclocross / Zwift-racing goals (discipline
+block). Select breakaway sets (Z6 + Z4), criterium microbursts (Z6 + Z2),
+standing starts (Z7), or the Zwift race start (Z6 → Z4) from
+workout-library.md.
 Breakaway sets use full recovery between sets; microbursts use incomplete
 recovery within a block and full recovery between blocks; standing starts
-use full recovery between every effort.
+use full recovery between every effort; the Zwift race start has no
+recovery between its Z6 opening and the Z4 block.
 Use one or more "race-specific-<level>" tags; downstream logic derives the
 race classification from those tags.
 
@@ -102,6 +104,10 @@ race classification from those tags.
    overriding the primary season goal.
 - `RACE_C`: treat as a supported training race; replace the week's comparable
    intensity rather than adding it on top.
+- A completed race without a calendar entry (identified per the discipline
+   block, e.g. a Zwift race recognised from the activity name or load) is
+   treated as `RACE_C` after the fact: it has already consumed the week's
+   comparable hard session. Remove that session from the remaining week.
 
 ---
 

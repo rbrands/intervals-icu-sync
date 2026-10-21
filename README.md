@@ -63,6 +63,7 @@ Before passing the prompt to the coach, copy the contents of the matching `disci
 | `discipline_marathon.md` | Mountain marathon (L'Etape du Tour, Ötztaler) / ultra-long endurance focus |
 | `discipline_fitness.md` | Fitness / health athlete without a race goal / VO2max maintenance, consistency, no taper |
 | `discipline_cross.md` | Cyclocross racer / starts, low-speed accelerations, race weekends as key sessions |
+| `discipline_zwift.md` | Zwift racer / start block, VO2max, threshold under constant pressure, race-frequency cap |
 
 This keeps the base prompt stable while allowing the athlete profile to be swapped out per use.
 
@@ -230,7 +231,8 @@ intervals-icu-sync/
 │   ├── discipline_cross.md         # Athlete profile block: cyclocross / starts, race weekends
 │   ├── discipline_fitness.md       # Athlete profile block: fitness / health, no race goal
 │   ├── discipline_marathon.md      # Athlete profile block: mountain marathon / ultra-long endurance
-│   └── discipline_roadrace.md      # Athlete profile block: road race / durability focus
+│   ├── discipline_roadrace.md      # Athlete profile block: road race / durability focus
+│   └── discipline_zwift.md         # Athlete profile block: Zwift racing / start block, race cap
 ├── coach-logic/
 │   ├── coaching-principles.md      # Underlying training philosophy and core principles (Joe Friel)
 │   ├── interpretation-rules.md     # Interpretation thresholds for fatigue, durability, fueling and limiters

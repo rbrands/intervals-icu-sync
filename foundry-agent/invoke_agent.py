@@ -17,7 +17,7 @@ Required environment variables (can be set in a .env file)
 Optional environment variables
 -------------------------------
 - ``AGENT_NAME`` — defaults to ``training-architect-agent``
-- ``DISCIPLINE`` — climber | criterium | marathon | roadrace | fitness | cross (default ``climber``)
+- ``DISCIPLINE`` — climber | criterium | marathon | roadrace | fitness | cross | zwift (default ``climber``)
 - ``RESPONSE_LANGUAGE`` — response language like ``de`` / ``en`` (default ``de``)
 - ``MESSAGE`` — the user message to send (default: a short weekly assessment ask)
 

@@ -147,6 +147,26 @@ For the embedded, non-race variant of short sprints see "Embedded
 Neuromuscular Sprints" above.
 
 
+## Race-Specific / Zwift Race Start (Z6 → Z4)
+
+Simulates the opening of a Zwift race: the group sorts itself in the
+first 1–3 minutes at Z6 from rolling speed, then the pace settles just
+below or at threshold with no coasting. The Z4 block follows the Z6
+opening immediately, without recovery; recovery (Z1) comes only between
+repetitions.
+
+| Dose     | Structure                                        | Tag |
+| -------- | ------------------------------------------------ | --- |
+| High     | 2×(2 min Z6 + 15 min Z4), 8 min Z1 between       | race-specific-high |
+| Moderate | 2×(90 s Z6 + 10 min Z4), 8 min Z1 between        | race-specific-moderate |
+| Low      | 1×(90 s Z6 + 10 min Z4)                          | race-specific-low |
+
+Z4 block at threshold (95–100% FTP), not sweet spot. Ride the Z6 opening
+from rolling speed at high cadence — this is not a standing start.
+Always `activity_type: VirtualRide` with detailed steps. Description
+includes cooling and a pre-race carbohydrate note.
+
+
 
 ## Recovery (Z1)
 

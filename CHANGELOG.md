@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] - 2026-10-21
+
+### Added
+
+- Added the `zwift` discipline profile (`prompts/discipline_zwift.md`) for Zwift racers: VO2max and 3–5 min power first, a Z6 → Z4 start simulation, threshold as the race base, flying K2 sprints, a cap of two races per week where each race replaces a hard session, recognition of spontaneous races from activity name or load (treated as `RACE_C` after the fact), ZRL-style series as `RACE_B`, and hints on indoor cooling, W/kg, and trainer vs. power-meter FTP consistency.
+- Registered `zwift` as a runtime discipline in the Foundry agent (`agent.yaml`, `deploy_agent.py`), the Chainlit and invoke test clients, and the documentation tables; the winter-racing add-on in `docs/prompt_library.md` now points to the profile for athletes whose main goal is Zwift racing.
+- Added a "Zwift Race Start (Z6 → Z4)" structure to the workout library with low, moderate, and high doses and no recovery between the Z6 opening and the Z4 block.
+- Added a rule to `decision-process.md` for completed races without a calendar entry: they are treated as `RACE_C` after the fact and the comparable hard session is removed from the remaining week.
+
+### Changed
+
+- Extended race-specific selection in `decision-process.md` to Zwift-racing goals and to the new Zwift-race-start structure.
+
 ## [1.4.0] - 2026-10-20
 
 ### Added
