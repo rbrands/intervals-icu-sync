@@ -51,6 +51,7 @@ def _iso_date(value: str) -> str:
 
 class _PlanEntry(_InputModel):
     week: str | None = None
+    phase: str | None = None
 
     @field_validator("week")
     @classmethod
@@ -171,7 +172,7 @@ _LABELS = {
 }
 
 _FIXES = {
-    "season_plan": "Set up or update the season plan in intervals.icu for the current week.",
+    "season_plan": "Set up or update the season plan phase in intervals.icu for the current and next week.",
     "wellness_tracking": "Connect a wellness tracker or record recovery signals.",
     "ftp_consistency": "Verify the configured FTP and the availability of its comparison estimates.",
     "w_prime_consistency": "Verify the configured W' and the availability of its rolling estimate.",
@@ -206,13 +207,39 @@ def check_athlete_data(athlete_data: dict[str, Any]) -> QualityReport:
     ]
     metrics = data.metrics or _Metrics()
     plan = data.week_summary.training_plan if data.week_summary else None
-    has_current_plan = any(entry.week == data.week_starting for entry in plan or [])
+    current_week = date.fromisoformat(data.week_starting)
+    next_week = current_week + timedelta(days=7)
+    current_entry = next((entry for entry in plan or [] if entry.week == data.week_starting), None)
+    next_entry = next((entry for entry in plan or [] if entry.week == next_week.isoformat()), None)
+    has_current_phase = bool(current_entry and current_entry.phase and current_entry.phase.strip())
+    has_next_phase = bool(next_entry and next_entry.phase and next_entry.phase.strip())
+    phase_count = sum((has_current_phase, has_next_phase))
+    season_plan_status: Status = (
+        "OK" if phase_count == 2 else "Warning" if phase_count == 1 else "Missing"
+    )
+    missing_phases = [
+        week for week, has_phase in (
+            (data.week_starting, has_current_phase),
+            (next_week.isoformat(), has_next_phase),
+        ) if not has_phase
+    ]
+    season_plan_explanation = (
+        f"Macrocycle phase is available for the current week ({data.week_starting}) "
+        f"and next week ({next_week.isoformat()})."
+        if not missing_phases else
+        "Macrocycle phase is missing for " + ", ".join(missing_phases) +
+        "; week entries and day constraints without a phase do not establish a season plan "
+        "for those weeks."
+    )
     checks = [_check(
-        "season_plan", "OK" if has_current_plan else "Missing",
-        "A season-plan entry is available for the current week." if has_current_plan else
-        "No current-week season-plan entry is available; phase, target and day constraints "
-        "cannot be taken from it, so planning falls back to readiness without a season target.",
-        entries=len(plan or []), current_week_present=has_current_plan,
+        "season_plan", season_plan_status, season_plan_explanation,
+        entries=len(plan or []),
+        current_week_present=current_entry is not None,
+        next_week_present=next_entry is not None,
+        current_week_phase_present=has_current_phase,
+        next_week_phase_present=has_next_phase,
+        current_week=data.week_starting,
+        next_week=next_week.isoformat(),
     )]
     ftp = _comparison(
         "ftp_consistency", metrics.ftp,

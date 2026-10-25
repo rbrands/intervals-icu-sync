@@ -103,7 +103,7 @@ are in English and can be translated by the caller without changing statuses.
 
 | Area | Deterministic rule |
 |---|---|
-| Season plan | `OK` when `week_summary.training_plan` has an entry whose `week` matches `week_starting`; otherwise `Missing`, including next-week-only plans. Presence does not certify that every plan field is populated. |
+| Season plan / macrocycle | `OK` when entries for both the current and next week have a non-empty `phase`; `Warning` when only one week has a phase; `Missing` when neither does. Week entries and day constraints without a phase do not count as a macrocycle. |
 | FTP consistency | Compare `metrics.rolling_ftp` and `metrics.eftp` with `metrics.ftp`, using absolute percentage differences relative to FTP. Below 10%: `OK`; 10–20% inclusive: `Warning`; above 20%: `Missing` with an explicit inconsistent flag. Missing or non-positive values also produce `Missing`; the worst comparison determines the area status. |
 | W' consistency | Apply the same thresholds to `metrics.rolling_w_prime`, relative to `metrics.w_prime`. |
 | Wellness | `OK` if any of `metrics.resting_hr`, `metrics.hrv`, or `metrics.sleep_secs` is non-null; otherwise `Missing`. |
@@ -409,9 +409,10 @@ This project follows [Semantic Versioning](https://semver.org/).
 1. Add upcoming changes under `## [Unreleased]` in `CHANGELOG.md`.
 2. Bump `VERSION` to the new release version.
 3. Move release-ready entries from `Unreleased` to a dated `## [x.y.z] - YYYY-MM-DD` section.
-4. Commit the release changes.
-5. Create and push the Git tag (for example `v0.1.0`).
-6. Publish a GitHub Release for that tag.
+4. Commit and push the release changes to `main`; changes to `VERSION` trigger the staging deployment.
+5. Verify staging, then run the `Swap Staging → Production` workflow to publish the release.
+6. Create and push the Git tag (for example `v0.1.0`).
+7. Publish a GitHub Release for that tag.
 
 ## Data Flow
 

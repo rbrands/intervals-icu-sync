@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [1.4.2] - 2026-10-25
+
+### Fixed
+
+- Updated the data-quality check to require a non-empty macrocycle `phase` for both the current and next week; week entries or day constraints alone no longer count as a season plan.
+- Added `VERSION` and the deployment workflow to the code-deployment path filters so version-only releases trigger staging deployment.
+
 ## [1.4.1] - 2026-10-21
 
 ### Added

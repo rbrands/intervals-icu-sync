@@ -31,7 +31,8 @@ def complete_data():
             "resting_hr": 50, "hrv": None, "sleep_secs": None,
             "power_profile": {"p20min": {"watts": 270}, "period_days": 42},
         },
-        "week_summary": {"training_plan": [{"week": "2026-10-05"}]},
+        "week_summary": {"training_plan": [{"week": "2026-10-05", "phase": "Base"},
+                                           {"week": "2026-10-12", "phase": "Build"}]},
         "activities": [
             {"date": day, "rpe": 0, "carbs_ingested_g": 0}
             for day in ("2026-10-04", "2026-10-07", "2026-10-11")
@@ -112,13 +113,36 @@ class DataQualityTests(unittest.TestCase):
         del data["metrics"]["power_profile"]
         self.assertEqual(area(check_athlete_data(data), "ftp_consistency")["status"], "OK")
 
+    def test_season_plan_requires_macrocycle_phase_for_both_weeks(self):
+        data = complete_data()
+        data["week_summary"]["training_plan"] = [
+            {"week": "2026-10-05", "day_constraints": [{"type": "LIMITED"}]},
+            {"week": "2026-10-12", "day_constraints": [{"type": "UNAVAILABLE"}]},
+        ]
+        check = area(check_athlete_data(data), "season_plan")
+        self.assertEqual(check["status"], "Missing")
+        self.assertTrue(check["evidence"]["current_week_present"])
+        self.assertTrue(check["evidence"]["next_week_present"])
+        self.assertFalse(check["evidence"]["current_week_phase_present"])
+        self.assertFalse(check["evidence"]["next_week_phase_present"])
+
+        data["week_summary"]["training_plan"][0]["phase"] = "Base"
+        check = area(check_athlete_data(data), "season_plan")
+        self.assertEqual(check["status"], "Warning")
+        self.assertTrue(check["evidence"]["current_week_phase_present"])
+        self.assertFalse(check["evidence"]["next_week_phase_present"])
+
+        data["week_summary"]["training_plan"][1]["phase"] = "Build"
+        self.assertEqual(area(check_athlete_data(data), "season_plan")["status"], "OK")
+
     def test_missing_empty_or_next_week_only_plan(self):
         for summary in (None, {}, {"training_plan": None}, {"training_plan": []},
-                        {"training_plan": [{"week": "2026-10-12"}]}):
+                        {"training_plan": [{"week": "2026-10-05"}]},
+                        {"training_plan": [{"week": "2026-10-12", "phase": "Build"}]}):
             with self.subTest(summary=summary):
                 data = complete_data()
                 data["week_summary"] = summary
-                self.assertEqual(area(check_athlete_data(data), "season_plan")["status"], "Missing")
+                self.assertNotEqual(area(check_athlete_data(data), "season_plan")["status"], "OK")
 
     def test_wellness_non_null_rule(self):
         for field in ("resting_hr", "hrv", "sleep_secs"):

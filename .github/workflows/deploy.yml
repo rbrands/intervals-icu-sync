@@ -5,6 +5,8 @@ on:
     branches:
       - main
     paths:
+      - 'VERSION'
+      - '.github/workflows/deploy.yml'
       - 'webservice/**'
       - 'scripts/**'
       - 'src/**'
@@ -16,6 +18,8 @@ on:
     branches:
       - main
     paths:
+      - 'VERSION'
+      - '.github/workflows/deploy.yml'
       - 'webservice/**'
       - 'scripts/**'
       - 'src/**'

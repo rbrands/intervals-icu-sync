@@ -532,9 +532,11 @@ If check_athlete_data is available, pass the existing complete JSON as
 athlete_data and present its seven checks and summary in German without
 changing statuses. Otherwise apply the rules below with these clarifications:
 missing/non-positive FTP or W' comparisons are Missing; 10-20% includes both
-boundaries; >20% is Missing/inconsistent; a plan without a current-week entry
-is Missing. Use the inclusive current_date - lookback_days through current_date
-window, excluding future activities. Also check activity feedback: OK when
+boundaries; >20% is Missing/inconsistent. For the season plan, require a
+non-empty `phase` for both the current and next week: `OK` when both are
+present, `Warning` when only one is present, and `Missing` when neither is
+present; week entries and day constraints alone do not count. Use the inclusive
+current_date - lookback_days through current_date window, excluding future activities. Also check activity feedback: OK when
 every activity has non-null rpe and carbs_ingested_g (zero counts); Missing
 when there are no activities or either field is missing for all activities;
 Warning for other gaps. Missing feedback limits exertion/fueling comparisons.
@@ -545,9 +547,10 @@ feedback, density, historical targets; no fix is required if everything is OK.
 Bewerte jede unten genannte Stelle. Für jede Stelle gib einen Status (`OK`, `Warning` oder `Missing`) und eine ein Satz lange Erklärung an, welche praktische Auswirkung das hat, wenn er nicht `OK` ist. Nutze die genauen Schwellenwerte; erfinde keine eigenen.
 
 **Season plan / macrocycle**
-- `OK`, wenn `week_summary.training_plan` vorhanden ist und einen Eintrag für die aktuelle Woche enthält.
-- `Missing`, wenn `week_summary.training_plan` fehlt oder leer ist.
-- Wirkung bei `Missing`: Es stehen keine Phase, kein Wochen-Load-Ziel und keine Tagesbedingungen zur Verfügung; die Planerstellung fällt auf einen readiness-basierten Plan ohne Ziel zurück.
+- Prüfe die Einträge für aktuelle und nächste Woche in `week_summary.training_plan`.
+- `OK`, wenn für beide Wochen ein nicht-leeres Feld `phase` vorhanden ist; `Warning`, wenn nur eine der beiden Wochen eine Phase hat; `Missing`, wenn keine der beiden Wochen eine Phase hat.
+- Einträge, Wochenziele oder Tages-Constraints ohne `phase` belegen keinen Macrocycle.
+- Nenne bei `Warning` oder `Missing` ausdrücklich, für welche Woche(n) die Phase fehlt und dass saisonale Phasensteuerung für diese Woche(n) nicht verfügbar ist.
 
 **FTP consistency**
 - Vergleiche `ftp` mit `rolling_ftp` und `eftp`.
@@ -601,10 +604,10 @@ Otherwise apply the manual rules below.
 Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Missing`) and a one-sentence explanation of the practical impact if it is not `OK`. Use the exact thresholds given; do not invent your own.
 
 **Season plan / macrocycle**
-- `OK` if `week_summary.training_plan` is present and contains an entry for the current week.
-- `Missing` if `week_summary.training_plan` is absent or empty.
-- A plan containing only other weeks is also `Missing`.
-- Impact when `Missing`: no phase, weekly load target, or day constraints are available; plan generation falls back to a readiness-based plan without a target to work toward.
+- Check the current- and next-week entries in `week_summary.training_plan`.
+- `OK` if both weeks have a non-empty `phase`; `Warning` if only one of the two weeks has a phase; `Missing` if neither week has a phase.
+- Entries, weekly targets, or day constraints without a `phase` do not establish a macrocycle.
+- For `Warning` or `Missing`, name the week(s) whose phase is absent and state that phase-based seasonal guidance is unavailable for those weeks.
 
 **FTP consistency**
 - Compare `ftp` against `rolling_ftp` and `eftp`.
