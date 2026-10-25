@@ -1385,21 +1385,6 @@
           "default": null,
           "title": "Rolling W Prime"
         },
-        "ew_prime": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ew Prime"
-        },
         "ftp_classification": {
           "anyOf": [
             {

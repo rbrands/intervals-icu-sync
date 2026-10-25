@@ -80,7 +80,6 @@ class Metrics(_SchemaModel):
     ftp_eftp_delta_pct: float | int | None = None
     w_prime: float | int | None = None
     rolling_w_prime: float | int | None = None
-    ew_prime: float | int | None = None
     ftp_classification: FtpClassification | None = None
     rolling_p_max: float | int | None = None
     lthr: float | int | None = None

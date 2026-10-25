@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Removed
+
+- Removed `metrics.ew_prime`: it was read from the same Ride sport setting as `metrics.w_prime` and therefore always duplicated it. Use `metrics.w_prime` for the configured value and `metrics.rolling_w_prime` for intervals.icu's estimate; activity-level `w_prime_j` already falls back to the rolling estimate when no W' is set.
+
 ## [1.4.2] - 2026-10-25
 
 ### Fixed

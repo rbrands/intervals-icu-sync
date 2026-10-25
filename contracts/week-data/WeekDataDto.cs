@@ -391,9 +391,6 @@ public class MetricsDto
     [JsonPropertyName("rolling_w_prime")]
     public double? RollingWPrime { get; set; }
 
-    [JsonPropertyName("ew_prime")]
-    public double? EwPrime { get; set; }
-
     [JsonPropertyName("ftp_classification")]
     public FtpClassificationDto? FtpClassification { get; set; }
 
