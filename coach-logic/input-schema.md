@@ -45,8 +45,9 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `ftp_classification`: age- and sex-adjusted FTP category based on FTP
   W/kg, including `w_per_kg`, `category`, `category_range`,
   `next_category`, and `delta_to_next`.
-- `w_prime` / `ew_prime` / `rolling_w_prime`: W' (J), effective W' from the
-  current Ride sport settings, and 42-day rolling estimate.
+- `w_prime` / `rolling_w_prime`: W' (J) from the current Ride sport
+  settings, and intervals.icu's rolling W' estimate. Activity-level
+  `w_prime_j` falls back to the rolling estimate when no W' is set.
 - `rolling_p_max`: rolling max 1-second power (42-day).
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)

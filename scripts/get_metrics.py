@@ -62,7 +62,6 @@ def fetch_athlete_info() -> tuple[dict, bool]:
     result = {
         "ftp": ride_settings.get("ftp"),
         "w_prime": ride_settings.get("w_prime"),
-        "ew_prime": ride_settings.get("w_prime"),
         "weight": _weight_to_kg(data.get("icu_weight"), weight_pref_lb),
     }
     dob_str = data.get("icu_date_of_birth")
@@ -935,7 +934,6 @@ def _order_metrics(metrics: dict) -> dict:
         "ftp_eftp_delta_pct",
         "w_prime",
         "rolling_w_prime",
-        "ew_prime",
     )
     ordered = {key: metrics[key] for key in ordered_keys if key in metrics}
     ordered.update({key: value for key, value in metrics.items() if key not in ordered})
