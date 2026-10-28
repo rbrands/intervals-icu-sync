@@ -600,11 +600,13 @@ def compute_aerobic_threshold_estimate(
         return None
 
     crossings = [s for s in valid if s.get("power_at_0_75") is not None]
-    power_values = [_as_float(s["power_at_0_75"]) for s in crossings]
-    hr_values = [_as_float(s["hr_at_0_75"]) for s in crossings if s.get("hr_at_0_75") is not None]
     time_above = [_as_float(s["time_above_0_75_pct"]) for s in valid if s.get("time_above_0_75_pct") is not None]
 
-    power_at_0_75 = round(sum(power_values) / len(power_values)) if power_values else None
+    # Rides that spent more windows in the threshold band give a firmer
+    # estimate, so they carry more weight in the week-level mean.
+    power_at_0_75 = _threshold_weighted_mean(crossings, "power_at_0_75")
+    hr_at_0_75 = _threshold_weighted_mean(crossings, "hr_at_0_75")
+    total_threshold_windows = sum(_threshold_weight(s) for s in crossings)
     z2_upper_power, z2_upper_source = _z2_upper_power(ftp, power_zones_pct)
     delta_pct = (
         round((power_at_0_75 - z2_upper_power) / z2_upper_power * 100.0, 1)
@@ -615,13 +617,36 @@ def compute_aerobic_threshold_estimate(
     return {
         "rides_with_valid_data": len(valid),
         "rides_with_threshold_crossing": len(crossings),
+        "threshold_windows_total": total_threshold_windows if crossings else None,
         "power_at_0_75": power_at_0_75,
-        "hr_at_0_75": round(sum(hr_values) / len(hr_values)) if hr_values else None,
+        "hr_at_0_75": hr_at_0_75,
         "z2_upper_power": z2_upper_power,
         "z2_upper_source": z2_upper_source,
         "delta_pct": delta_pct,
         "avg_time_above_0_75_pct": round(sum(time_above) / len(time_above)) if time_above else None,
     }
+
+
+def _threshold_weight(summary: dict) -> int:
+    """Weight of a ride in the week-level mean: its threshold-band window count (min 1)."""
+    windows = summary.get("threshold_windows")
+    try:
+        return max(int(windows), 1)
+    except (TypeError, ValueError):
+        return 1
+
+
+def _threshold_weighted_mean(summaries: list[dict], field: str) -> int | None:
+    """Mean of ``field`` across summaries, weighted by ``threshold_windows``."""
+    pairs = [
+        (_as_float(s[field]), _threshold_weight(s))
+        for s in summaries
+        if s.get(field) is not None
+    ]
+    if not pairs:
+        return None
+    total_weight = sum(weight for _, weight in pairs)
+    return round(sum(value * weight for value, weight in pairs) / total_weight)
 
 
 def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_form: dict | None = None, training_plan: list[dict] | None = None) -> None:
@@ -660,7 +685,12 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
         print(f"  Rides with valid data:      {ate['rides_with_valid_data']} ({ate['rides_with_threshold_crossing']} with crossing)")
         if ate.get("power_at_0_75") is not None:
             hr_str = f" / {ate['hr_at_0_75']} bpm" if ate.get("hr_at_0_75") is not None else ""
-            print(f"  Power at a1 = 0.75:         {ate['power_at_0_75']} W{hr_str}")
+            windows_str = (
+                f" (weighted by {ate['threshold_windows_total']} threshold windows)"
+                if ate.get("threshold_windows_total") is not None
+                else ""
+            )
+            print(f"  Power at a1 = 0.75:         {ate['power_at_0_75']} W{hr_str}{windows_str}")
         if ate.get("z2_upper_power") is not None:
             delta_str = f" ({ate['delta_pct']:+.1f}%)" if ate.get("delta_pct") is not None else ""
             print(f"  Z2 upper bound:             {ate['z2_upper_power']} W [{ate['z2_upper_source']}]{delta_str}")

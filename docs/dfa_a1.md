@@ -197,14 +197,15 @@ intervals.icu.
 
 ```json
 "aerobic_threshold_estimate": {
-  "rides_with_valid_data": 1,
-  "rides_with_threshold_crossing": 1,
-  "power_at_0_75": 170,
-  "hr_at_0_75": 125,
+  "rides_with_valid_data": 2,
+  "rides_with_threshold_crossing": 2,
+  "threshold_windows_total": 59,
+  "power_at_0_75": 187,
+  "hr_at_0_75": 135,
   "z2_upper_power": 199,
   "z2_upper_source": "athlete_zones",
-  "delta_pct": -14.6,
-  "avg_time_above_0_75_pct": 92
+  "delta_pct": -6.0,
+  "avg_time_above_0_75_pct": 67
 }
 ```
 
@@ -212,7 +213,8 @@ intervals.icu.
 | --- | --- |
 | `rides_with_valid_data` | rides with a valid analysis |
 | `rides_with_threshold_crossing` | subset in which alpha 1 actually reached the 0.65–0.85 band |
-| `power_at_0_75` / `hr_at_0_75` | mean over the crossing rides |
+| `threshold_windows_total` | sum of `threshold_windows` over the crossing rides – the total evidence behind the estimate; null when no ride crossed |
+| `power_at_0_75` / `hr_at_0_75` | mean over the crossing rides, **weighted by each ride's `threshold_windows`** so a ride that spent 40 windows near the threshold counts more than one that barely touched it; a ride without a window count carries weight 1 |
 | `z2_upper_power` | the athlete's **configured** Zone 2 ceiling in watts |
 | `z2_upper_source` | `athlete_zones` – from `metrics.power_zones_pct` (the Ride power zones set in intervals.icu); `ftp_75pct` – fallback to the Coggan default when no zones are configured |
 | `delta_pct` | `(power_at_0_75 − z2_upper_power) / z2_upper_power × 100`; negative = LT1 estimate below the Zone 2 ceiling |
@@ -250,10 +252,10 @@ once (strap contact / connection). `artifact_pct` 5–10 % → caution.
 
 | `delta_pct` | reading |
 | --- | --- |
-| within ±5 % | Zone 2 ceiling matches the athlete's physiology |
-| −5 % to −15 % | upper Zone 2 is already above LT1 on these days; favour the lower half of Z2 on long rides, or check freshness |
-| below −15 % | zone model clearly too optimistic for the current state (fatigue, heat, illness, weak aerobic base); do not raise intensity until confirmed on a fresh day |
-| above +5 % | strong aerobic base; Zone 2 may be ridden toward its ceiling |
+| within ±10 % | no finding – within the method's individual uncertainty (limits of agreement around ±20 W) |
+| −10 % to −15 % | upper Zone 2 was above LT1 on these days; favour the lower half of Z2 on long rides, or check freshness |
+| below −15 % | zone ceiling clearly too high for this week's state (fatigue, heat, illness) or for this athlete's LT1/FTP ratio; do not raise intensity |
+| above +10 % | aerobic threshold sits above the Zone 2 ceiling this week; Zone 2 may be ridden toward its ceiling |
 
 **Division of labour with decoupling.** Durability (did the cardiovascular
 response drift over the ride?) remains a `decoupling` reading. DFA a1 answers
@@ -264,10 +266,41 @@ first-/second-half drift of alpha 1 was deliberately removed: it duplicated
 decoupling on the same ride class with thinner evidence and would have forced
 the coach to weigh two competing durability labels.
 
-**A single ride is a day-form reading, not a zone change.** LT1 moves far
-more from day to day than FTP does. Only a repeated pattern across several
-fresh rides justifies suggesting a zone review – and the athlete decides in
-intervals.icu.
+**The dataset covers one lookback, not a history.** LT1 moves far more from
+day to day than FTP does, and the LT1/FTP ratio is individual (roughly
+55–85 % FTP). Because earlier weeks are not in the dataset, the coach cannot
+tell whether a deviation is new, persistent, or simply this athlete's
+baseline. It states the observation, names plausible explanations, and leaves
+the trend check and any zone or FTP change to the athlete in intervals.icu.
+
+**Cross-check with FTP vs. eFTP.** `metrics.ftp_eftp_delta_pct` compares the
+42-day power profile with the configured FTP – a six-week reference.
+`aerobic_threshold_estimate.delta_pct` compares this week's DFA a1 threshold
+with the configured Zone 2 ceiling – a lookback reading. Both use the same
+configured FTP as yardstick, by independent methods, so together they answer:
+*does this week's aerobic reading fit the longer-term performance picture?*
+
+| `ftp_eftp_delta_pct` | `delta_pct` (DFA a1) | consistent reading (hypothesis) |
+| --- | --- | --- |
+| both negative, similar size | | week agrees with the six-week picture; configured FTP may be above the current state → suggest checking the FTP trend in intervals.icu |
+| both positive, similar size | | form building at both ends; FTP may be below the current state → same, other direction |
+| positive | ≈ 0 or negative | top end ahead of the aerobic threshold (after an interval block); raising FTP now would push Zone 2 above LT1 → caution with the FTP update |
+| negative | ≈ 0 | aerobic threshold intact, top end dropped (late season) → no Zone 2 change |
+| ≈ 0 | clearly negative | this week deviates on the aerobic side → read as day-form/readiness first (fatigue, heat, illness) |
+| ≈ 0 | clearly positive | this week better than the six-week picture (fresh) → no change |
+| both ≈ 0 | | consistent |
+| one missing | | use the available signal alone |
+
+"≈ 0" is within ±10 % on the DFA a1 side and within ±3 % on the eFTP side.
+
+Example from a real dataset: eFTP −4.7 % and DFA a1 LT1 −6.0 % below the
+Zone 2 ceiling – both negative, similar size. Recomputing the Zone 2 ceiling
+from eFTP instead of FTP gives 190 W versus the DFA estimate of 187 W. The
+consistent hypothesis is that the configured FTP was ~12 W above the current
+state; whether that is a recent change or this athlete's normal ratio is for
+the athlete to check against the history in intervals.icu. Note that −6 % is
+also inside the ±10 % no-finding band on its own – it is the agreement with
+eFTP that makes it worth mentioning at all.
 
 ---
 
@@ -294,6 +327,14 @@ intervals.icu.
   barely touched the threshold is a weak estimate; `threshold_windows` shows
   how much the value is worth. A ride near the upper end of Zone 2 gives a
   far more robust reading.
+- **Individual LT1/FTP ratio.** The Coggan default puts the Zone 2 ceiling
+  at 75 % FTP, but the true aerobic threshold ranges roughly from 55 % to
+  85 % FTP between athletes. A negative `delta_pct` can therefore be an
+  athlete's permanent normal rather than a finding – which is why the
+  interpretation bands are wide (±10 %) and phrased as hypotheses.
+- **No history in the dataset.** The coach sees one lookback. It cannot tell
+  a new deviation from a persistent one; trend judgements belong to the
+  athlete in intervals.icu, where the full history is available.
 
 ---
 

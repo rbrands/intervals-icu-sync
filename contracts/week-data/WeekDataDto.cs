@@ -238,6 +238,9 @@ public class AerobicThresholdEstimateDto
     [JsonPropertyName("rides_with_threshold_crossing")]
     public int? RidesWithThresholdCrossing { get; set; }
 
+    [JsonPropertyName("threshold_windows_total")]
+    public int? ThresholdWindowsTotal { get; set; }
+
     [JsonPropertyName("power_at_0_75")]
     public double? PowerAt075 { get; set; }
 

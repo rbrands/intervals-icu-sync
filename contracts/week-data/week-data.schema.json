@@ -845,6 +845,18 @@
           "default": null,
           "title": "Rides With Threshold Crossing"
         },
+        "threshold_windows_total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Windows Total"
+        },
         "power_at_0_75": {
           "anyOf": [
             {

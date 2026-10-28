@@ -41,7 +41,9 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   otherwise.
 - `ftp_eftp_delta_pct`: percentage difference between `ftp` and `eftp`,
   calculated as `((eftp - ftp) / ftp) * 100`. Positive values mean eFTP is
-  above FTP.
+  above FTP. Read together with
+  `week_summary.aerobic_threshold_estimate.delta_pct` when both are present
+  (see interpretation rules, *Cross-check with FTP vs. eFTP*).
 - `ftp_classification`: age- and sex-adjusted FTP category based on FTP
   W/kg, including `w_per_kg`, `category`, `category_range`,
   `next_category`, and `delta_to_next`.
@@ -122,9 +124,13 @@ value is missing or no previous exported activity exists.
   - `rides_with_valid_data` / `rides_with_threshold_crossing`: rides with a
     valid analysis, and the subset in which DFA a1 actually crossed 0.75 so
     that a threshold power could be read.
-  - `power_at_0_75` / `hr_at_0_75`: mean power (W) and HR (bpm) at which
-    DFA a1 ≈ 0.75 across the crossing rides — the current aerobic threshold
-    (LT1/VT1) estimate. Null when no ride crossed 0.75.
+  - `threshold_windows_total`: sum of `threshold_windows` over the crossing
+    rides — the total evidence behind the estimate. Null when no ride crossed.
+  - `power_at_0_75` / `hr_at_0_75`: power (W) and HR (bpm) at which DFA a1
+    ≈ 0.75, averaged across the crossing rides and weighted by each ride's
+    `threshold_windows` (a ride with many threshold windows dominates one
+    that barely touched the band) — the current aerobic threshold (LT1/VT1)
+    estimate. Null when no ride crossed 0.75.
   - `z2_upper_power` / `z2_upper_source`: the athlete's configured Zone 2
     ceiling in watts (`athlete_zones` = from `metrics.power_zones_pct`,
     `ftp_75pct` = fallback to 75 % FTP when no zones are set).

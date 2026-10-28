@@ -205,12 +205,43 @@ class AerobicThresholdEstimateTests(unittest.TestCase):
         estimate = analyze_week.compute_aerobic_threshold_estimate(activities, 265, [55, 75, 90])
         self.assertEqual(estimate["rides_with_valid_data"], 3)
         self.assertEqual(estimate["rides_with_threshold_crossing"], 2)
+        self.assertEqual(estimate["threshold_windows_total"], 2)
         self.assertEqual(estimate["power_at_0_75"], 180)
         self.assertEqual(estimate["hr_at_0_75"], 128)
         self.assertEqual(estimate["z2_upper_power"], 199)
         self.assertEqual(estimate["z2_upper_source"], "athlete_zones")
         self.assertEqual(estimate["delta_pct"], -9.5)
         self.assertEqual(estimate["avg_time_above_0_75_pct"], 87)
+
+    def test_weights_rides_by_threshold_windows(self):
+        activities = [
+            {"dfa_a1_summary": {"valid": True, "power_at_0_75": 195, "hr_at_0_75": 140, "threshold_windows": 41, "time_above_0_75_pct": 42}},
+            {"dfa_a1_summary": {"valid": True, "power_at_0_75": 170, "hr_at_0_75": 125, "threshold_windows": 18, "time_above_0_75_pct": 92}},
+        ]
+        estimate = analyze_week.compute_aerobic_threshold_estimate(activities, 265, [55, 75, 90])
+        self.assertEqual(estimate["threshold_windows_total"], 59)
+        # (195*41 + 170*18) / 59 = 187.4 -> the firmer estimate dominates the plain mean of 182.5
+        self.assertEqual(estimate["power_at_0_75"], 187)
+        self.assertEqual(estimate["hr_at_0_75"], 135)
+        self.assertEqual(estimate["delta_pct"], -6.0)
+
+    def test_missing_threshold_windows_defaults_to_unit_weight(self):
+        activities = [
+            {"dfa_a1_summary": {"valid": True, "power_at_0_75": 200, "threshold_windows": 3}},
+            {"dfa_a1_summary": {"valid": True, "power_at_0_75": 100, "threshold_windows": None}},
+            {"dfa_a1_summary": {"valid": True, "power_at_0_75": 100, "threshold_windows": "bad"}},
+        ]
+        estimate = analyze_week.compute_aerobic_threshold_estimate(activities, None, None)
+        self.assertEqual(estimate["threshold_windows_total"], 5)
+        self.assertEqual(estimate["power_at_0_75"], 160)
+        self.assertIsNone(estimate["hr_at_0_75"])
+
+    def test_threshold_windows_total_is_none_without_crossing(self):
+        activities = [{"dfa_a1_summary": {"valid": True, "power_at_0_75": None, "time_above_0_75_pct": 100}}]
+        estimate = analyze_week.compute_aerobic_threshold_estimate(activities, 265, [55, 75])
+        self.assertEqual(estimate["rides_with_threshold_crossing"], 0)
+        self.assertIsNone(estimate["threshold_windows_total"])
+        self.assertIsNone(estimate["power_at_0_75"])
 
     def test_falls_back_to_75_percent_ftp_without_zones(self):
         activities = [{"dfa_a1_summary": {"valid": True, "power_at_0_75": 200, "time_above_0_75_pct": 80}}]

@@ -118,14 +118,44 @@ omitted when no ride carries usable R-R data; silence is not a limitation.
 ### Week level (`aerobic_threshold_estimate`)
 | `delta_pct` | reading |
 | ----------- | ------- |
-| within ±5 % | Zone-2 ceiling matches the athlete's physiology |
-| −5 % to −15 % | upper Zone 2 is already above LT1 on these days; favour the lower half of Z2 for long rides, or check freshness |
-| below −15 % | zone model clearly too optimistic for current state (fatigue, heat, illness, or weak aerobic base); do not raise intensity until confirmed on a fresh day |
-| above +5 % | strong aerobic base; Zone 2 may be ridden toward its ceiling |
+| within ±10 % | no finding; the deviation is within the method's uncertainty (individual limits of agreement around ±20 W) |
+| −10 % to −15 % | upper Zone 2 was above LT1 on these days; favour the lower half of Z2 for long rides, or check freshness |
+| below −15 % | zone ceiling clearly too high for this week's state (fatigue, heat, illness) or for this athlete's LT1/FTP ratio; do not raise intensity |
+| above +10 % | aerobic threshold sits above the Zone 2 ceiling this week; Zone 2 may be ridden toward its ceiling |
 
-A single ride is a day-form reading, not a zone change. Only a repeated
-pattern across several fresh rides justifies suggesting a zone review; the
-athlete decides in intervals.icu.
+`delta_pct` is a reading of **this lookback only**. The dataset does not
+contain earlier weeks, so the coach cannot judge whether a deviation is new,
+persistent or the athlete's normal — the LT1/FTP ratio is individual (roughly
+55–85 % FTP) and a steady negative `delta_pct` can simply be this athlete's
+baseline. State the observation, name possible explanations, and leave the
+trend check and any zone or FTP change to the athlete in intervals.icu.
+`threshold_windows_total` is the evidence behind the week estimate: a small
+total (< 10) means the rides barely touched the threshold, so treat
+`power_at_0_75` and `delta_pct` as weak.
+
+### Cross-check with FTP vs. eFTP
+`metrics.ftp_eftp_delta_pct` compares the 42-day power profile with the
+configured FTP (a six-week reference). `aerobic_threshold_estimate.delta_pct`
+compares this week's DFA a1 threshold with the configured Zone 2 ceiling (a
+lookback reading). Both are measured against the same configured FTP by
+independent methods, so reading them together answers one question: **does
+this week's aerobic reading fit the longer-term performance picture?**
+
+| `ftp_eftp_delta_pct` | `delta_pct` (DFA a1) | consistent reading (hypothesis, not diagnosis) |
+| -------------------- | -------------------- | ---------------------------------------------- |
+| both negative, similar size | | this week's reading agrees with the six-week picture; one plausible explanation is that the configured FTP is above the current state — mention it, suggest the athlete checks the FTP trend in intervals.icu |
+| both positive, similar size | | form is building at both ends; the configured FTP may be below the current state — same suggestion, in the other direction |
+| positive | ≈ 0 or negative | top-end performance is ahead of the aerobic threshold this week (typical after an interval block); if the athlete raises FTP now, Zone 2 moves above LT1 — advise caution with the FTP update rather than higher Z2 |
+| negative | ≈ 0 | aerobic threshold intact this week while top end has dropped (typical late season); no Zone 2 change indicated |
+| ≈ 0 | clearly negative | this week deviates from the six-week picture on the aerobic side; treat as a day-form/readiness signal (fatigue, heat, illness) before considering a base deficit |
+| ≈ 0 | clearly positive | this week's aerobic reading is better than the six-week picture suggests (fresh, well recovered); no change indicated |
+| both ≈ 0 | | consistent; nothing to report |
+| one of the two missing | | use the available signal alone; do not claim a cross-check |
+
+"≈ 0" means within ±10 % for the DFA a1 side and within ±3 % for the eFTP
+side. The cross-check adds or removes confidence in an observation; it does
+not establish a trend and never replaces the athlete's decision in
+intervals.icu.
 
 ### Relationship to decoupling
 - Decoupling answers "did the cardiovascular response drift over the

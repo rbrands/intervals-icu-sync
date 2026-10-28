@@ -532,7 +532,7 @@ Long-ride counting for fueling is tracked separately in
 `fueling_analysis.weekly_summary.number_of_long_rides`.
 Current rule: duration `>= 2.5 h` and no structured intervals.
 
-**Aerobic threshold estimate (DFA a1)**: When at least one exported activity in `coach_input_{monday}.json` carries a valid `dfa_a1_summary` (see `prepare_activities_for_coach.py`), the summary gains `aerobic_threshold_estimate` with `rides_with_valid_data`, `rides_with_threshold_crossing`, the mean `power_at_0_75` / `hr_at_0_75` across rides that crossed DFA a1 = 0.75, the athlete's configured Zone 2 ceiling in watts (`z2_upper_power`, `z2_upper_source` = `athlete_zones` from `metrics.power_zones_pct`, or `ftp_75pct` as fallback), the relative `delta_pct` between the two, and `avg_time_above_0_75_pct`. The key is omitted when no ride has usable R-R data; no multi-week trend is computed.
+**Aerobic threshold estimate (DFA a1)**: When at least one exported activity in `coach_input_{monday}.json` carries a valid `dfa_a1_summary` (see `prepare_activities_for_coach.py`), the summary gains `aerobic_threshold_estimate` with `rides_with_valid_data`, `rides_with_threshold_crossing`, `threshold_windows_total`, the `power_at_0_75` / `hr_at_0_75` across rides that crossed DFA a1 = 0.75 (weighted by each ride's `threshold_windows`, so rides with more evidence near the threshold count more), the athlete's configured Zone 2 ceiling in watts (`z2_upper_power`, `z2_upper_source` = `athlete_zones` from `metrics.power_zones_pct`, or `ftp_75pct` as fallback), the relative `delta_pct` between the two, and `avg_time_above_0_75_pct`. The key is omitted when no ride has usable R-R data; no multi-week trend is computed.
 
 ```bash
 python scripts/analyze_week.py
