@@ -88,6 +88,57 @@ decoupling alone does not prove a durability limitation.
 
 ---
 
+## DFA a1 (In-Ride Aerobic Threshold Marker)
+
+DFA alpha 1 is a scaling exponent of the R-R intervals recorded during the
+ride. It **falls with rising intensity**; ≈ 0.75 marks the aerobic threshold
+(LT1/VT1), ≈ 0.50 is discussed as the anaerobic threshold. It is an
+**additional, complementary signal** — never use it to set or override
+training zones on its own, and never confuse it with the nightly
+`metrics.hrv` (recovery signal).
+
+Available in `activities[].dfa_a1_summary` (per ride) and
+`week_summary.aerobic_threshold_estimate` (lookback aggregate). Both are
+omitted when no ride carries usable R-R data; silence is not a limitation.
+
+### Quality gate (read first)
+| condition | reading |
+| --------- | ------- |
+| `valid = false` | do not interpret; mention `reason` (strap contact, artifacts) at most once |
+| `artifact_pct` 5–10 % | interpret with caution |
+| `threshold_windows` < 3 (→ `power_at_0_75` null) | the ride did not touch the threshold; only `time_above_0_75_pct` is informative |
+
+### Per ride
+| signal | reading |
+| ------ | ------- |
+| `time_above_0_75_pct` ≥ 80 % | genuine aerobic/Zone-2 session |
+| `time_above_0_75_pct` 50–80 % | mixed; substantial time above LT1 despite "easy" power |
+| `time_above_0_75_pct` < 50 % on a Base/Pyramidal ride | ride was effectively tempo; check pacing or fatigue |
+
+### Week level (`aerobic_threshold_estimate`)
+| `delta_pct` | reading |
+| ----------- | ------- |
+| within ±5 % | Zone-2 ceiling matches the athlete's physiology |
+| −5 % to −15 % | upper Zone 2 is already above LT1 on these days; favour the lower half of Z2 for long rides, or check freshness |
+| below −15 % | zone model clearly too optimistic for current state (fatigue, heat, illness, or weak aerobic base); do not raise intensity until confirmed on a fresh day |
+| above +5 % | strong aerobic base; Zone 2 may be ridden toward its ceiling |
+
+A single ride is a day-form reading, not a zone change. Only a repeated
+pattern across several fresh rides justifies suggesting a zone review; the
+athlete decides in intervals.icu.
+
+### Relationship to decoupling
+- Decoupling answers "did the cardiovascular response drift over the
+  ride?" (durability); DFA a1 answers "where was the aerobic threshold today
+  and how much of the ride was below it?" (intensity placement).
+- They do not replace each other: durability stays a decoupling reading,
+  threshold placement stays a DFA a1 reading.
+- Low DFA a1 share above 0.75 with low decoupling → steady but too hard.
+- High decoupling with high DFA a1 share above 0.75 → the ride was aerobic
+  but durability still faded; look at fueling, heat and sleep first.
+
+---
+
 ## Anaerobic Capacity (W')
 
 w_prime_drop_pct = w_prime_bal_drop_j / w_prime_j × 100
@@ -137,7 +188,7 @@ Identify the single primary limiter from combined signals:
 
 - VO2max → low p5min / VO2max; little recent high-intensity work
 - Threshold (FTP) → declining power in sustained efforts; cannot hold FTP
-- Aerobic durability → high decoupling (>8–10%) on steady efforts; power drop in long rides
+- Aerobic durability → high decoupling (>8–10%) on steady efforts; power drop in long rides; DFA a1 `delta_pct` below −15 % on fresh days as supporting evidence
 - Fueling / energy availability → low carbs/h, low fueling ratio, high decoupling with low intake
 - Anaerobic / repeatability → repeated W' depletion limiting late efforts (discipline-dependent)
 

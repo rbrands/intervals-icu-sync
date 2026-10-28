@@ -112,6 +112,20 @@ def load_fueling(monday: date) -> dict:
     return json.loads(path.read_text())
 
 
+def load_coach_activities(monday: date) -> list[dict]:
+    """Load the per-activity export written by prepare_activities_for_coach.py.
+
+    The file is a flat list before consolidation and a dict with an
+    ``activities`` key afterwards; both shapes are accepted.
+    """
+    path = OUTPUT_DIR / f"coach_input_{monday.isoformat()}.json"
+    if not path.exists():
+        return []
+    raw = json.loads(path.read_text())
+    activities = raw if isinstance(raw, list) else (raw or {}).get("activities")
+    return [a for a in (activities or []) if isinstance(a, dict)]
+
+
 def _current_week_range() -> tuple[date, date]:
     today = date.today()
     monday = today - timedelta(days=today.weekday())
@@ -548,6 +562,68 @@ def compute_metrics(activities: list, current_ctl: float | None = None) -> dict:
     }
 
 
+DFA_A1_Z2_ZONE_INDEX = 1
+DFA_A1_DEFAULT_Z2_UPPER_PCT = 75.0
+
+
+def _z2_upper_power(ftp: float | None, power_zones_pct: list | None) -> tuple[int | None, str | None]:
+    """Upper bound of Zone 2 in watts from the athlete's configured zones.
+
+    Falls back to the Coggan default of 75 % FTP when no zones are configured.
+    """
+    if not ftp or ftp <= 0:
+        return None, None
+    if isinstance(power_zones_pct, list) and len(power_zones_pct) > DFA_A1_Z2_ZONE_INDEX:
+        pct = _as_float(power_zones_pct[DFA_A1_Z2_ZONE_INDEX])
+        if pct > 0:
+            return round(ftp * pct / 100.0), "athlete_zones"
+    return round(ftp * DFA_A1_DEFAULT_Z2_UPPER_PCT / 100.0), "ftp_75pct"
+
+
+def compute_aerobic_threshold_estimate(
+    coach_activities: list[dict],
+    ftp: float | None,
+    power_zones_pct: list | None,
+) -> dict | None:
+    """Aggregate per-ride DFA a1 summaries into a week-level LT1 estimate.
+
+    Returns None when no ride in the export carries a valid ``dfa_a1_summary``,
+    so the key is omitted from the week summary rather than emitted as null.
+    """
+    summaries = [
+        a["dfa_a1_summary"]
+        for a in coach_activities
+        if isinstance(a.get("dfa_a1_summary"), dict)
+    ]
+    valid = [s for s in summaries if s.get("valid")]
+    if not valid:
+        return None
+
+    crossings = [s for s in valid if s.get("power_at_0_75") is not None]
+    power_values = [_as_float(s["power_at_0_75"]) for s in crossings]
+    hr_values = [_as_float(s["hr_at_0_75"]) for s in crossings if s.get("hr_at_0_75") is not None]
+    time_above = [_as_float(s["time_above_0_75_pct"]) for s in valid if s.get("time_above_0_75_pct") is not None]
+
+    power_at_0_75 = round(sum(power_values) / len(power_values)) if power_values else None
+    z2_upper_power, z2_upper_source = _z2_upper_power(ftp, power_zones_pct)
+    delta_pct = (
+        round((power_at_0_75 - z2_upper_power) / z2_upper_power * 100.0, 1)
+        if power_at_0_75 is not None and z2_upper_power
+        else None
+    )
+
+    return {
+        "rides_with_valid_data": len(valid),
+        "rides_with_threshold_crossing": len(crossings),
+        "power_at_0_75": power_at_0_75,
+        "hr_at_0_75": round(sum(hr_values) / len(hr_values)) if hr_values else None,
+        "z2_upper_power": z2_upper_power,
+        "z2_upper_source": z2_upper_source,
+        "delta_pct": delta_pct,
+        "avg_time_above_0_75_pct": round(sum(time_above) / len(time_above)) if time_above else None,
+    }
+
+
 def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_form: dict | None = None, training_plan: list[dict] | None = None) -> None:
     m = metrics
     if training_plan:
@@ -576,6 +652,20 @@ def print_report(metrics: dict, athlete_metrics: dict | None = None, fueling_for
     print("Decoupling:")
     print(f"  Average:                    {m['avg_decoupling']:.1f}% ({m['avg_decoupling_label']})")
     print(f"  Rides with high drift or worse (>=8%): {m['high_decoupling_rides']}")
+
+    ate = m.get("aerobic_threshold_estimate")
+    if ate:
+        print()
+        print("Aerobic threshold (DFA a1 = 0.75):")
+        print(f"  Rides with valid data:      {ate['rides_with_valid_data']} ({ate['rides_with_threshold_crossing']} with crossing)")
+        if ate.get("power_at_0_75") is not None:
+            hr_str = f" / {ate['hr_at_0_75']} bpm" if ate.get("hr_at_0_75") is not None else ""
+            print(f"  Power at a1 = 0.75:         {ate['power_at_0_75']} W{hr_str}")
+        if ate.get("z2_upper_power") is not None:
+            delta_str = f" ({ate['delta_pct']:+.1f}%)" if ate.get("delta_pct") is not None else ""
+            print(f"  Z2 upper bound:             {ate['z2_upper_power']} W [{ate['z2_upper_source']}]{delta_str}")
+        if ate.get("avg_time_above_0_75_pct") is not None:
+            print(f"  Avg time above 0.75:        {ate['avg_time_above_0_75_pct']}%")
 
     if "form_absolute" in m:
         _zone_labels = {
@@ -678,6 +768,13 @@ def main() -> None:
     athlete_metrics = load_metrics()
     fueling_data = load_fueling(monday)
     metrics = compute_metrics(rides, athlete_metrics.get("ctl"))
+    aerobic_threshold = compute_aerobic_threshold_estimate(
+        load_coach_activities(monday),
+        athlete_metrics.get("ftp"),
+        athlete_metrics.get("power_zones_pct"),
+    )
+    if aerobic_threshold:
+        metrics["aerobic_threshold_estimate"] = aerobic_threshold
     form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
     metrics.update(form)
     fueling_form = analyse_fueling_form(form["form_pct"], fueling_data, rides, training_plan) if fueling_data else None

@@ -8,6 +8,23 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 
+## [1.5.0] - 2026-10-28
+
+### Added
+
+- Added `src/intervals_icu/dfa_a1.py`, a dependency-free DFA alpha 1 analysis of the in-ride R-R intervals that intervals.icu stores as the `hrv` activity stream when HRV logging is enabled on the head unit: beat parsing, 20 % artifact filter, 120-second sliding windows (30 s step, first 10 minutes ignored), short-term scaling exponent over box sizes 4–16, and a compact summary with coverage/artifact quality gate, mean a1, time above 0.75 / below 0.5, and power and HR at a1 ≈ 0.75. In-ride durability intentionally stays with `decoupling` to avoid two competing durability labels.
+- Added `activities[].dfa_a1_summary` to the coach export. `prepare_activities_for_coach.py` analyzes at most the three newest rides that are ≥ 60 min, predominantly aerobic (Z5+ < 10 %), have heart-rate data, carry no race/vo2*/event tag, and list `hrv` in their intervals.icu `stream_types`. The key is omitted for all other activities; rides whose strap data fails the quality gate get `valid: false` with a `reason`.
+- Added `week_summary.aerobic_threshold_estimate` in `analyze_week.py`: rides with valid data and with a 0.75 crossing, mean `power_at_0_75` / `hr_at_0_75`, the athlete's configured Zone 2 ceiling (`z2_upper_power`, `z2_upper_source` = `athlete_zones` or `ftp_75pct`), the relative `delta_pct`, and `avg_time_above_0_75_pct`. Omitted when no ride has usable R-R data; no multi-week trend is computed, consistent with the lookback focus.
+- Added `metrics.power_zones_pct` (upper bounds of the configured Ride power zones in % FTP) to `get_metrics.py` as the zone reference for the aerobic-threshold estimate.
+- Added `stream_types` support to `get_activity_streams` so callers can request only the streams they need (`?types=`), and documented DFA a1 reading rules and its separation from the nightly `metrics.hrv` in `coach-logic/input-schema.md` and `coach-logic/interpretation-rules.md`.
+- Added `tests/test_dfa_a1_analysis.py` covering the scaling exponent on synthetic series, quality gates, the activity gate, the shared stream usage for W'bal, and the weekly aggregate.
+- Added `docs/dfa_a1.md` as the single reference for the DFA a1 feature: concept and distinction from wellness HRV, device prerequisites, computation and quality gates, dataset fields, coach reading rules, limitations, configuration constants, and references.
+
+### Changed
+
+- `prepare_activities_for_coach.py` now fetches activity streams once per ride with a type filter and shares them between the W'bal and DFA a1 analyses instead of downloading the full stream payload for W'bal alone.
+- Regenerated the week-data contracts (`contracts/week-data/week-data.schema.json`, `contracts/week-data/WeekDataDto.cs`) for `ActivityDfaA1Summary`, `AerobicThresholdEstimate`, and `metrics.power_zones_pct`.
+
 ## [1.4.2] - 2026-10-25
 
 ### Removed

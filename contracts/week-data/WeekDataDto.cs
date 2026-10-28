@@ -160,6 +160,51 @@ public class ActivityDto
     [JsonPropertyName("wbal_summary")]
     public ActivityWbalSummaryDto? WbalSummary { get; set; }
 
+    [JsonPropertyName("dfa_a1_summary")]
+    public ActivityDfaA1SummaryDto? DfaA1Summary { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public class ActivityDfaA1SummaryDto
+{
+    [JsonPropertyName("valid")]
+    public bool? Valid { get; set; }
+
+    [JsonPropertyName("artifact_pct")]
+    public double? ArtifactPct { get; set; }
+
+    [JsonPropertyName("coverage_pct")]
+    public double? CoveragePct { get; set; }
+
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+
+    [JsonPropertyName("windows_total")]
+    public int? WindowsTotal { get; set; }
+
+    [JsonPropertyName("windows_valid")]
+    public int? WindowsValid { get; set; }
+
+    [JsonPropertyName("avg")]
+    public double? Avg { get; set; }
+
+    [JsonPropertyName("time_above_0_75_pct")]
+    public double? TimeAbove075Pct { get; set; }
+
+    [JsonPropertyName("time_below_0_5_pct")]
+    public double? TimeBelow05Pct { get; set; }
+
+    [JsonPropertyName("power_at_0_75")]
+    public double? PowerAt075 { get; set; }
+
+    [JsonPropertyName("hr_at_0_75")]
+    public double? HrAt075 { get; set; }
+
+    [JsonPropertyName("threshold_windows")]
+    public int? ThresholdWindows { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
@@ -180,6 +225,36 @@ public class ActivityWbalSummaryDto
 
     [JsonPropertyName("recovery_ratio")]
     public double? RecoveryRatio { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public class AerobicThresholdEstimateDto
+{
+    [JsonPropertyName("rides_with_valid_data")]
+    public int? RidesWithValidData { get; set; }
+
+    [JsonPropertyName("rides_with_threshold_crossing")]
+    public int? RidesWithThresholdCrossing { get; set; }
+
+    [JsonPropertyName("power_at_0_75")]
+    public double? PowerAt075 { get; set; }
+
+    [JsonPropertyName("hr_at_0_75")]
+    public double? HrAt075 { get; set; }
+
+    [JsonPropertyName("z2_upper_power")]
+    public double? Z2UpperPower { get; set; }
+
+    [JsonPropertyName("z2_upper_source")]
+    public string? Z2UpperSource { get; set; }
+
+    [JsonPropertyName("delta_pct")]
+    public double? DeltaPct { get; set; }
+
+    [JsonPropertyName("avg_time_above_0_75_pct")]
+    public double? AvgTimeAbove075Pct { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
@@ -390,6 +465,9 @@ public class MetricsDto
 
     [JsonPropertyName("rolling_w_prime")]
     public double? RollingWPrime { get; set; }
+
+    [JsonPropertyName("power_zones_pct")]
+    public List<double>? PowerZonesPct { get; set; }
 
     [JsonPropertyName("ftp_classification")]
     public FtpClassificationDto? FtpClassification { get; set; }
@@ -786,6 +864,9 @@ public class WeekSummaryDto
 
     [JsonPropertyName("high_decoupling_rides")]
     public int? HighDecouplingRides { get; set; }
+
+    [JsonPropertyName("aerobic_threshold_estimate")]
+    public AerobicThresholdEstimateDto? AerobicThresholdEstimate { get; set; }
 
     [JsonPropertyName("days_since_last_hiit")]
     public int? DaysSinceLastHiit { get; set; }

@@ -48,6 +48,13 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `w_prime` / `rolling_w_prime`: W' (J) from the current Ride sport
   settings, and intervals.icu's rolling W' estimate. Activity-level
   `w_prime_j` falls back to the rolling estimate when no W' is set.
+- `power_zones_pct`: upper bounds of the athlete's configured Ride power
+  zones as % FTP, Z1 first (e.g. `[55, 75, 90, 105, 120, 150, 999]`). The
+  second entry is the Zone 2 ceiling used by
+  `week_summary.aerobic_threshold_estimate`. Null when no zones are set.
+- `hrv`: nightly / resting HRV (RMSSD, ms) from wellness data — a recovery
+  signal. It is NOT the in-ride DFA a1 reported in
+  `activities[].dfa_a1_summary`; the two must never be mixed.
 - `rolling_p_max`: rolling max 1-second power (42-day).
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)
@@ -108,6 +115,24 @@ value is missing or no previous exported activity exists.
 - `days_since_last_hard_session`: integer number of calendar days since the
   last session with TSS at least 50% above current CTL, the last `HIIT` or
   `Polarized` ride, or the last `Threshold` ride with at least 50 TSS or RPE 7+.
+- `aerobic_threshold_estimate`: week-level aggregate of the per-ride
+  `dfa_a1_summary` entries (see activities). Present ONLY when at least one
+  ride in the lookback has `dfa_a1_summary.valid = true`; omitted otherwise.
+  No multi-week trend is provided — the focus is the current lookback.
+  - `rides_with_valid_data` / `rides_with_threshold_crossing`: rides with a
+    valid analysis, and the subset in which DFA a1 actually crossed 0.75 so
+    that a threshold power could be read.
+  - `power_at_0_75` / `hr_at_0_75`: mean power (W) and HR (bpm) at which
+    DFA a1 ≈ 0.75 across the crossing rides — the current aerobic threshold
+    (LT1/VT1) estimate. Null when no ride crossed 0.75.
+  - `z2_upper_power` / `z2_upper_source`: the athlete's configured Zone 2
+    ceiling in watts (`athlete_zones` = from `metrics.power_zones_pct`,
+    `ftp_75pct` = fallback to 75 % FTP when no zones are set).
+  - `delta_pct`: `(power_at_0_75 − z2_upper_power) / z2_upper_power × 100`.
+    Negative = LT1 estimate below the Z2 ceiling (interpretation in
+    interpretation-rules.md).
+  - `avg_time_above_0_75_pct`: mean share of valid ride time with DFA a1
+    above 0.75 across the valid rides.
 - `training_plan`: optional entries for the current and next week. An entry may
   contain a phase, weekly targets, and/or day constraints; a phase is not
   required for targets or constraints to be present.
@@ -176,6 +201,28 @@ value is missing or no previous exported activity exists.
   - `hr_end_avg`: avg HR of second half of WORK intervals.
   - `hr_drift_pct`: HR drift from first to second half in %.
   - `hr_power_decoupling`: HR drift (%) minus power drop (%) across WORK reps.
+- `dfa_a1_summary`: in-ride DFA alpha 1 analysis of the recorded R-R
+  intervals (`hrv` stream, requires HRV logging on the head unit and a chest
+  strap). Present ONLY for longer, predominantly aerobic rides (≥ 60 min,
+  HR data, Z5+ < 10 %, no race/vo2*/event tag, at most three newest rides per
+  export); the key is omitted entirely when the ride has no `hrv` stream or
+  fails this gate. This is NOT the nightly `metrics.hrv`.
+  - `valid`: false when the data failed the quality gate; `reason` then says
+    why (coverage < 50 %, artifact rate > 10 %, too few valid windows) and
+    all other fields are absent. Use this to flag strap/contact problems.
+  - `artifact_pct` / `coverage_pct`: share of rejected beats (> 20 % jump to
+    the previous interval) and share of ride seconds with R-R data.
+  - `windows_total` / `windows_valid`: 120-second analysis windows (30 s
+    step) and those kept after the first 10 minutes with ≤ 5 % artifacts.
+  - `avg`: mean DFA a1 over valid windows (dimensionless, ~0.3–1.5; falls
+    with intensity).
+  - `time_above_0_75_pct` / `time_below_0_5_pct`: share of valid windows
+    above the aerobic-threshold marker 0.75 and below the 0.5 marker.
+  - `power_at_0_75` / `hr_at_0_75` / `threshold_windows`: mean power and HR
+    of the windows with DFA a1 in 0.65–0.85 (today's LT1 estimate for this
+    ride) and how many windows supported it (≥ 3 required; null otherwise).
+  - In-ride durability is NOT derived from DFA a1; use `decoupling` /
+    `decoupling_label` for that.
 
 ---
 

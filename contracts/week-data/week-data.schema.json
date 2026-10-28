@@ -554,9 +554,192 @@
             }
           ],
           "default": null
+        },
+        "dfa_a1_summary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActivityDfaA1Summary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "title": "Activity",
+      "type": "object"
+    },
+    "ActivityDfaA1Summary": {
+      "additionalProperties": true,
+      "properties": {
+        "valid": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid"
+        },
+        "artifact_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Pct"
+        },
+        "coverage_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coverage Pct"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "windows_total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Windows Total"
+        },
+        "windows_valid": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Windows Valid"
+        },
+        "avg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Avg"
+        },
+        "time_above_0_75_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Above 0 75 Pct"
+        },
+        "time_below_0_5_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Below 0 5 Pct"
+        },
+        "power_at_0_75": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Power At 0 75"
+        },
+        "hr_at_0_75": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hr At 0 75"
+        },
+        "threshold_windows": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Windows"
+        }
+      },
+      "title": "ActivityDfaA1Summary",
       "type": "object"
     },
     "ActivityWbalSummary": {
@@ -633,6 +816,124 @@
         }
       },
       "title": "ActivityWbalSummary",
+      "type": "object"
+    },
+    "AerobicThresholdEstimate": {
+      "additionalProperties": true,
+      "properties": {
+        "rides_with_valid_data": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rides With Valid Data"
+        },
+        "rides_with_threshold_crossing": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rides With Threshold Crossing"
+        },
+        "power_at_0_75": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Power At 0 75"
+        },
+        "hr_at_0_75": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hr At 0 75"
+        },
+        "z2_upper_power": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Z2 Upper Power"
+        },
+        "z2_upper_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Z2 Upper Source"
+        },
+        "delta_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta Pct"
+        },
+        "avg_time_above_0_75_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Avg Time Above 0 75 Pct"
+        }
+      },
+      "title": "AerobicThresholdEstimate",
       "type": "object"
     },
     "DayConstraint": {
@@ -1384,6 +1685,28 @@
           ],
           "default": null,
           "title": "Rolling W Prime"
+        },
+        "power_zones_pct": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Power Zones Pct"
         },
         "ftp_classification": {
           "anyOf": [
@@ -2831,6 +3154,17 @@
           ],
           "default": null,
           "title": "High Decoupling Rides"
+        },
+        "aerobic_threshold_estimate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AerobicThresholdEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "days_since_last_hiit": {
           "anyOf": [

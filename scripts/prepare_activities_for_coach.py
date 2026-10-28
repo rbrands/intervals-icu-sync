@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from intervals_icu.client import get_activity_streams, get_activity_power_curve, get_activity_intervals
 from intervals_icu.config import API_KEY
+from intervals_icu.dfa_a1 import summarize_dfa_a1
 from intervals_icu.wbal import compute_wbal, summarize_wbal
 
 _DEFAULT_RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
@@ -22,6 +23,12 @@ OUTPUT_DIR = Path(os.environ.get("INTERVALS_PROCESSED_DIR", str(_DEFAULT_PROCESS
 MIN_WORK_INTERVAL_SECONDS = 120
 MIN_WORK_INTERVAL_INTENSITY_PCT = 95.0
 MIN_DECOUPLING_DURATION_HOURS = 1.5
+
+# DFA a1 is only informative for longer, predominantly aerobic rides; cap the
+# number of stream analyses per run to keep the pipeline latency predictable.
+MIN_DFA_A1_DURATION_SECONDS = 3600
+MAX_DFA_A1_Z5_PLUS_PCT = 10.0
+MAX_DFA_A1_ANALYSES_PER_RUN = 3
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +88,53 @@ def _needs_wbal(activity: dict, z5_plus_pct: float | None) -> bool:
     return False
 
 
+def _has_hrv_stream(activity: dict) -> bool:
+    """True when intervals.icu reports a recorded R-R (``hrv``) stream."""
+    stream_types = activity.get("stream_types")
+    return isinstance(stream_types, list) and "hrv" in stream_types
+
+
+def _needs_dfa_a1(activity: dict, z5_plus_pct: float | None) -> bool:
+    """Return True if DFA a1 analysis should be computed for this activity.
+
+    Mirror image of ``_needs_wbal``: only longer, predominantly aerobic rides
+    with heart-rate data and a recorded ``hrv`` stream qualify. Races, vo2*
+    and event-tagged rides are skipped because alpha 1 saturates near 0.5
+    at high intensity.
+    """
+    if not _has_hrv_stream(activity):
+        return False
+    if _as_float(activity.get("moving_time")) < MIN_DFA_A1_DURATION_SECONDS:
+        return False
+    avg_hr, _ = _extract_heart_rate(activity)
+    if avg_hr is None:
+        return False
+    if z5_plus_pct is not None and z5_plus_pct >= MAX_DFA_A1_Z5_PLUS_PCT:
+        return False
+
+    tags = [t.lower() for t in (activity.get("tags") or [])]
+    if any(t.startswith("vo2") for t in tags):
+        return False
+    if activity.get("type") == "Race" or any("event" in t for t in tags):
+        return False
+    return True
+
+
+def _fetch_streams(activity: dict, stream_types: list[str]) -> dict[str, list] | None:
+    """Fetch the requested streams once and return them keyed by type."""
+    act_id = activity.get("id")
+    try:
+        streams = get_activity_streams(API_KEY, act_id, stream_types)
+    except Exception as exc:
+        print(f"  Stream fetch failed for {act_id}: {exc}")
+        return None
+    return {
+        s["type"]: s.get("data") or []
+        for s in streams
+        if isinstance(s, dict) and s.get("type")
+    }
+
+
 def _fetch_power_curve(activity: dict) -> dict | None:
     """Fetch the activity power curve from the API.
 
@@ -97,30 +151,40 @@ def _fetch_power_curve(activity: dict) -> dict | None:
         return None
 
 
-def _fetch_wbal_summary(activity: dict) -> dict | None:
-    """Fetch the power stream from the API and compute W'bal summary.
-
-    Returns None if W' / FTP is missing, the API call fails, or no power data
-    is available.
-    """
-    act_id = activity.get("id")
+def _wbal_inputs(activity: dict) -> tuple[float, float] | None:
+    """Return (W', FTP) when both are available for W'bal computation."""
     w_prime = _activity_w_prime(activity)
     ftp = activity.get("icu_ftp")
     if not w_prime or not ftp:
         return None
-    try:
-        streams = get_activity_streams(API_KEY, act_id)
-    except Exception as exc:
-        print(f"  W'bal fetch failed for {act_id}: {exc}")
+    return float(w_prime), float(ftp)
+
+
+def _compute_wbal_summary(activity: dict, streams: dict[str, list] | None) -> dict | None:
+    """Compute the W'bal summary from an already fetched power stream.
+
+    Returns None if W' / FTP is missing or no power data is available.
+    """
+    inputs = _wbal_inputs(activity)
+    if inputs is None or not streams:
         return None
-    watts_stream = next((s for s in streams if s.get("type") == "watts"), None)
-    if not watts_stream:
-        return None
-    watts = watts_stream.get("data") or []
+    watts = streams.get("watts") or []
     if not watts:
         return None
-    wbal = compute_wbal(watts, float(w_prime), float(ftp))
-    return summarize_wbal(wbal, float(w_prime))
+    w_prime, ftp = inputs
+    wbal = compute_wbal(watts, w_prime, ftp)
+    return summarize_wbal(wbal, w_prime)
+
+
+def _compute_dfa_a1_summary(activity: dict, streams: dict[str, list] | None) -> dict | None:
+    """Compute the DFA a1 summary from already fetched hrv/time/watts/heartrate streams."""
+    if not streams:
+        return None
+    try:
+        return summarize_dfa_a1(streams)
+    except Exception as exc:
+        print(f"  DFA a1 analysis failed for {activity.get('id')}: {exc}")
+        return None
 
 
 def _activity_w_prime(activity: dict) -> int | float | None:
@@ -522,6 +586,7 @@ def extract_fields(
     wbal_summary: dict | None = None,
     power_curve: dict | None = None,
     interval_hr_analysis: dict | None = None,
+    dfa_a1_summary: dict | None = None,
 ) -> dict:
     avg_hr, max_hr = _extract_heart_rate(activity)
     w_prime = _activity_w_prime(activity)
@@ -570,6 +635,10 @@ def extract_fields(
         )
     if has_power_data and interval_hr_analysis is not None:
         result["interval_hr_analysis"] = interval_hr_analysis
+    # Omitted entirely when no hrv stream exists or the ride failed the gate,
+    # consistent with how decoupling is left out for activities without power.
+    if dfa_a1_summary is not None:
+        result["dfa_a1_summary"] = dfa_a1_summary
     if has_power_data:
         result.update({
             "activity_ftp": activity.get("icu_ftp"),
@@ -617,12 +686,30 @@ def main() -> None:
     # Newest activities first so consumers with truncated outputs still see the latest rides.
     rides.sort(key=lambda a: (a.get("start_date_local") or ""), reverse=True)
     output = []
+    dfa_a1_budget = MAX_DFA_A1_ANALYSES_PER_RUN
     for a in rides:
         zone_dist = _zone_distribution(_activity_zone_times(a))
+        needs_wbal = _needs_wbal(a, zone_dist["z5_plus_pct"]) and _wbal_inputs(a) is not None
+        needs_dfa_a1 = dfa_a1_budget > 0 and _needs_dfa_a1(a, zone_dist["z5_plus_pct"])
+
+        # One stream request serves both analyses; request only the needed types.
+        streams = None
+        if needs_wbal or needs_dfa_a1:
+            stream_types = ["time", "watts"]
+            if needs_dfa_a1:
+                stream_types += ["hrv", "heartrate"]
+            streams = _fetch_streams(a, stream_types)
+
         wbal_summary = None
-        if _needs_wbal(a, zone_dist["z5_plus_pct"]):
+        if needs_wbal:
             print(f"  Computing W'bal for {a.get('name', a.get('id'))} …")
-            wbal_summary = _fetch_wbal_summary(a)
+            wbal_summary = _compute_wbal_summary(a, streams)
+        dfa_a1_summary = None
+        if needs_dfa_a1:
+            dfa_a1_budget -= 1
+            print(f"  Computing DFA a1 for {a.get('name', a.get('id'))} …")
+            dfa_a1_summary = _compute_dfa_a1_summary(a, streams)
+
         power_curve = _fetch_power_curve(a)
         interval_hr_analysis = _fetch_interval_hr_analysis(a) if _has_power_data(a) else None
         output.append(
@@ -631,6 +718,7 @@ def main() -> None:
                 wbal_summary=wbal_summary,
                 power_curve=power_curve,
                 interval_hr_analysis=interval_hr_analysis,
+                dfa_a1_summary=dfa_a1_summary,
             )
         )
 
