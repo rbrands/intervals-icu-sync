@@ -198,6 +198,28 @@ class PrepareActivitiesDfaGateTests(unittest.TestCase):
         self.assertFalse(prepare_activities._needs_wbal(self._ride(tags=["event"]), 0.0))
         self.assertFalse(prepare_activities._needs_wbal(self._ride(tags=["aerobic-threshold-low"]), 0.0))
 
+    def test_compute_dfa_a1_summary_adds_ftp_relative_threshold(self):
+        rr = _random_walk_rr(2 * 3600, seed=7, step=0.5)
+        streams = _streams(rr, watts=190.0)
+        ride = self._ride(icu_ftp=250)
+        summary = prepare_activities._compute_dfa_a1_summary(ride, streams)
+        self.assertTrue(summary["valid"])
+        keys = list(summary)
+        self.assertEqual(keys.index("power_at_0_75_pct_ftp"), keys.index("hr_at_0_75") + 1)
+        if summary["power_at_0_75"] is not None:
+            self.assertEqual(summary["power_at_0_75_pct_ftp"], round(summary["power_at_0_75"] / 250 * 100, 1))
+        else:
+            self.assertIsNone(summary["power_at_0_75_pct_ftp"])
+
+        # Without an activity FTP the field is null; invalid summaries are passed through untouched.
+        summary = prepare_activities._compute_dfa_a1_summary(self._ride(), streams)
+        self.assertIsNone(summary["power_at_0_75_pct_ftp"])
+        invalid = prepare_activities._compute_dfa_a1_summary(
+            ride, {"hrv": [[600]] * 100 + [None] * 300, "time": list(range(400))}
+        )
+        self.assertFalse(invalid["valid"])
+        self.assertNotIn("power_at_0_75_pct_ftp", invalid)
+
     def test_compute_wbal_summary_uses_prefetched_streams(self):
         ride = self._ride(icu_ftp=250, icu_w_prime=20000)
         streams = {"watts": [300.0] * 60 + [100.0] * 600, "time": list(range(660))}

@@ -231,6 +231,11 @@ value is missing or no previous exported activity exists.
   - `power_at_0_75` / `hr_at_0_75` / `threshold_windows`: mean power and HR
     of the windows with DFA a1 in 0.65–0.85 (today's LT1 estimate for this
     ride) and how many windows supported it (≥ 3 required; null otherwise).
+  - `power_at_0_75_pct_ftp`: `power_at_0_75` as % of `activity_ftp` (the FTP
+    valid on that day), e.g. `73.6`. Compare directly with the athlete's Zone
+    2 ceiling in % FTP (`metrics.power_zones_pct[1]`, default 75) — this is
+    the per-ride counterpart of `week_summary.aerobic_threshold_estimate.delta_pct`.
+    Null when no crossing or no activity FTP.
   - In-ride durability is NOT derived from DFA a1; use `decoupling` /
     `decoupling_label` for that.
 

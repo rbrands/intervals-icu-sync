@@ -165,6 +165,7 @@ power).
   "time_below_0_5_pct": 0,
   "power_at_0_75": 170,
   "hr_at_0_75": 125,
+  "power_at_0_75_pct_ftp": 64.2,
   "threshold_windows": 18
 }
 ```
@@ -179,6 +180,7 @@ power).
 | `time_above_0_75_pct` | share of valid windows above the aerobic-threshold marker – *was this really a Zone 2 ride?* |
 | `time_below_0_5_pct` | share of valid windows below the 0.5 marker |
 | `power_at_0_75` / `hr_at_0_75` | mean power and heart rate of the windows with alpha 1 in **0.65–0.85** – today's LT1 estimate for this ride; `null` when fewer than 3 such windows exist |
+| `power_at_0_75_pct_ftp` | `power_at_0_75` as % of the FTP stored with the activity (`activity_ftp`) – directly comparable with the Zone 2 ceiling in % FTP, and stable across later FTP changes |
 | `threshold_windows` | how many windows supported that estimate (confidence indicator) |
 
 Invalid example:

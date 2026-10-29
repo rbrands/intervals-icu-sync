@@ -183,14 +183,29 @@ def _compute_wbal_summary(activity: dict, streams: dict[str, list] | None) -> di
 
 
 def _compute_dfa_a1_summary(activity: dict, streams: dict[str, list] | None) -> dict | None:
-    """Compute the DFA a1 summary from already fetched hrv/time/watts/heartrate streams."""
+    """Compute the DFA a1 summary from already fetched hrv/time/watts/heartrate streams.
+
+    Adds ``power_at_0_75_pct_ftp`` relative to the FTP stored with the
+    activity so the threshold reading stays comparable across FTP changes.
+    """
     if not streams:
         return None
     try:
-        return summarize_dfa_a1(streams)
+        summary = summarize_dfa_a1(streams)
     except Exception as exc:
         print(f"  DFA a1 analysis failed for {activity.get('id')}: {exc}")
         return None
+    if not summary or not summary.get("valid"):
+        return summary
+    ftp = _optional_float(activity.get("icu_ftp"))
+    power = summary.get("power_at_0_75")
+    pct_ftp = round(power / ftp * 100.0, 1) if ftp and power is not None else None
+    ordered: dict = {}
+    for key, value in summary.items():
+        ordered[key] = value
+        if key == "hr_at_0_75":
+            ordered["power_at_0_75_pct_ftp"] = pct_ftp
+    return ordered
 
 
 def _activity_w_prime(activity: dict) -> int | float | None:

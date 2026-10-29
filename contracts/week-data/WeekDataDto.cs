@@ -202,6 +202,9 @@ public class ActivityDfaA1SummaryDto
     [JsonPropertyName("hr_at_0_75")]
     public double? HrAt075 { get; set; }
 
+    [JsonPropertyName("power_at_0_75_pct_ftp")]
+    public double? PowerAt075PctFtp { get; set; }
+
     [JsonPropertyName("threshold_windows")]
     public int? ThresholdWindows { get; set; }
 

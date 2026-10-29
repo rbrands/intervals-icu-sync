@@ -217,6 +217,7 @@ class ActivityDfaA1Summary(_SchemaModel):
     time_below_0_5_pct: float | int | None = None
     power_at_0_75: float | int | None = None
     hr_at_0_75: float | int | None = None
+    power_at_0_75_pct_ftp: float | int | None = None
     threshold_windows: int | None = None
 
 

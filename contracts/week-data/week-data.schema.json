@@ -726,6 +726,21 @@
           "default": null,
           "title": "Hr At 0 75"
         },
+        "power_at_0_75_pct_ftp": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Power At 0 75 Pct Ftp"
+        },
         "threshold_windows": {
           "anyOf": [
             {

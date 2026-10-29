@@ -122,6 +122,7 @@ athlete meant to be easy, phrased as information, not as a fault.
 | `time_above_0_75_pct` ≥ 80 % | genuine aerobic/Zone-2 session |
 | `time_above_0_75_pct` 50–80 % | mixed; substantial time above LT1 despite "easy" power |
 | `time_above_0_75_pct` < 50 % | the easy ride was effectively tempo; mention once as context for pacing or freshness, not as an error |
+| `power_at_0_75_pct_ftp` vs. Zone 2 ceiling (`metrics.power_zones_pct[1]`, default 75 %) | same reading as the week-level `delta_pct` table below, but for one day; day-to-day swings of several points at a stable HR (`hr_at_0_75`) point to freshness, heat or sleep rather than fitness |
 
 ### Week level (`aerobic_threshold_estimate`)
 | `delta_pct` | reading |
