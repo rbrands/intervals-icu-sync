@@ -232,11 +232,8 @@ public class ActivityWbalSummaryDto
 
 public class AerobicThresholdEstimateDto
 {
-    [JsonPropertyName("rides_with_valid_data")]
-    public int? RidesWithValidData { get; set; }
-
-    [JsonPropertyName("rides_with_threshold_crossing")]
-    public int? RidesWithThresholdCrossing { get; set; }
+    [JsonPropertyName("rides_used")]
+    public int? RidesUsed { get; set; }
 
     [JsonPropertyName("threshold_windows_total")]
     public int? ThresholdWindowsTotal { get; set; }
@@ -255,9 +252,6 @@ public class AerobicThresholdEstimateDto
 
     [JsonPropertyName("delta_pct")]
     public double? DeltaPct { get; set; }
-
-    [JsonPropertyName("avg_time_above_0_75_pct")]
-    public double? AvgTimeAbove075Pct { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

@@ -147,15 +147,13 @@ class TrainingPlanEntry(_SchemaModel):
 
 
 class AerobicThresholdEstimate(_SchemaModel):
-    rides_with_valid_data: int | None = None
-    rides_with_threshold_crossing: int | None = None
+    rides_used: int | None = None
     threshold_windows_total: int | None = None
     power_at_0_75: float | int | None = None
     hr_at_0_75: float | int | None = None
     z2_upper_power: float | int | None = None
     z2_upper_source: str | None = None
     delta_pct: float | int | None = None
-    avg_time_above_0_75_pct: float | int | None = None
 
 
 class WeekSummary(_SchemaModel):

@@ -24,10 +24,16 @@ MIN_WORK_INTERVAL_SECONDS = 120
 MIN_WORK_INTERVAL_INTENSITY_PCT = 95.0
 MIN_DECOUPLING_DURATION_HOURS = 1.5
 
-# DFA a1 is only informative for longer, predominantly aerobic rides; cap the
-# number of stream analyses per run to keep the pipeline latency predictable.
+# Canonical tag prefixes (see coach-logic/interpretation-rules.md) that mark a
+# ride as intentionally hard: they trigger W'bal and exclude DFA a1.
+WBAL_TAG_PREFIXES = ("vo2", "race")
+
+# DFA a1 is only informative for longer rides that were *meant* to be aerobic;
+# cap the number of stream analyses per run to keep the pipeline latency
+# predictable.
 MIN_DFA_A1_DURATION_SECONDS = 3600
-MAX_DFA_A1_Z5_PLUS_PCT = 10.0
+DFA_A1_DISTRIBUTIONS = {"Base", "Pyramidal"}
+DFA_A1_EXCLUDED_TAG_PREFIXES = ("lactate-threshold",) + WBAL_TAG_PREFIXES
 MAX_DFA_A1_ANALYSES_PER_RUN = 3
 
 
@@ -61,8 +67,8 @@ def _needs_wbal(activity: dict, z5_plus_pct: float | None) -> bool:
     Conditions (any one sufficient):
     - z5_plus_pct >= 8
     - any interval at >= 105 % FTP with duration >= 2 min
-    - ride tagged as vo2* (e.g. vo2max-high)
-    - ride tagged/typed as event / Race
+    - ride tagged vo2max-* or race-specific-*
+    - activity type Race
     """
     if not _has_power_data(activity):
         return False
@@ -79,13 +85,10 @@ def _needs_wbal(activity: dict, z5_plus_pct: float | None) -> bool:
                 return True
 
     tags = [t.lower() for t in (activity.get("tags") or [])]
-    if any(t.startswith("vo2") for t in tags):
+    if any(t.startswith(WBAL_TAG_PREFIXES) for t in tags):
         return True
 
-    if activity.get("type") == "Race" or any("event" in t for t in tags):
-        return True
-
-    return False
+    return activity.get("type") == "Race"
 
 
 def _has_hrv_stream(activity: dict) -> bool:
@@ -94,13 +97,16 @@ def _has_hrv_stream(activity: dict) -> bool:
     return isinstance(stream_types, list) and "hrv" in stream_types
 
 
-def _needs_dfa_a1(activity: dict, z5_plus_pct: float | None) -> bool:
+def _needs_dfa_a1(activity: dict, training_distribution: str | None) -> bool:
     """Return True if DFA a1 analysis should be computed for this activity.
 
-    Mirror image of ``_needs_wbal``: only longer, predominantly aerobic rides
-    with heart-rate data and a recorded ``hrv`` stream qualify. Races, vo2*
-    and event-tagged rides are skipped because alpha 1 saturates near 0.5
-    at high intensity.
+    Mirror image of ``_needs_wbal``: only longer rides that were ridden as
+    aerobic sessions qualify – classified ``Base`` or ``Pyramidal`` by their
+    zone distribution, with heart-rate data and a recorded ``hrv`` stream.
+    Threshold workouts, HIIT, races and fast group rides are skipped on
+    purpose: alpha 1 saturates near 0.5 at high intensity, and a low share of
+    time above 0.75 on an intentionally hard ride must never read as a
+    warning.
     """
     if not _has_hrv_stream(activity):
         return False
@@ -109,13 +115,13 @@ def _needs_dfa_a1(activity: dict, z5_plus_pct: float | None) -> bool:
     avg_hr, _ = _extract_heart_rate(activity)
     if avg_hr is None:
         return False
-    if z5_plus_pct is not None and z5_plus_pct >= MAX_DFA_A1_Z5_PLUS_PCT:
+    if training_distribution not in DFA_A1_DISTRIBUTIONS:
         return False
 
     tags = [t.lower() for t in (activity.get("tags") or [])]
-    if any(t.startswith("vo2") for t in tags):
+    if any(t.startswith(DFA_A1_EXCLUDED_TAG_PREFIXES) for t in tags):
         return False
-    if activity.get("type") == "Race" or any("event" in t for t in tags):
+    if activity.get("type") == "Race":
         return False
     return True
 
@@ -689,8 +695,13 @@ def main() -> None:
     dfa_a1_budget = MAX_DFA_A1_ANALYSES_PER_RUN
     for a in rides:
         zone_dist = _zone_distribution(_activity_zone_times(a))
+        ride_class = classify_ride(
+            zone_dist["z1_z2_pct"], zone_dist["z3_z4_pct"], zone_dist["z5_plus_pct"]
+        )
         needs_wbal = _needs_wbal(a, zone_dist["z5_plus_pct"]) and _wbal_inputs(a) is not None
-        needs_dfa_a1 = dfa_a1_budget > 0 and _needs_dfa_a1(a, zone_dist["z5_plus_pct"])
+        needs_dfa_a1 = dfa_a1_budget > 0 and _needs_dfa_a1(
+            a, ride_class["label"] if ride_class else None
+        )
 
         # One stream request serves both analyses; request only the needed types.
         streams = None

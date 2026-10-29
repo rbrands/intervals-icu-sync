@@ -101,6 +101,14 @@ Available in `activities[].dfa_a1_summary` (per ride) and
 `week_summary.aerobic_threshold_estimate` (lookback aggregate). Both are
 omitted when no ride carries usable R-R data; silence is not a limitation.
 
+**DFA a1 is never a warning.** Only rides that were ridden as aerobic
+sessions (`Base` / `Pyramidal`, no threshold, vo2max or race tag) are
+analyzed. Threshold workouts, HIIT, races and fast group rides carry no
+`dfa_a1_summary` by design — do not comment on their absence, and never
+infer anything about such rides from the week aggregate. A low
+`time_above_0_75_pct` is a *zone-placement observation* about a ride the
+athlete meant to be easy, phrased as information, not as a fault.
+
 ### Quality gate (read first)
 | condition | reading |
 | --------- | ------- |
@@ -113,7 +121,7 @@ omitted when no ride carries usable R-R data; silence is not a limitation.
 | ------ | ------- |
 | `time_above_0_75_pct` ≥ 80 % | genuine aerobic/Zone-2 session |
 | `time_above_0_75_pct` 50–80 % | mixed; substantial time above LT1 despite "easy" power |
-| `time_above_0_75_pct` < 50 % on a Base/Pyramidal ride | ride was effectively tempo; check pacing or fatigue |
+| `time_above_0_75_pct` < 50 % | the easy ride was effectively tempo; mention once as context for pacing or freshness, not as an error |
 
 ### Week level (`aerobic_threshold_estimate`)
 | `delta_pct` | reading |

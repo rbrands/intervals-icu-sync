@@ -123,9 +123,14 @@ Mirroring the W'bal gate (hard rides only), the DFA gate selects the
 | `stream_types` of the activity contains `hrv` | cheapest possible filter – no stream download for rides without beat data |
 | moving time ≥ 60 min | shorter rides rarely reach steady state |
 | heart-rate data present | |
-| Z5+ share < 10 % | alpha 1 saturates near 0.5 at high intensity |
-| no `Race` type, no `vo2*` or `event` tag | same reason |
+| `training_distribution` is `Base` or `Pyramidal` | the ride was *ridden* as an aerobic session; threshold workouts (even with little Z5+), HIIT and fast group rides are skipped |
+| no `lactate-threshold-*`, `vo2max-*` or `race-specific-*` tag, not a `Race` | the ride was *meant* as hard work; alpha 1 saturates near 0.5 there, and a low aerobic share must never read as a warning |
 | at most the **3 newest** qualifying rides per run | keeps pipeline latency predictable (each analysis is one extra stream request of ~160 KB and ~0.3 s CPU) |
+
+The gate is intent-based on purpose: every `dfa_a1_summary` in the dataset
+belongs to a ride the athlete wanted to be easy. A 2×20 min threshold
+session or a hard group ride simply has no `dfa_a1_summary`, so the coach
+cannot misread its low time above 0.75 as a problem.
 
 The stream is downloaded **once** per ride and shared between the W'bal and
 DFA a1 analyses.
@@ -191,34 +196,36 @@ Invalid example:
 
 Built by [`scripts/analyze_week.py`](../scripts/analyze_week.py) from the
 per-ride summaries of the lookback window. Present only when at least one
-ride is `valid`. **No multi-week trend** is computed – the dataset focuses on
-the current lookback; longer-term tracking is left to the athlete in
-intervals.icu.
+valid ride actually crossed 0.75 (has a `power_at_0_75`); a valid but
+entirely easy ride keeps its per-ride summary and produces no week estimate.
+**No multi-week trend** is computed – the dataset focuses on the current
+lookback; longer-term tracking is left to the athlete in intervals.icu.
 
 ```json
 "aerobic_threshold_estimate": {
-  "rides_with_valid_data": 2,
-  "rides_with_threshold_crossing": 2,
+  "rides_used": 2,
   "threshold_windows_total": 59,
   "power_at_0_75": 187,
   "hr_at_0_75": 135,
   "z2_upper_power": 199,
   "z2_upper_source": "athlete_zones",
-  "delta_pct": -6.0,
-  "avg_time_above_0_75_pct": 67
+  "delta_pct": -6.0
 }
 ```
 
 | Field | Meaning |
 | --- | --- |
-| `rides_with_valid_data` | rides with a valid analysis |
-| `rides_with_threshold_crossing` | subset in which alpha 1 actually reached the 0.65–0.85 band |
-| `threshold_windows_total` | sum of `threshold_windows` over the crossing rides – the total evidence behind the estimate; null when no ride crossed |
-| `power_at_0_75` / `hr_at_0_75` | mean over the crossing rides, **weighted by each ride's `threshold_windows`** so a ride that spent 40 windows near the threshold counts more than one that barely touched it; a ride without a window count carries weight 1 |
+| `rides_used` | rides the estimate is based on – 1 is a single day's reading, 3 is a pattern |
+| `threshold_windows_total` | sum of `threshold_windows` over those rides – the total evidence behind the estimate |
+| `power_at_0_75` / `hr_at_0_75` | mean over the rides, **weighted by each ride's `threshold_windows`** so a ride that spent 40 windows near the threshold counts more than one that barely touched it; a ride without a window count carries weight 1 |
 | `z2_upper_power` | the athlete's **configured** Zone 2 ceiling in watts |
 | `z2_upper_source` | `athlete_zones` – from `metrics.power_zones_pct` (the Ride power zones set in intervals.icu); `ftp_75pct` – fallback to the Coggan default when no zones are configured |
 | `delta_pct` | `(power_at_0_75 − z2_upper_power) / z2_upper_power × 100`; negative = LT1 estimate below the Zone 2 ceiling |
-| `avg_time_above_0_75_pct` | mean share above 0.75 across valid rides |
+
+Per-ride facts such as `time_above_0_75_pct` are deliberately not averaged
+at week level: a mean over rides of different character (a 92 % recovery
+spin and a 60 % brisk Zone 2 ride) says nothing useful, and the per-ride
+values remain available in `activities[]`.
 
 ### Supporting field – `metrics.power_zones_pct`
 
@@ -235,6 +242,13 @@ The authoritative rules live in
 (section *DFA a1*) and the field reference in
 [`coach-logic/input-schema.md`](../coach-logic/input-schema.md). In short:
 
+**Never a warning.** Only rides ridden as aerobic sessions are analyzed
+(see the gate above). Threshold workouts, HIIT, races and fast group rides
+have no `dfa_a1_summary` by design; the coach must not comment on its
+absence or infer anything about those rides from the week aggregate. A low
+`time_above_0_75_pct` is a zone-placement observation about a ride the
+athlete meant to be easy – information, not a fault.
+
 **Quality first.** `valid: false` → do not interpret, mention the `reason`
 once (strap contact / connection). `artifact_pct` 5–10 % → caution.
 `power_at_0_75` null → the ride never touched the threshold; only
@@ -246,7 +260,7 @@ once (strap contact / connection). `artifact_pct` 5–10 % → caution.
 | --- | --- |
 | ≥ 80 % | genuine aerobic / Zone 2 session |
 | 50–80 % | mixed; substantial time above LT1 despite "easy" power |
-| < 50 % on a Base/Pyramidal ride | effectively a tempo ride; check pacing or fatigue |
+| < 50 % | the easy ride was effectively tempo; mention once as context for pacing or freshness |
 
 **Per week.**
 
@@ -359,7 +373,8 @@ All thresholds are constants at the top of
 | `THRESHOLD_BAND` | 0.65–0.85 | windows counted toward `power_at_0_75` |
 | `MIN_THRESHOLD_WINDOWS` | 3 | minimum windows in the band |
 | `MIN_DFA_A1_DURATION_SECONDS` | 3600 | activity gate |
-| `MAX_DFA_A1_Z5_PLUS_PCT` | 10 | activity gate |
+| `DFA_A1_DISTRIBUTIONS` | `Base`, `Pyramidal` | activity gate – rides ridden as aerobic sessions |
+| `DFA_A1_EXCLUDED_TAG_PREFIXES` | `lactate-threshold` + `WBAL_TAG_PREFIXES` (`vo2`, `race`) | activity gate – rides meant as hard work; the same prefixes that trigger W'bal |
 | `MAX_DFA_A1_ANALYSES_PER_RUN` | 3 | newest qualifying rides analyzed per run |
 
 ---

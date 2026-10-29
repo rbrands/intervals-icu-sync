@@ -119,26 +119,25 @@ value is missing or no previous exported activity exists.
   `Polarized` ride, or the last `Threshold` ride with at least 50 TSS or RPE 7+.
 - `aerobic_threshold_estimate`: week-level aggregate of the per-ride
   `dfa_a1_summary` entries (see activities). Present ONLY when at least one
-  ride in the lookback has `dfa_a1_summary.valid = true`; omitted otherwise.
-  No multi-week trend is provided — the focus is the current lookback.
-  - `rides_with_valid_data` / `rides_with_threshold_crossing`: rides with a
-    valid analysis, and the subset in which DFA a1 actually crossed 0.75 so
-    that a threshold power could be read.
-  - `threshold_windows_total`: sum of `threshold_windows` over the crossing
-    rides — the total evidence behind the estimate. Null when no ride crossed.
+  valid ride in the lookback actually crossed DFA a1 = 0.75 (i.e. has a
+  `power_at_0_75`); omitted otherwise — valid but entirely easy rides keep
+  their per-ride summary but produce no week estimate. No multi-week trend
+  is provided — the focus is the current lookback.
+  - `rides_used`: number of rides the estimate is based on (1 = a single
+    day's reading, 3 = a pattern).
+  - `threshold_windows_total`: sum of `threshold_windows` over those rides —
+    the total evidence behind the estimate.
   - `power_at_0_75` / `hr_at_0_75`: power (W) and HR (bpm) at which DFA a1
-    ≈ 0.75, averaged across the crossing rides and weighted by each ride's
+    ≈ 0.75, averaged across the rides and weighted by each ride's
     `threshold_windows` (a ride with many threshold windows dominates one
     that barely touched the band) — the current aerobic threshold (LT1/VT1)
-    estimate. Null when no ride crossed 0.75.
+    estimate.
   - `z2_upper_power` / `z2_upper_source`: the athlete's configured Zone 2
     ceiling in watts (`athlete_zones` = from `metrics.power_zones_pct`,
     `ftp_75pct` = fallback to 75 % FTP when no zones are set).
   - `delta_pct`: `(power_at_0_75 − z2_upper_power) / z2_upper_power × 100`.
     Negative = LT1 estimate below the Z2 ceiling (interpretation in
     interpretation-rules.md).
-  - `avg_time_above_0_75_pct`: mean share of valid ride time with DFA a1
-    above 0.75 across the valid rides.
 - `training_plan`: optional entries for the current and next week. An entry may
   contain a phase, weekly targets, and/or day constraints; a phase is not
   required for targets or constraints to be present.
@@ -188,8 +187,9 @@ value is missing or no previous exported activity exists.
 - `w_prime_bal_min_j`: lowest W'bal reached (= w_prime_j − drop).
 - `w_prime_usage_pct`: drop as % of W'.
 - `wbal_summary`: present ONLY for high-intensity activities (z5_plus_pct
-  ≥ 8, an interval ≥ 105% FTP for ≥ 2 min, a vo2* tag, or a race/event);
-  null otherwise. Key field: `wbal_min_j` = lowest W'bal reached.
+  ≥ 8, an interval ≥ 105% FTP for ≥ 2 min, a `vo2max-*` or
+  `race-specific-*` tag, or activity type Race); null otherwise.
+  Key field: `wbal_min_j` = lowest W'bal reached.
 - `power_curve`: best mean-maximal power per duration; null if no power.
   p3m ≈ VO2max proxy, p5m = gold-standard VO2max effort, p20m ≈ FTP proxy.
 - `decoupling`: aerobic decoupling in %, calculated only for activities with
@@ -209,10 +209,14 @@ value is missing or no previous exported activity exists.
   - `hr_power_decoupling`: HR drift (%) minus power drop (%) across WORK reps.
 - `dfa_a1_summary`: in-ride DFA alpha 1 analysis of the recorded R-R
   intervals (`hrv` stream, requires HRV logging on the head unit and a chest
-  strap). Present ONLY for longer, predominantly aerobic rides (≥ 60 min,
-  HR data, Z5+ < 10 %, no race/vo2*/event tag, at most three newest rides per
-  export); the key is omitted entirely when the ride has no `hrv` stream or
-  fails this gate. This is NOT the nightly `metrics.hrv`.
+  strap). Present ONLY for rides that were ridden as aerobic sessions:
+  ≥ 60 min, HR data, `training_distribution` `Base` or `Pyramidal`, no
+  `lactate-threshold-*` / `vo2max-*` / `race-specific-*` tag, not a
+  race; at most the three newest such rides per export. Threshold workouts,
+  HIIT and fast group rides are deliberately NOT analyzed, so a
+  `dfa_a1_summary` never describes an intentionally hard ride. The key is
+  omitted entirely when the ride has no `hrv` stream or fails this gate.
+  This is NOT the nightly `metrics.hrv`.
   - `valid`: false when the data failed the quality gate; `reason` then says
     why (coverage < 50 %, artifact rate > 10 %, too few valid windows) and
     all other fields are absent. Use this to flag strap/contact problems.

@@ -821,7 +821,7 @@
     "AerobicThresholdEstimate": {
       "additionalProperties": true,
       "properties": {
-        "rides_with_valid_data": {
+        "rides_used": {
           "anyOf": [
             {
               "type": "integer"
@@ -831,19 +831,7 @@
             }
           ],
           "default": null,
-          "title": "Rides With Valid Data"
-        },
-        "rides_with_threshold_crossing": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Rides With Threshold Crossing"
+          "title": "Rides Used"
         },
         "threshold_windows_total": {
           "anyOf": [
@@ -928,21 +916,6 @@
           ],
           "default": null,
           "title": "Delta Pct"
-        },
-        "avg_time_above_0_75_pct": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Avg Time Above 0 75 Pct"
         }
       },
       "title": "AerobicThresholdEstimate",

@@ -153,22 +153,32 @@ class PrepareActivitiesDfaGateTests(unittest.TestCase):
         return ride
 
     def test_gate_accepts_long_aerobic_ride_with_hrv_stream(self):
-        self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(), 2.0))
-        self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(), None))
+        self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(), "Base"))
+        self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(), "Pyramidal"))
 
     def test_gate_rejects_rides_without_hrv_stream_or_metadata(self):
-        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(stream_types=["time", "watts"]), 2.0))
-        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(stream_types=None), 2.0))
+        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(stream_types=["time", "watts"]), "Base"))
+        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(stream_types=None), "Base"))
         ride = self._ride()
         ride.pop("stream_types")
-        self.assertFalse(prepare_activities._needs_dfa_a1(ride, 2.0))
+        self.assertFalse(prepare_activities._needs_dfa_a1(ride, "Base"))
 
     def test_gate_rejects_short_hard_or_hr_less_rides(self):
-        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(moving_time=45 * 60), 2.0))
-        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(average_heartrate=None), 2.0))
-        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(), 12.0))
-        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(tags=["vo2max-high"]), 2.0))
-        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(type="Race"), 2.0))
+        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(moving_time=45 * 60), "Base"))
+        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(average_heartrate=None), "Base"))
+        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(tags=["vo2max-high"]), "Base"))
+        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(type="Race"), "Base"))
+
+    def test_gate_skips_intentional_threshold_and_hard_group_rides(self):
+        # 2x20 min at threshold: little Z5+, but classified Threshold -> not analyzed.
+        self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(), "Threshold"))
+        # Fast group ride with mixed zones -> Unique/HIIT/Polarized -> not analyzed.
+        for label in ("Unique", "HIIT", "Polarized", None):
+            self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(), label))
+        # Tagged threshold/race work is skipped even when the distribution looks aerobic.
+        for tag in ("lactate-threshold-moderate", "race-specific-high"):
+            self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(tags=[tag]), "Pyramidal"))
+        self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(tags=["aerobic-threshold-low"]), "Pyramidal"))
 
     def test_extract_fields_omits_summary_unless_provided(self):
         exported = prepare_activities.extract_fields(self._ride())
@@ -177,6 +187,16 @@ class PrepareActivitiesDfaGateTests(unittest.TestCase):
         summary = {"valid": False, "artifact_pct": 12.5, "coverage_pct": 98.0, "reason": "artifact rate"}
         exported = prepare_activities.extract_fields(self._ride(), dfa_a1_summary=summary)
         self.assertEqual(exported["dfa_a1_summary"], summary)
+
+    def test_wbal_gate_uses_canonical_tag_prefixes(self):
+        easy = self._ride(icu_zone_times=[{"id": "Z1", "secs": 1000}, {"id": "Z2", "secs": 3000}])
+        self.assertFalse(prepare_activities._needs_wbal(easy, 0.0))
+        self.assertTrue(prepare_activities._needs_wbal(self._ride(tags=["vo2max-high"]), 0.0))
+        self.assertTrue(prepare_activities._needs_wbal(self._ride(tags=["race-specific-moderate"]), 0.0))
+        self.assertTrue(prepare_activities._needs_wbal(self._ride(type="Race"), 0.0))
+        # Undefined free-text tags such as "event" are no longer special.
+        self.assertFalse(prepare_activities._needs_wbal(self._ride(tags=["event"]), 0.0))
+        self.assertFalse(prepare_activities._needs_wbal(self._ride(tags=["aerobic-threshold-low"]), 0.0))
 
     def test_compute_wbal_summary_uses_prefetched_streams(self):
         ride = self._ride(icu_ftp=250, icu_w_prime=20000)
@@ -196,22 +216,30 @@ class AerobicThresholdEstimateTests(unittest.TestCase):
         ]
         self.assertIsNone(analyze_week.compute_aerobic_threshold_estimate(activities, 265, [55, 75]))
 
-    def test_aggregates_valid_rides_against_athlete_zone(self):
+    def test_returns_none_when_no_valid_ride_crossed_the_threshold(self):
+        # Valid but entirely easy ride: per-ride summary exists, week aggregate is omitted.
+        activities = [{"dfa_a1_summary": {"valid": True, "power_at_0_75": None, "time_above_0_75_pct": 100}}]
+        self.assertIsNone(analyze_week.compute_aerobic_threshold_estimate(activities, 265, [55, 75]))
+
+    def test_aggregates_crossing_rides_against_athlete_zone(self):
         activities = [
             {"dfa_a1_summary": {"valid": True, "power_at_0_75": 170, "hr_at_0_75": 125, "time_above_0_75_pct": 92}},
             {"dfa_a1_summary": {"valid": True, "power_at_0_75": 190, "hr_at_0_75": 131, "time_above_0_75_pct": 70}},
             {"dfa_a1_summary": {"valid": True, "power_at_0_75": None, "hr_at_0_75": None, "time_above_0_75_pct": 100}},
         ]
         estimate = analyze_week.compute_aerobic_threshold_estimate(activities, 265, [55, 75, 90])
-        self.assertEqual(estimate["rides_with_valid_data"], 3)
-        self.assertEqual(estimate["rides_with_threshold_crossing"], 2)
+        self.assertEqual(
+            list(estimate),
+            ["rides_used", "threshold_windows_total", "power_at_0_75", "hr_at_0_75",
+             "z2_upper_power", "z2_upper_source", "delta_pct"],
+        )
+        self.assertEqual(estimate["rides_used"], 2)
         self.assertEqual(estimate["threshold_windows_total"], 2)
         self.assertEqual(estimate["power_at_0_75"], 180)
         self.assertEqual(estimate["hr_at_0_75"], 128)
         self.assertEqual(estimate["z2_upper_power"], 199)
         self.assertEqual(estimate["z2_upper_source"], "athlete_zones")
         self.assertEqual(estimate["delta_pct"], -9.5)
-        self.assertEqual(estimate["avg_time_above_0_75_pct"], 87)
 
     def test_weights_rides_by_threshold_windows(self):
         activities = [
@@ -219,6 +247,7 @@ class AerobicThresholdEstimateTests(unittest.TestCase):
             {"dfa_a1_summary": {"valid": True, "power_at_0_75": 170, "hr_at_0_75": 125, "threshold_windows": 18, "time_above_0_75_pct": 92}},
         ]
         estimate = analyze_week.compute_aerobic_threshold_estimate(activities, 265, [55, 75, 90])
+        self.assertEqual(estimate["rides_used"], 2)
         self.assertEqual(estimate["threshold_windows_total"], 59)
         # (195*41 + 170*18) / 59 = 187.4 -> the firmer estimate dominates the plain mean of 182.5
         self.assertEqual(estimate["power_at_0_75"], 187)
@@ -235,13 +264,6 @@ class AerobicThresholdEstimateTests(unittest.TestCase):
         self.assertEqual(estimate["threshold_windows_total"], 5)
         self.assertEqual(estimate["power_at_0_75"], 160)
         self.assertIsNone(estimate["hr_at_0_75"])
-
-    def test_threshold_windows_total_is_none_without_crossing(self):
-        activities = [{"dfa_a1_summary": {"valid": True, "power_at_0_75": None, "time_above_0_75_pct": 100}}]
-        estimate = analyze_week.compute_aerobic_threshold_estimate(activities, 265, [55, 75])
-        self.assertEqual(estimate["rides_with_threshold_crossing"], 0)
-        self.assertIsNone(estimate["threshold_windows_total"])
-        self.assertIsNone(estimate["power_at_0_75"])
 
     def test_falls_back_to_75_percent_ftp_without_zones(self):
         activities = [{"dfa_a1_summary": {"valid": True, "power_at_0_75": 200, "time_above_0_75_pct": 80}}]
