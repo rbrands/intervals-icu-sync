@@ -63,7 +63,13 @@ all start with `dfa_a1_`.
    reference in the literature.
 2. **HRV logging enabled on the head unit.** Garmin Edge: *System → Data
    Recording → Log HRV*. Without this the FIT file contains only the
-   heart rate, not the individual beats.
+   heart rate, not the individual beats. Garmin watches with the same
+   setting (Forerunner, Fenix, Epix) work too, provided their recording is
+   the one that reaches intervals.icu; Garmin's wellness line (Venu,
+   Vivoactive) has no such setting. **Wahoo ELEMNT units (Bolt, Roam) do
+   not write R-R intervals to the FIT file** and offer no such setting (as of
+   2025); their activities never carry an `hrv` stream and therefore never
+   get a `dfa_a1_summary` – silently, without a warning.
 3. **An activity synced to intervals.icu.** intervals.icu imports the beats
    as an `hrv` stream. It is stored but not displayed as a chart, so you
    will not see it in the web UI – the data is there nonetheless.
