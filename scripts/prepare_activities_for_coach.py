@@ -123,7 +123,7 @@ def _needs_dfa_a1(activity: dict, training_distribution: str | None) -> bool:
     avg_hr, _ = _extract_heart_rate(activity)
     if avg_hr is None:
         return False
-    if activity.get("type") == "Race":
+    if activity.get("type") not in {"Ride", "VirtualRide", "MountainBikeRide", "GravelRide"}:
         return False
 
     tags = [t.lower() for t in (activity.get("tags") or [])]
