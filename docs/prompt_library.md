@@ -15,6 +15,13 @@ Analysiere die aktuellste Trainingseinheit und lese dazu von intervals.icu per p
 Beantworte folgende Fragen:
 1. Welche Trainingsqualität hatte diese Einheit (VO2max-Reiz, Schwellenreiz, Grundlage)?
 2. Wie war die Belastungssteuerung (Pacing, Herzfrequenz-Entkopplung, W'-Nutzung)?
+   Wenn die Aktivität ein `dfa_a1_summary` hat, ergänze die aerobe Einordnung
+   während der Fahrt: Zeitanteil über DFA a1 = 0,75 (war die lockere Fahrt
+   wirklich aerob?), `power_at_0_75` / `hr_at_0_75` und `power_at_0_75_pct_ftp`
+   im Vergleich zur Zone-2-Obergrenze des Athleten (`metrics.power_zones_pct[1]`,
+   Standard 75 % FTP) sowie `threshold_windows` als Belastbarkeit dieser Ablesung.
+   Werte das als Tagesform-Beobachtung, nicht als Zonen-Urteil. Fehlt das Feld,
+   sage nichts zu DFA a1 — harte Einheiten werden bewusst nicht analysiert.
 3. Was sagt das Fueling aus – Carbs pro Stunde im Verhältnis zur Intensität?
 4. Welchen Effekt hat diese Einheit auf CTL, ATL und Form?
 5. Was leite ich für die nächsten 48–72 Stunden ab (Erholung, nächste Einheit)?
@@ -30,6 +37,13 @@ Analyze the most recent training session and fetch the data from intervals.icu v
 Answer the following questions:
 1. What was the training quality (VO2max stimulus, threshold stimulus, base)?
 2. How was load management (pacing, heart rate decoupling, W' usage)?
+   If the activity has a `dfa_a1_summary`, add the in-ride aerobic reading:
+   share of time above DFA a1 = 0.75 (was the easy ride really aerobic?),
+   `power_at_0_75` / `hr_at_0_75` and `power_at_0_75_pct_ftp` compared with the
+   athlete's Zone 2 ceiling (`metrics.power_zones_pct[1]`, default 75 % FTP),
+   and `threshold_windows` as the confidence behind that reading. Treat it as a
+   day-form observation, not a zone verdict. If the field is absent, say nothing
+   about DFA a1 — hard sessions are not analyzed by design.
 3. What does the fueling tell us — carbs per hour relative to intensity?
 4. What is the effect of this session on CTL, ATL, and form?
 5. What do I take away for the next 48–72 hours (recovery, next session)?
@@ -71,6 +85,14 @@ Regel fuer Sicherheitsgrad:
 - Welche Schlüsseleinheiten wurden absolviert?
 - Wie war die Intensitätsverteilung (Zone 1-2 vs. Zone 4-6)?
 - Fehlt ein wichtiger Trainingsreiz?
+- Wenn `week_summary.aerobic_threshold_estimate` vorhanden ist: nenne
+  `power_at_0_75` / `hr_at_0_75` (sowie `rides_used`, `threshold_windows_total`
+  als Belastbarkeit), vergleiche mit der Zone-2-Obergrenze (`z2_upper_power`,
+  `delta_pct`) und leite daraus eine konkrete Pacing-Empfehlung für die langen
+  aeroben Fahrten dieser Woche ab — einen Watt- und Herzfrequenzbereich, um
+  unter LT1 zu bleiben. Eine Fahrt ist eine Tagesform-Ablesung, drei Fahrten
+  ein Muster. Schlage daraus allein nie eine Zonenänderung vor; lasse den
+  Punkt ganz weg, wenn das Feld fehlt.
 
 **Fueling**
 - Durchschnittliche Carb-Aufnahme pro Stunde
@@ -115,6 +137,14 @@ Confidence level rule:
 - Which key sessions were completed?
 - How was intensity distribution (Zone 1-2 vs. Zone 4-6)?
 - Is an important training stimulus missing?
+- If `week_summary.aerobic_threshold_estimate` is present: report
+  `power_at_0_75` / `hr_at_0_75` (and `rides_used`, `threshold_windows_total`
+  as confidence), compare with the Zone 2 ceiling (`z2_upper_power`,
+  `delta_pct`), and turn it into a concrete pacing recommendation for this
+  week's long aerobic rides — a watt and heart-rate range to stay below LT1.
+  One ride is a day-form reading, three rides a pattern. Never suggest
+  changing zones from this alone; skip the point entirely when the field is
+  absent.
 
 **Fueling**
 - Average carb intake per hour

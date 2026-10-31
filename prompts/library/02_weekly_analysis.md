@@ -20,6 +20,14 @@ Summarize and assess:
 - Which key sessions were completed?
 - How was intensity distribution (Zone 1-2 vs. Zone 4-6)?
 - Is an important training stimulus missing?
+- If `week_summary.aerobic_threshold_estimate` is present: report
+  `power_at_0_75` / `hr_at_0_75` (and `rides_used`, `threshold_windows_total`
+  as confidence), compare with the Zone 2 ceiling (`z2_upper_power`,
+  `delta_pct`), and turn it into a concrete pacing recommendation for this
+  week's long aerobic rides — a watt and heart-rate range to stay below LT1.
+  One ride is a day-form reading, three rides a pattern. Never suggest
+  changing zones from this alone; skip the point entirely when the field is
+  absent.
 
 **Fueling**
 - Average carb intake per hour
