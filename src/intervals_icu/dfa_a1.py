@@ -35,6 +35,8 @@ MAX_WINDOW_ARTIFACT_PCT = 5.0
 MAX_ACTIVITY_ARTIFACT_PCT = 10.0
 MIN_COVERAGE_PCT = 50.0
 MIN_BEATS_PER_WINDOW = 60
+MIN_WINDOW_COVERAGE_PCT = 80.0
+MAX_WINDOW_GAP_SECONDS = 5
 MIN_VALID_WINDOWS = 10
 
 THRESHOLD_BAND = (0.65, 0.85)
@@ -189,13 +191,28 @@ def compute_dfa_a1_windows(
         hi = bisect_left(beat_times, end)
         n_all = hi - lo
         if n_all >= MIN_BEATS_PER_WINDOW:
+            recorded_seconds = sorted({int(beats[i][0]) for i in range(lo, hi)})
+            coverage_pct = len(recorded_seconds) / window_seconds * 100.0
+            gaps = [
+                recorded_seconds[0] - int(start),
+                int(end) - 1 - recorded_seconds[-1],
+                *(later - earlier - 1 for earlier, later in zip(recorded_seconds, recorded_seconds[1:])),
+            ]
+            max_gap_seconds = max(gaps)
             invalid = sum(1 for i in range(lo, hi) if not valid[i])
             clean = [beats[i][1] for i in range(lo, hi) if valid[i]]
             windows.append({
                 "start_s": start,
-                "alpha1": dfa_alpha1(clean),
+                "alpha1": (
+                    dfa_alpha1(clean)
+                    if coverage_pct >= MIN_WINDOW_COVERAGE_PCT
+                    and max_gap_seconds <= MAX_WINDOW_GAP_SECONDS
+                    else None
+                ),
                 "artifact_pct": invalid / n_all * 100.0,
                 "beats": n_all,
+                "coverage_pct": coverage_pct,
+                "max_gap_seconds": max_gap_seconds,
                 "avg_power": _window_mean(watts, time_data, start, end),
                 "avg_hr": _window_mean(heartrate, time_data, start, end),
             })

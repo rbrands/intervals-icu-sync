@@ -50,7 +50,12 @@ def _power_zones_pct(value: object) -> list[float] | None:
     """Return the configured power zone upper bounds (% FTP), or None if unset."""
     if not isinstance(value, list):
         return None
-    zones = [bound for bound in (_to_float(v) for v in value) if bound is not None]
+    zones: list[float] = []
+    for raw_bound in value:
+        bound = _to_float(raw_bound)
+        if bound is None:
+            break
+        zones.append(bound)
     return zones or None
 
 

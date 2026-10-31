@@ -134,6 +134,27 @@ class DfaAlpha1SummaryTests(unittest.TestCase):
         self.assertEqual(power, 200.0)
         self.assertEqual(hr, 140.0)
 
+    def test_window_rejects_insufficient_rr_coverage(self):
+        beats = [(float(second), 600.0) for second in range(120) if second % 4 != 0]
+        windows = dfa_a1.compute_dfa_a1_windows(
+            beats, [True] * len(beats), list(range(121))
+        )
+
+        self.assertEqual(len(windows), 1)
+        self.assertEqual(windows[0]["coverage_pct"], 75.0)
+        self.assertIsNone(windows[0]["alpha1"])
+
+    def test_window_rejects_long_rr_recording_gaps(self):
+        beats = [(float(second), 600.0) for second in range(120) if not 60 <= second < 70]
+        windows = dfa_a1.compute_dfa_a1_windows(
+            beats, [True] * len(beats), list(range(121))
+        )
+
+        self.assertEqual(len(windows), 1)
+        self.assertAlmostEqual(windows[0]["coverage_pct"], 110 / 120 * 100)
+        self.assertEqual(windows[0]["max_gap_seconds"], 10)
+        self.assertIsNone(windows[0]["alpha1"])
+
 
 class PrepareActivitiesDfaGateTests(unittest.TestCase):
     def _ride(self, **overrides) -> dict:
@@ -155,6 +176,12 @@ class PrepareActivitiesDfaGateTests(unittest.TestCase):
     def test_gate_accepts_long_aerobic_ride_with_hrv_stream(self):
         self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(), "Base"))
         self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(), "Pyramidal"))
+
+    def test_gate_rejects_non_cycling_activity_types(self):
+        for activity_type in ("Run", "TrailRun", "VirtualRun"):
+            self.assertFalse(
+                prepare_activities._needs_dfa_a1(self._ride(type=activity_type), "Base")
+            )
 
     def test_gate_rejects_rides_without_hrv_stream_or_metadata(self):
         self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(stream_types=["time", "watts"]), "Base"))
@@ -319,6 +346,9 @@ class PowerZonesMetricTests(unittest.TestCase):
         self.assertIsNone(get_metrics._power_zones_pct(None))
         self.assertIsNone(get_metrics._power_zones_pct([]))
         self.assertIsNone(get_metrics._power_zones_pct("55,75"))
+        zones = get_metrics._power_zones_pct([55, None, 90])
+        self.assertEqual(zones, [55.0])
+        self.assertEqual(analyze_week._z2_upper_power(200, zones), (150, "ftp_75pct"))
 
 
 if __name__ == "__main__":

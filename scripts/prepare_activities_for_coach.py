@@ -114,6 +114,8 @@ def _needs_dfa_a1(activity: dict, training_distribution: str | None) -> bool:
     low share of time above 0.75 on an intentionally hard ride must never
     read as a warning.
     """
+    if activity.get("type") not in {"Ride", "VirtualRide", "MountainBikeRide", "GravelRide"}:
+        return False
     if not _has_hrv_stream(activity):
         return False
     if _as_float(activity.get("moving_time")) < MIN_DFA_A1_DURATION_SECONDS:

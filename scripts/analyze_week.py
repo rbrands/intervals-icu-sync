@@ -777,23 +777,24 @@ def main() -> None:
     activities = load_data()
     rides = filter_activities(activities)
     training_plan = load_training_plan(date.today())
-    if not rides:
-        print("No qualifying rides found.")
-        athlete_metrics = load_metrics()
-        form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
-        if training_plan:
-            save_json(form, None, monday, training_plan)
-        else:
-            save_json(form, None, monday)
-        sys.exit(0)
     athlete_metrics = load_metrics()
-    fueling_data = load_fueling(monday)
-    metrics = compute_metrics(rides, athlete_metrics.get("ctl"))
     aerobic_threshold = compute_aerobic_threshold_estimate(
         load_coach_activities(monday),
         athlete_metrics.get("ftp"),
         athlete_metrics.get("power_zones_pct"),
     )
+    if not rides:
+        print("No qualifying rides found.")
+        form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
+        if aerobic_threshold:
+            form["aerobic_threshold_estimate"] = aerobic_threshold
+        if training_plan:
+            save_json(form, None, monday, training_plan)
+        else:
+            save_json(form, None, monday)
+        sys.exit(0)
+    fueling_data = load_fueling(monday)
+    metrics = compute_metrics(rides, athlete_metrics.get("ctl"))
     if aerobic_threshold:
         metrics["aerobic_threshold_estimate"] = aerobic_threshold
     form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
