@@ -129,14 +129,17 @@ Mirroring the W'bal gate (hard rides only), the DFA gate selects the
 | `stream_types` of the activity contains `hrv` | cheapest possible filter – no stream download for rides without beat data |
 | moving time ≥ 60 min | shorter rides rarely reach steady state |
 | heart-rate data present | |
-| `training_distribution` is `Base` or `Pyramidal` | the ride was *ridden* as an aerobic session; threshold workouts (even with little Z5+), HIIT and fast group rides are skipped |
+| `training_distribution` is `Base` or `Pyramidal`, **or** the ride carries a canonical `aerobic-threshold-*` / `recovery-*` tag | the ride was *ridden* (or explicitly *declared*) as an aerobic session. The tag has priority: outdoor terrain often pushes an easy ride's power time-in-zone to 25 % Z3/Z4 and a `Threshold` label although HR and DFA a1 show a clearly aerobic ride. Threshold workouts, HIIT and fast group rides without such a tag are skipped |
 | no `lactate-threshold-*`, `vo2max-*` or `race-specific-*` tag, not a `Race` | the ride was *meant* as hard work; alpha 1 saturates near 0.5 there, and a low aerobic share must never read as a warning |
 | at most the **3 newest** qualifying rides per run | keeps pipeline latency predictable (each analysis is one extra stream request of ~160 KB and ~0.3 s CPU) |
 
 The gate is intent-based on purpose: every `dfa_a1_summary` in the dataset
 belongs to a ride the athlete wanted to be easy. A 2×20 min threshold
 session or a hard group ride simply has no `dfa_a1_summary`, so the coach
-cannot misread its low time above 0.75 as a problem.
+cannot misread its low time above 0.75 as a problem. Conversely, an outdoor
+Zone 2 ride that the power distribution mislabels as `Threshold` is admitted
+by tagging it `aerobic-threshold-*` in intervals.icu – the same tag taxonomy
+the coach already uses for classification.
 
 The stream is downloaded **once** per ride and shared between the W'bal and
 DFA a1 analyses.
@@ -382,6 +385,7 @@ All thresholds are constants at the top of
 | `MIN_THRESHOLD_WINDOWS` | 3 | minimum windows in the band |
 | `MIN_DFA_A1_DURATION_SECONDS` | 3600 | activity gate |
 | `DFA_A1_DISTRIBUTIONS` | `Base`, `Pyramidal` | activity gate – rides ridden as aerobic sessions |
+| `DFA_A1_AEROBIC_TAG_PREFIXES` | `aerobic-threshold`, `recovery` | activity gate – declared aerobic intent; overrides the distribution check |
 | `DFA_A1_EXCLUDED_TAG_PREFIXES` | `lactate-threshold` + `WBAL_TAG_PREFIXES` (`vo2`, `race`) | activity gate – rides meant as hard work; the same prefixes that trigger W'bal |
 | `MAX_DFA_A1_ANALYSES_PER_RUN` | 3 | newest qualifying rides analyzed per run |
 

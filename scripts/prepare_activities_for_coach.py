@@ -33,6 +33,10 @@ WBAL_TAG_PREFIXES = ("vo2", "race")
 # predictable.
 MIN_DFA_A1_DURATION_SECONDS = 3600
 DFA_A1_DISTRIBUTIONS = {"Base", "Pyramidal"}
+# A canonical aerobic tag states the athlete's intent and overrides the power
+# distribution: outdoor terrain often pushes an easy ride's power time-in-zone
+# into Z3/Z4 although the ride was ridden – and felt – as Zone 2.
+DFA_A1_AEROBIC_TAG_PREFIXES = ("aerobic-threshold", "recovery")
 DFA_A1_EXCLUDED_TAG_PREFIXES = ("lactate-threshold",) + WBAL_TAG_PREFIXES
 MAX_DFA_A1_ANALYSES_PER_RUN = 3
 
@@ -101,12 +105,14 @@ def _needs_dfa_a1(activity: dict, training_distribution: str | None) -> bool:
     """Return True if DFA a1 analysis should be computed for this activity.
 
     Mirror image of ``_needs_wbal``: only longer rides that were ridden as
-    aerobic sessions qualify – classified ``Base`` or ``Pyramidal`` by their
-    zone distribution, with heart-rate data and a recorded ``hrv`` stream.
-    Threshold workouts, HIIT, races and fast group rides are skipped on
-    purpose: alpha 1 saturates near 0.5 at high intensity, and a low share of
-    time above 0.75 on an intentionally hard ride must never read as a
-    warning.
+    aerobic sessions qualify, with heart-rate data and a recorded ``hrv``
+    stream. Aerobic intent is established either by a canonical
+    ``aerobic-threshold-*`` / ``recovery-*`` tag (highest priority, as tags
+    override automatic classification) or by a ``Base`` / ``Pyramidal`` zone
+    distribution. Threshold workouts, HIIT, races and fast group rides are
+    skipped on purpose: alpha 1 saturates near 0.5 at high intensity, and a
+    low share of time above 0.75 on an intentionally hard ride must never
+    read as a warning.
     """
     if not _has_hrv_stream(activity):
         return False
@@ -115,15 +121,15 @@ def _needs_dfa_a1(activity: dict, training_distribution: str | None) -> bool:
     avg_hr, _ = _extract_heart_rate(activity)
     if avg_hr is None:
         return False
-    if training_distribution not in DFA_A1_DISTRIBUTIONS:
+    if activity.get("type") == "Race":
         return False
 
     tags = [t.lower() for t in (activity.get("tags") or [])]
     if any(t.startswith(DFA_A1_EXCLUDED_TAG_PREFIXES) for t in tags):
         return False
-    if activity.get("type") == "Race":
-        return False
-    return True
+    if any(t.startswith(DFA_A1_AEROBIC_TAG_PREFIXES) for t in tags):
+        return True
+    return training_distribution in DFA_A1_DISTRIBUTIONS
 
 
 def _fetch_streams(activity: dict, stream_types: list[str]) -> dict[str, list] | None:

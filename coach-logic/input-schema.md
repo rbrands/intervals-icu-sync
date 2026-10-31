@@ -214,9 +214,12 @@ value is missing or no previous exported activity exists.
 - `dfa_a1_summary`: in-ride DFA alpha 1 analysis of the recorded R-R
   intervals (`hrv` stream, requires HRV logging on the head unit and a chest
   strap). Present ONLY for rides that were ridden as aerobic sessions:
-  ≥ 60 min, HR data, `training_distribution` `Base` or `Pyramidal`, no
-  `lactate-threshold-*` / `vo2max-*` / `race-specific-*` tag, not a
-  race; at most the three newest such rides per export. Threshold workouts,
+  ≥ 60 min, HR data, not a race, no `lactate-threshold-*` / `vo2max-*` /
+  `race-specific-*` tag, and aerobic intent established either by a
+  canonical `aerobic-threshold-*` / `recovery-*` tag (tags override the
+  automatic classification — outdoor terrain often pushes an easy ride's
+  power distribution into Z3/Z4) or by `training_distribution` `Base` or
+  `Pyramidal`; at most the three newest such rides per export. Threshold workouts,
   HIIT and fast group rides are deliberately NOT analyzed, so a
   `dfa_a1_summary` never describes an intentionally hard ride. The key is
   omitted entirely when the ride has no `hrv` stream or fails this gate.

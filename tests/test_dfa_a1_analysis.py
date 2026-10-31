@@ -180,6 +180,20 @@ class PrepareActivitiesDfaGateTests(unittest.TestCase):
             self.assertFalse(prepare_activities._needs_dfa_a1(self._ride(tags=[tag]), "Pyramidal"))
         self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(tags=["aerobic-threshold-low"]), "Pyramidal"))
 
+    def test_aerobic_tag_overrides_spiky_outdoor_power_distribution(self):
+        # Outdoor Z2 ride whose power time-in-zone lands in Threshold/Unique: the
+        # canonical aerobic tag states the intent and admits the ride.
+        for label in ("Threshold", "Unique", None):
+            self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(tags=["aerobic-threshold-moderate"]), label))
+            self.assertTrue(prepare_activities._needs_dfa_a1(self._ride(tags=["recovery-low"]), label))
+        # A hard tag still wins over an aerobic tag, and the other gates still apply.
+        self.assertFalse(prepare_activities._needs_dfa_a1(
+            self._ride(tags=["aerobic-threshold-moderate", "vo2max-high"]), "Threshold"))
+        self.assertFalse(prepare_activities._needs_dfa_a1(
+            self._ride(tags=["aerobic-threshold-moderate"], moving_time=45 * 60), "Threshold"))
+        self.assertFalse(prepare_activities._needs_dfa_a1(
+            self._ride(tags=["aerobic-threshold-moderate"], type="Race"), "Threshold"))
+
     def test_extract_fields_omits_summary_unless_provided(self):
         exported = prepare_activities.extract_fields(self._ride())
         self.assertNotIn("dfa_a1_summary", exported)
