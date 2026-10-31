@@ -104,7 +104,7 @@ definition:
     Apply the rules defined in the knowledge base. Do not restate or override them:
 
     - `training-zones.md` — intensity zones; ALL power targets derive from these
-    - `interpretation-rules.md` — form, decoupling, fueling thresholds;
+    - `interpretation-rules.md` — form, decoupling, DFA a1, fueling thresholds;
       limiter detection; tag mapping
     - `coaching-principles.md` — periodization, 80/20, recovery, age (50+) rules
     - `decision-process.md` — step-by-step planning logic + workout library

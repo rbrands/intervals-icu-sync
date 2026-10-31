@@ -378,20 +378,27 @@ def get_activity_power_curve(api_key: str, activity_id: str) -> dict | None:
     return result if result else None
 
 
-def get_activity_streams(api_key: str, activity_id: str) -> list[dict]:
+def get_activity_streams(
+    api_key: str,
+    activity_id: str,
+    stream_types: list[str] | None = None,
+) -> list[dict]:
     """Fetch time-series streams for a single activity.
 
     Returns a list of stream dicts, each with a ``type`` key (e.g. ``"watts"``,
     ``"heartrate"``, ``"time"``) and a ``data`` list of values sampled once per
-    second.
+    second. ``stream_types`` restricts the response to the given types, which
+    keeps the payload small when only a few streams are needed.
 
     Raises:
         requests.HTTPError: If the response status code is not 2xx.
     """
     url = f"{BASE_URL}/activity/{activity_id}/streams"
+    params = {"types": ",".join(stream_types)} if stream_types else None
     response = requests.get(
         url,
         auth=("API_KEY", api_key),
+        params=params,
         timeout=60,
     )
     _raise_for_status_with_context(response, "get_activity_streams")

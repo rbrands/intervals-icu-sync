@@ -80,6 +80,7 @@ class Metrics(_SchemaModel):
     ftp_eftp_delta_pct: float | int | None = None
     w_prime: float | int | None = None
     rolling_w_prime: float | int | None = None
+    power_zones_pct: list[float | int] | None = None
     ftp_classification: FtpClassification | None = None
     rolling_p_max: float | int | None = None
     lthr: float | int | None = None
@@ -145,6 +146,16 @@ class TrainingPlanEntry(_SchemaModel):
     day_constraints: list[DayConstraint] | None = None
 
 
+class AerobicThresholdEstimate(_SchemaModel):
+    rides_used: int | None = None
+    threshold_windows_total: int | None = None
+    power_at_0_75: float | int | None = None
+    hr_at_0_75: float | int | None = None
+    z2_upper_power: float | int | None = None
+    z2_upper_source: str | None = None
+    delta_pct: float | int | None = None
+
+
 class WeekSummary(_SchemaModel):
     week_starting: str | None = None
     current_date: str | None = None
@@ -160,6 +171,7 @@ class WeekSummary(_SchemaModel):
     avg_decoupling: float | int | None = None
     avg_decoupling_label: str | None = None
     high_decoupling_rides: int | None = None
+    aerobic_threshold_estimate: AerobicThresholdEstimate | None = None
     days_since_last_hiit: int | None = None
     days_since_last_polarized: int | None = None
     days_since_last_hard_session: int | None = None
@@ -191,6 +203,22 @@ class ActivityWbalSummary(_SchemaModel):
     seconds_below_30pct: int | None = None
     depletion_events: int | None = None
     recovery_ratio: float | int | None = None
+
+
+class ActivityDfaA1Summary(_SchemaModel):
+    valid: bool | None = None
+    artifact_pct: float | int | None = None
+    coverage_pct: float | int | None = None
+    reason: str | None = None
+    windows_total: int | None = None
+    windows_valid: int | None = None
+    avg: float | int | None = None
+    time_above_0_75_pct: float | int | None = None
+    time_below_0_5_pct: float | int | None = None
+    power_at_0_75: float | int | None = None
+    hr_at_0_75: float | int | None = None
+    power_at_0_75_pct_ftp: float | int | None = None
+    threshold_windows: int | None = None
 
 
 class FuelingDetail(_SchemaModel):
@@ -244,6 +272,7 @@ class Activity(_SchemaModel):
     fueling: FuelingDetail | None = None
     power_curve: dict[str, float | int] | None = None
     wbal_summary: ActivityWbalSummary | None = None
+    dfa_a1_summary: ActivityDfaA1Summary | None = None
 
 
 class FuelingWeeklySummary(_SchemaModel):

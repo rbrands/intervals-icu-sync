@@ -143,7 +143,18 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
             patch.object(analyze_week, "load_data", return_value=[]),
             patch.object(analyze_week, "filter_activities", return_value=[]),
             patch.object(analyze_week, "load_training_plan", return_value=[]),
-            patch.object(analyze_week, "load_metrics", return_value={"ctl": 60.0, "atl": 75.0}),
+            patch.object(
+                analyze_week,
+                "load_metrics",
+                return_value={"ctl": 60.0, "atl": 75.0, "ftp": 200, "power_zones_pct": [55, 75]},
+            ),
+            patch.object(
+                analyze_week,
+                "load_coach_activities",
+                return_value=[
+                    {"dfa_a1_summary": {"valid": True, "power_at_0_75": 160, "threshold_windows": 3}}
+                ],
+            ),
             patch.object(analyze_week, "save_json") as save_json,
             self.assertRaises(SystemExit),
         ):
@@ -156,6 +167,7 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
         self.assertEqual(saved_form["form_pct"], -0.25)
         self.assertEqual(saved_form["form_percent_display"], -25.0)
         self.assertEqual(saved_form["form_zone"], "optimal")
+        self.assertEqual(saved_form["aerobic_threshold_estimate"]["power_at_0_75"], 160)
 
     def test_compute_ftp_eftp_delta_pct(self):
         self.assertEqual(get_metrics.compute_ftp_eftp_delta_pct(100, 110), 10.0)

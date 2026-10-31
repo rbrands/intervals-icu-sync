@@ -46,9 +46,6 @@ for volume maintenance.
   emphasise pre-race carbohydrate intake and a bottle for the start block
 - heat: indoor races accumulate heat fast; every race-simulation description
   includes cooling (fan, open window, cold bottle) and pre-cooling advice
-- FTP consistency: if `activity_eftp` from `VirtualRide` activities deviates
-  more than 5% from `ftp` in either direction, name a possible trainer vs.
-  power-meter mismatch before interpreting performance or changing zones
 - no hidden off-bike load: all relevant load is visible in ride data;
   read fatigue signals at face value
 

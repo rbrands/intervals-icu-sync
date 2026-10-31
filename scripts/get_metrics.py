@@ -46,6 +46,19 @@ def _weight_to_kg(value: object, weight_pref_lb: bool) -> float | None:
     return round(weight * LB_TO_KG, 2) if weight_pref_lb else round(weight, 2)
 
 
+def _power_zones_pct(value: object) -> list[float] | None:
+    """Return the configured power zone upper bounds (% FTP), or None if unset."""
+    if not isinstance(value, list):
+        return None
+    zones: list[float] = []
+    for raw_bound in value:
+        bound = _to_float(raw_bound)
+        if bound is None:
+            break
+        zones.append(bound)
+    return zones or None
+
+
 def fetch_athlete_info() -> tuple[dict, bool]:
     r = requests.get(f"{BASE_URL}/athlete/{ATHLETE_ID}", auth=("API_KEY", API_KEY), timeout=10)
     r.raise_for_status()
@@ -62,6 +75,7 @@ def fetch_athlete_info() -> tuple[dict, bool]:
     result = {
         "ftp": ride_settings.get("ftp"),
         "w_prime": ride_settings.get("w_prime"),
+        "power_zones_pct": _power_zones_pct(ride_settings.get("power_zones")),
         "weight": _weight_to_kg(data.get("icu_weight"), weight_pref_lb),
     }
     dob_str = data.get("icu_date_of_birth")

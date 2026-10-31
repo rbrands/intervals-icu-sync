@@ -8,6 +8,30 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 
+## [1.5.0] - 2026-10-31
+
+### Added
+
+- Added `src/intervals_icu/dfa_a1.py`, a dependency-free DFA alpha 1 analysis of the in-ride R-R intervals that intervals.icu stores as the `hrv` activity stream when HRV logging is enabled on the head unit: beat parsing, 20 % artifact filter, 120-second sliding windows (30 s step, first 10 minutes ignored), short-term scaling exponent over box sizes 4–16, and a compact summary with coverage/artifact quality gate, mean a1, time above 0.75 / below 0.5, power and HR at a1 ≈ 0.75, and `power_at_0_75_pct_ftp` relative to the activity FTP. In-ride durability intentionally stays with `decoupling` to avoid two competing durability labels.
+- Added `activities[].dfa_a1_summary` to the coach export. `prepare_activities_for_coach.py` analyzes at most the three newest rides that are ≥ 60 min, were ridden as aerobic sessions (`training_distribution` `Base` or `Pyramidal`, or a canonical `aerobic-threshold-*` / `recovery-*` tag that states the intent and overrides a spiky outdoor power distribution), have heart-rate data, carry no `lactate-threshold-*`/`vo2max-*`/`race-specific-*` tag, are not races, and list `hrv` in their intervals.icu `stream_types`. Threshold workouts, HIIT and fast group rides are deliberately not analyzed so that a low aerobic share never reads as a warning. The key is omitted for all other activities; rides whose strap data fails the quality gate get `valid: false` with a `reason`.
+- Added `week_summary.aerobic_threshold_estimate` in `analyze_week.py`: `rides_used` and `threshold_windows_total` as the evidence behind the estimate, `power_at_0_75` / `hr_at_0_75` weighted by each ride's `threshold_windows` (a ride that spent many windows near DFA a1 = 0.75 dominates one that barely touched the band; rides without a window count carry weight 1), the athlete's configured Zone 2 ceiling (`z2_upper_power`, `z2_upper_source` = `athlete_zones` or `ftp_75pct`), and the relative `delta_pct`. Omitted when no valid ride crossed the threshold; per-ride facts such as `time_above_0_75_pct` are not averaged at week level. No multi-week trend is computed, consistent with the lookback focus. The console report shows the weighted estimate with its ride and window counts.
+- Added `metrics.power_zones_pct` (upper bounds of the configured Ride power zones in % FTP) to `get_metrics.py` as the zone reference for the aerobic-threshold estimate.
+- Added `stream_types` support to `get_activity_streams` so callers can request only the streams they need (`?types=`), and documented DFA a1 reading rules and its separation from the nightly `metrics.hrv` in `coach-logic/input-schema.md` and `coach-logic/interpretation-rules.md`. Week-level `delta_pct` bands are ±10 % wide to reflect the method's individual limits of agreement (around ±20 W) and the individual LT1/FTP ratio (roughly 55–85 % FTP).
+- Added a *Cross-check with FTP vs. eFTP* rule to `coach-logic/interpretation-rules.md` and `docs/dfa_a1.md`: `metrics.ftp_eftp_delta_pct` (six-week reference) and `aerobic_threshold_estimate.delta_pct` (lookback reading) are independent comparisons against the same configured FTP; read together they show whether this week's aerobic reading fits the longer-term performance picture. Covers both directions (declining and building form) and is phrased as hypotheses the coach states, not diagnoses — the dataset holds one lookback, so trend judgements stay with the athlete in intervals.icu.
+- Added `tests/test_dfa_a1_analysis.py` covering the scaling exponent on synthetic series, quality gates, the activity gate, the shared stream usage for W'bal, and the weekly aggregate including its `threshold_windows` weighting.
+- Added `docs/dfa_a1.md` as the single reference for the DFA a1 feature: concept and distinction from wellness HRV, device prerequisites, computation and quality gates, dataset fields, coach reading rules and the FTP/eFTP cross-check, limitations, configuration constants, and references.
+
+### Changed
+
+- Aligned the W'bal gate in `prepare_activities_for_coach.py` with the canonical tag taxonomy: it now triggers on `vo2max-*` / `race-specific-*` tags and activity type `Race`; the previous undefined substring match on tags containing "event" was removed. The DFA a1 gate reuses the same prefixes (plus `lactate-threshold-*`) for its exclusions.
+- `prepare_activities_for_coach.py` now fetches activity streams once per ride with a type filter and shares them between the W'bal and DFA a1 analyses instead of downloading the full stream payload for W'bal alone.
+- Regenerated the week-data contracts (`contracts/week-data/week-data.schema.json`, `contracts/week-data/WeekDataDto.cs`) for `ActivityDfaA1Summary`, `AerobicThresholdEstimate`, and `metrics.power_zones_pct`.
+
+### Fixed
+
+- Corrected the interpretation of the per-ride `activities[].activity_eftp` across coach-logic and prompts: the value is estimated from the best efforts of that single ride and is a lower-bound estimate, so values below the configured FTP are expected for any ride without near-maximal efforts and carry no signal. Added a *Per-Activity eFTP* section to `coach-logic/interpretation-rules.md`, expanded the field description in `coach-logic/input-schema.md` and `README.md`, and removed the `prompts/discipline_zwift.md` "FTP consistency" rule that told the coach to flag a trainer vs. power-meter mismatch whenever a `VirtualRide` eFTP deviated more than 5 % from FTP — that rule fired on every easy ride and produced nonsense warnings. The mismatch concept is dropped entirely rather than negated, so it cannot prime the model to raise it. Per-ride eFTP is now only mentioned when it reaches or exceeds the configured FTP (possible breakthrough / outdated FTP); trend reading stays with the athlete-level `metrics.eftp`.
+
+
 ## [1.4.2] - 2026-10-25
 
 ### Removed

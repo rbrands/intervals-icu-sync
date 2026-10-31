@@ -41,13 +41,22 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   otherwise.
 - `ftp_eftp_delta_pct`: percentage difference between `ftp` and `eftp`,
   calculated as `((eftp - ftp) / ftp) * 100`. Positive values mean eFTP is
-  above FTP.
+  above FTP. Read together with
+  `week_summary.aerobic_threshold_estimate.delta_pct` when both are present
+  (see interpretation rules, *Cross-check with FTP vs. eFTP*).
 - `ftp_classification`: age- and sex-adjusted FTP category based on FTP
   W/kg, including `w_per_kg`, `category`, `category_range`,
   `next_category`, and `delta_to_next`.
 - `w_prime` / `rolling_w_prime`: W' (J) from the current Ride sport
   settings, and intervals.icu's rolling W' estimate. Activity-level
   `w_prime_j` falls back to the rolling estimate when no W' is set.
+- `power_zones_pct`: upper bounds of the athlete's configured Ride power
+  zones as % FTP, Z1 first (e.g. `[55, 75, 90, 105, 120, 150, 999]`). The
+  second entry is the Zone 2 ceiling used by
+  `week_summary.aerobic_threshold_estimate`. Null when no zones are set.
+- `hrv`: nightly / resting HRV (RMSSD, ms) from wellness data — a recovery
+  signal. It is NOT the in-ride DFA a1 reported in
+  `activities[].dfa_a1_summary`; the two must never be mixed.
 - `rolling_p_max`: rolling max 1-second power (42-day).
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)
@@ -71,7 +80,11 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 
 Activity-level FTP fields are separate from the current athlete Metrics:
 `activities[].activity_ftp` is the FTP value stored with the activity, and
-`activities[].activity_eftp` is the activity-specific eFTP from intervals.icu.
+`activities[].activity_eftp` is the eFTP intervals.icu estimates from the
+best efforts of that single ride. It is a lower-bound estimate: rides
+without near-maximal efforts always produce values well below the real FTP,
+which is expected and carries no signal. Only a value at or above
+`metrics.ftp` is noteworthy (see interpretation rules, *Per-Activity eFTP*).
 `activities[].is_hard_session` marks whether the activity meets the same
 CTL-relative load, training-distribution, or RPE rules used by
 `week_summary.days_since_last_hard_session`.
@@ -108,6 +121,27 @@ value is missing or no previous exported activity exists.
 - `days_since_last_hard_session`: integer number of calendar days since the
   last session with TSS at least 50% above current CTL, the last `HIIT` or
   `Polarized` ride, or the last `Threshold` ride with at least 50 TSS or RPE 7+.
+- `aerobic_threshold_estimate`: week-level aggregate of the per-ride
+  `dfa_a1_summary` entries (see activities). Present ONLY when at least one
+  valid ride in the lookback actually crossed DFA a1 = 0.75 (i.e. has a
+  `power_at_0_75`); omitted otherwise — valid but entirely easy rides keep
+  their per-ride summary but produce no week estimate. No multi-week trend
+  is provided — the focus is the current lookback.
+  - `rides_used`: number of rides the estimate is based on (1 = a single
+    day's reading, 3 = a pattern).
+  - `threshold_windows_total`: sum of `threshold_windows` over those rides —
+    the total evidence behind the estimate.
+  - `power_at_0_75` / `hr_at_0_75`: power (W) and HR (bpm) at which DFA a1
+    ≈ 0.75, averaged across the rides and weighted by each ride's
+    `threshold_windows` (a ride with many threshold windows dominates one
+    that barely touched the band) — the current aerobic threshold (LT1/VT1)
+    estimate.
+  - `z2_upper_power` / `z2_upper_source`: the athlete's configured Zone 2
+    ceiling in watts (`athlete_zones` = from `metrics.power_zones_pct`,
+    `ftp_75pct` = fallback to 75 % FTP when no zones are set).
+  - `delta_pct`: `(power_at_0_75 − z2_upper_power) / z2_upper_power × 100`.
+    Negative = LT1 estimate below the Z2 ceiling (interpretation in
+    interpretation-rules.md).
 - `training_plan`: optional entries for the current and next week. An entry may
   contain a phase, weekly targets, and/or day constraints; a phase is not
   required for targets or constraints to be present.
@@ -157,8 +191,9 @@ value is missing or no previous exported activity exists.
 - `w_prime_bal_min_j`: lowest W'bal reached (= w_prime_j − drop).
 - `w_prime_usage_pct`: drop as % of W'.
 - `wbal_summary`: present ONLY for high-intensity activities (z5_plus_pct
-  ≥ 8, an interval ≥ 105% FTP for ≥ 2 min, a vo2* tag, or a race/event);
-  null otherwise. Key field: `wbal_min_j` = lowest W'bal reached.
+  ≥ 8, an interval ≥ 105% FTP for ≥ 2 min, a `vo2max-*` or
+  `race-specific-*` tag, or activity type Race); null otherwise.
+  Key field: `wbal_min_j` = lowest W'bal reached.
 - `power_curve`: best mean-maximal power per duration; null if no power.
   p3m ≈ VO2max proxy, p5m = gold-standard VO2max effort, p20m ≈ FTP proxy.
 - `decoupling`: aerobic decoupling in %, calculated only for activities with
@@ -176,6 +211,40 @@ value is missing or no previous exported activity exists.
   - `hr_end_avg`: avg HR of second half of WORK intervals.
   - `hr_drift_pct`: HR drift from first to second half in %.
   - `hr_power_decoupling`: HR drift (%) minus power drop (%) across WORK reps.
+- `dfa_a1_summary`: in-ride DFA alpha 1 analysis of the recorded R-R
+  intervals (`hrv` stream, requires HRV logging on the head unit and a chest
+  strap). Present ONLY for rides that were ridden as aerobic sessions:
+  ≥ 60 min, HR data, not a race, no `lactate-threshold-*` / `vo2max-*` /
+  `race-specific-*` tag, and aerobic intent established either by a
+  canonical `aerobic-threshold-*` / `recovery-*` tag (tags override the
+  automatic classification — outdoor terrain often pushes an easy ride's
+  power distribution into Z3/Z4) or by `training_distribution` `Base` or
+  `Pyramidal`; at most the three newest such rides per export. Threshold workouts,
+  HIIT and fast group rides are deliberately NOT analyzed, so a
+  `dfa_a1_summary` never describes an intentionally hard ride. The key is
+  omitted entirely when the ride has no `hrv` stream or fails this gate.
+  This is NOT the nightly `metrics.hrv`.
+  - `valid`: false when the data failed the quality gate; `reason` then says
+    why (coverage < 50 %, artifact rate > 10 %, too few valid windows) and
+    all other fields are absent. Use this to flag strap/contact problems.
+  - `artifact_pct` / `coverage_pct`: share of rejected beats (> 20 % jump to
+    the previous interval) and share of ride seconds with R-R data.
+  - `windows_total` / `windows_valid`: 120-second analysis windows (30 s
+    step) and those kept after the first 10 minutes with ≤ 5 % artifacts.
+  - `avg`: mean DFA a1 over valid windows (dimensionless, ~0.3–1.5; falls
+    with intensity).
+  - `time_above_0_75_pct` / `time_below_0_5_pct`: share of valid windows
+    above the aerobic-threshold marker 0.75 and below the 0.5 marker.
+  - `power_at_0_75` / `hr_at_0_75` / `threshold_windows`: mean power and HR
+    of the windows with DFA a1 in 0.65–0.85 (today's LT1 estimate for this
+    ride) and how many windows supported it (≥ 3 required; null otherwise).
+  - `power_at_0_75_pct_ftp`: `power_at_0_75` as % of `activity_ftp` (the FTP
+    valid on that day), e.g. `73.6`. Compare directly with the athlete's Zone
+    2 ceiling in % FTP (`metrics.power_zones_pct[1]`, default 75) — this is
+    the per-ride counterpart of `week_summary.aerobic_threshold_estimate.delta_pct`.
+    Null when no crossing or no activity FTP.
+  - In-ride durability is NOT derived from DFA a1; use `decoupling` /
+    `decoupling_label` for that.
 
 ---
 

@@ -262,6 +262,7 @@ intervals-icu-sync/
 ├── docs/
 │   ├── 2026-05 Next Level intervals-icu.pdf           # Webinar slides (German)
 │   ├── 2026-05 Next Level intervals-icu Step by Step.pdf  # Step-by-step setup guide (English)
+│   ├── dfa_a1.md                   # DFA alpha 1 in-ride aerobic-threshold marker reference (English)
 │   ├── gen_ai_setup_step_by_step.md  # GenAI coach and MCP setup guide (English)
 │   ├── genai_without_mcp.md       # Any-GenAI workflow without MCP (English)
 │   ├── webinar_notes.md            # Webinar companion guide (German)
@@ -275,6 +276,7 @@ intervals-icu-sync/
 │       ├── client.py               # HTTP client (intervals.icu API)
 │       ├── config.py               # Loads API_KEY, ATHLETE_ID from .env
 │       ├── data_quality.py         # Shared deterministic athlete-data quality checks
+│       ├── dfa_a1.py               # Shared DFA alpha 1 analysis of in-ride R-R intervals (hrv stream)
 │       ├── training_readiness.py   # Shared readiness traffic-light calculation
 │       ├── week_data_schema.py     # Pydantic models for consolidated week_data JSON schema
 │       └── wbal.py                 # Shared W'bal computation (Skiba differential model)
@@ -284,6 +286,7 @@ intervals-icu-sync/
 │   └── plans/                      # Training plan JSON files
 ├── tests/
 │   ├── test_data_quality.py        # Data-quality thresholds and MCP tool regression tests
+│   ├── test_dfa_a1_analysis.py     # DFA a1 computation, activity gate and weekly aerobic-threshold aggregate
 │   ├── test_next_best_training_prompt.py  # Compact recommendation and upload prompt contract
 │   └── test_upload_plan_regressions.py  # Regression tests for upload_plan.py and ZWO generation
 ├── .env.example
@@ -473,7 +476,7 @@ Fetches cycling and running activities from intervals.icu (Monday of previous we
 Included activity types are `Ride`, `MountainBikeRide`, and `GravelRide` (plus `VirtualRide` for indoor/platform rides), and `Run`, `TrailRun`, and `VirtualRun`.
 Missing or invalid `icu_training_load` values are treated as `0` during filtering.
 Cycling activities with a training load above `20` are always kept. Running activities are kept whenever intervals.icu supplies `icu_training_load`, even if the value is below `20`. Tagged activities below the cycling threshold are kept only when they carry at least one usable metric (training load, average or normalized power, heart rate, or zone times), so incomplete placeholder entries are dropped. If `icu_zone_times` is missing, running activities fall back to `icu_hr_zone_times` for the Z1/Z2, Z3/Z4, and Z5+ distribution.
-For activities with power data, the coach export also includes the activity FTP (`activity_ftp`) and activity-specific eFTP (`activity_eftp`) supplied by intervals.icu; these are separate from the current athlete Metrics FTP.
+For activities with power data, the coach export also includes the activity FTP (`activity_ftp`) and activity-specific eFTP (`activity_eftp`) supplied by intervals.icu; these are separate from the current athlete Metrics FTP. `activity_eftp` is estimated from the best efforts of that single ride and is a lower-bound estimate: rides without near-maximal efforts always yield values well below the athlete's real FTP, so low per-ride values carry no signal (see `coach-logic/interpretation-rules.md`, *Per-Activity eFTP*).
 Every exported activity also carries the post-activity fitness state reported by intervals.icu (`icu_ctl`/`icu_atl`) as `ctl`, `atl` and `form_absolute` (CTL − ATL), so the CTL/ATL/TSB trajectory across the export window is visible per session and not only as the current snapshot in `week_summary`.
 
 ```bash
@@ -486,7 +489,7 @@ Output: `data/raw/activities_{date}.json`
 
 ### `get_metrics.py`
 
-Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, the percentage delta between FTP and eFTP (`ftp_eftp_delta_pct`), W', rolling W', weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
+Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, the percentage delta between FTP and eFTP (`ftp_eftp_delta_pct`), W', rolling W', the configured Ride power zone upper bounds as % FTP (`power_zones_pct`, used as the Zone 2 reference for the DFA a1 aerobic-threshold estimate), weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
 In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place. The consolidation step also writes an explainable daily traffic light to `week_summary.training_readiness`, combining form, hard-session recency, HRV, resting HR, and sleep. Every exported activity includes `is_hard_session`, using the same classification as hard-session recency. A session with TSS at least 50% above current CTL counts as hard regardless of its training distribution. In addition, `HIIT` and `Polarized` sessions always count as hard, while `Threshold` sessions require at least 50 TSS or RPE 7+ so short, easy rides with incidental Z3/Z4 time do not reset hard-session recency.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 Weight values are normalized to kilograms (kg). If the athlete account stores weight in pounds, `get_metrics.py` converts it to kg before writing outputs.
@@ -529,6 +532,8 @@ Long-ride counting for fueling is tracked separately in
 `fueling_analysis.weekly_summary.number_of_long_rides`.
 Current rule: duration `>= 2.5 h` and no structured intervals.
 
+**Aerobic threshold estimate (DFA a1)**: When at least one exported activity in `coach_input_{monday}.json` carries a valid `dfa_a1_summary` that actually crossed DFA a1 = 0.75 (see `prepare_activities_for_coach.py`), the summary gains `aerobic_threshold_estimate` with `rides_used`, `threshold_windows_total`, the `power_at_0_75` / `hr_at_0_75` across those rides (weighted by each ride's `threshold_windows`, so rides with more evidence near the threshold count more), the athlete's configured Zone 2 ceiling in watts (`z2_upper_power`, `z2_upper_source` = `athlete_zones` from `metrics.power_zones_pct`, or `ftp_75pct` as fallback), and the relative `delta_pct` between the two. The key is omitted when no ride crossed the threshold; no multi-week trend is computed.
+
 ```bash
 python scripts/analyze_week.py
 ```
@@ -541,6 +546,7 @@ Output: console + `data/processed/week_summary_{monday}.json`
 
 Exports a simplified JSON of cycling and running activities in the active lookback window (`LOOKBACK_DAYS`, default: `7`) for sharing with a coach or ChatGPT. Includes duration, training load, HR (avg/max), RPE, interval summary, zone distribution from `icu_zone_times` or fallback `icu_hr_zone_times`, compact interval HR analysis (`interval_hr_analysis` with `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, `hr_power_decoupling`), decoupling, and carbohydrate intake. Power, FTP, polarization index, power-curve, and W'bal fields are included only when an activity has power data. The HR interval summary is computed only from eligible WORK intervals (minimum 120 seconds and minimum 95% FTP intensity). Decoupling labels are only classified for Base/Pyramidal/Threshold activities ≥ 90 min; shorter or high-intensity activities show `"limited durability signal"`.
 Ride-level W' fields use `icu_w_prime`; if that value is missing or `0`, the scripts automatically fall back to `icu_rolling_w_prime`. These fields are omitted for activities without power data.
+For longer rides that were ridden as aerobic sessions (≥ 60 min, HR data, not a race, no `lactate-threshold-*`/`vo2max-*`/`race-specific-*` tag, and either a canonical `aerobic-threshold-*`/`recovery-*` tag or a `Base`/`Pyramidal` `training_distribution` — the tag has priority because outdoor terrain often pushes an easy ride's power distribution into Z3/Z4) whose intervals.icu `stream_types` include `hrv`, the script analyzes the recorded R-R intervals and adds a compact `dfa_a1_summary` (DFA alpha 1: artifact and coverage quality gate, mean a1, share of time above 0.75 / below 0.5, and power and HR at a1 ≈ 0.75 as a per-ride aerobic-threshold estimate, plus `power_at_0_75_pct_ftp` relative to the activity FTP; in-ride durability remains a `decoupling` reading). At most the three newest qualifying rides are analyzed per run; threshold workouts, HIIT and fast group rides are deliberately skipped so that a low aerobic share never reads as a warning for an intentionally hard ride. The key is omitted entirely for rides without an `hrv` stream or outside the gate, and `valid: false` with a `reason` is written when the strap data fails the quality gate. Requires HRV logging to be enabled on the head unit (e.g. Garmin Edge: *System → Data Recording → Log HRV*) and a chest strap that transmits R-R intervals. Streams are fetched once per ride with a type filter and shared between the W'bal and DFA a1 analyses.
 Activities in the exported list are sorted by date/time with the newest activity first.
 Each activity also includes `ctl_delta`, `atl_delta`, and `form_absolute_delta` directly after their corresponding values: its CTL, ATL, and absolute form minus those of the chronologically previous **exported** activity. For example, CTL 45.2 after 44.1 gives `ctl_delta: 1.1`; ATL 52.1 after 53.3 gives `atl_delta: -1.2`. Deltas are rounded to one decimal place; each delta is `null` when either value is missing or there is no earlier exported activity.
 
@@ -905,6 +911,14 @@ A standalone, blog-ready guide to using the curated intervals.icu dataset with a
 > **Language:** English
 
 A blog-ready explanation of the Training Readiness traffic light, including its five input domains, scoring thresholds, hard-session definition, safety overrides, confidence levels, worked example, output structure, and limitations.
+
+---
+
+### [`docs/dfa_a1.md`](docs/dfa_a1.md)
+
+> **Language:** English
+
+Single reference for the DFA alpha 1 in-ride aerobic-threshold marker: what the metric is and how it differs from wellness HRV, head-unit prerequisites (HRV logging, chest strap), the computation and quality gates, the `dfa_a1_summary` and `aerobic_threshold_estimate` fields, the coach's reading rules and division of labour with decoupling, limitations, configuration constants, and literature references.
 
 ---
 
