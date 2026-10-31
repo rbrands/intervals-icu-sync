@@ -80,7 +80,11 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 
 Activity-level FTP fields are separate from the current athlete Metrics:
 `activities[].activity_ftp` is the FTP value stored with the activity, and
-`activities[].activity_eftp` is the activity-specific eFTP from intervals.icu.
+`activities[].activity_eftp` is the eFTP intervals.icu estimates from the
+best efforts of that single ride. It is a lower-bound estimate: rides
+without near-maximal efforts always produce values well below the real FTP,
+which is expected and carries no signal. Only a value at or above
+`metrics.ftp` is noteworthy (see interpretation rules, *Per-Activity eFTP*).
 `activities[].is_hard_session` marks whether the activity meets the same
 CTL-relative load, training-distribution, or RPE rules used by
 `week_summary.days_since_last_hard_session`.

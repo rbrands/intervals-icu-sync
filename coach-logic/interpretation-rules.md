@@ -178,6 +178,27 @@ intervals.icu.
 
 ---
 
+## Per-Activity eFTP (`activity_eftp`)
+
+`activities[].activity_eftp` is estimated by intervals.icu from the best
+efforts of **that single ride**. It is a lower-bound estimate: any ride
+without near-maximal efforts (Z2 rides, recovery spins, most races ridden
+tactically) produces a value well below the athlete's real FTP. That is
+expected and carries **no signal**.
+
+- `activity_eftp` below `metrics.ftp` → say nothing; a sub-maximal ride
+  cannot tell anything about fitness or FTP.
+- `activity_eftp` at or above `metrics.ftp` → noteworthy: the ride contained
+  an effort that matches or exceeds the configured FTP (possible
+  breakthrough; the configured FTP may be outdated). Suggest the athlete
+  checks the eFTP trend in intervals.icu; never change zones from a single
+  ride.
+- Never compare `activity_eftp` values across rides or aggregate them; only
+  the athlete-level `metrics.eftp` (42-day estimate) is a trend signal (see
+  *Cross-check with FTP vs. eFTP*).
+
+---
+
 ## Anaerobic Capacity (W')
 
 w_prime_drop_pct = w_prime_bal_drop_j / w_prime_j × 100

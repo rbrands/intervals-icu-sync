@@ -8,7 +8,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 
-## [1.5.0] - 2026-10-29
+## [1.5.0] - 2026-10-31
 
 ### Added
 
@@ -26,6 +26,11 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Aligned the W'bal gate in `prepare_activities_for_coach.py` with the canonical tag taxonomy: it now triggers on `vo2max-*` / `race-specific-*` tags and activity type `Race`; the previous undefined substring match on tags containing "event" was removed. The DFA a1 gate reuses the same prefixes (plus `lactate-threshold-*`) for its exclusions.
 - `prepare_activities_for_coach.py` now fetches activity streams once per ride with a type filter and shares them between the W'bal and DFA a1 analyses instead of downloading the full stream payload for W'bal alone.
 - Regenerated the week-data contracts (`contracts/week-data/week-data.schema.json`, `contracts/week-data/WeekDataDto.cs`) for `ActivityDfaA1Summary`, `AerobicThresholdEstimate`, and `metrics.power_zones_pct`.
+
+### Fixed
+
+- Corrected the interpretation of the per-ride `activities[].activity_eftp` across coach-logic and prompts: the value is estimated from the best efforts of that single ride and is a lower-bound estimate, so values below the configured FTP are expected for any ride without near-maximal efforts and carry no signal. Added a *Per-Activity eFTP* section to `coach-logic/interpretation-rules.md`, expanded the field description in `coach-logic/input-schema.md` and `README.md`, and removed the `prompts/discipline_zwift.md` "FTP consistency" rule that told the coach to flag a trainer vs. power-meter mismatch whenever a `VirtualRide` eFTP deviated more than 5 % from FTP — that rule fired on every easy ride and produced nonsense warnings. The mismatch concept is dropped entirely rather than negated, so it cannot prime the model to raise it. Per-ride eFTP is now only mentioned when it reaches or exceeds the configured FTP (possible breakthrough / outdated FTP); trend reading stays with the athlete-level `metrics.eftp`.
+
 
 ## [1.4.2] - 2026-10-25
 
