@@ -216,15 +216,25 @@ maximal test.
 
 ### Description and upload contract
 
-Use this fixed description template, filling the values from the phase table:
+Write the complete description, including every label and sentence, in the
+request's `response_language`. Translate the phase name and all prose; keep
+the canonical tag in English. Use this template and translate its labels and
+placeholder values:
 
 ```text
-Phase: <AA|MT|MS|SM> (session <n> of <target>)
-Exercises: <1–2 primary> + leg curl + core
-Sets × reps @ % 1RM: <from table>
-Rest: <from table>
-Notes: <progression hint, e.g. "add 2.5 kg if all sets completed">
+Phase: <phase name> — Einheit <n> von <target> der Phase
+Übungen: <1–2 Hauptübungen> + Beinbeuger + Rumpf
+Sätze × Wiederholungen @ % 1RM: <aus der Tabelle>
+Pause: <aus der Tabelle>
+Hinweise: <Progression, z. B. "2,5 kg ergänzen, wenn alle Sätze geschafft wurden">
 ```
+
+n is `week_summary.strength.phase_session_count` plus this workout's position
+in the target week, counting strength sessions in planned order. `<target>` is
+the phase's total target (4–6, 2–3, 8–12, or ongoing), not a weekly target. When
+n reaches the phase maximum (6 for adaptation, 3 for transition, 12 for maximum),
+append one sentence in `response_language` that the phase is complete and the
+next phase begins with the following session.
 
 No `steps` (including nested steps), no `library_workout_id`;
 `activity_type: WeightTraining`, exactly one canonical `strength-<phase>` tag,

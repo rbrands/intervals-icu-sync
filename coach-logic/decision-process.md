@@ -176,11 +176,19 @@ race classification from those tags.
 
 - At most one ride and at most one WeightTraining entry per calendar day.
   Never two rides; one ride plus one strength session is allowed.
-- Preferred: strength after an easy/aerobic ride or on a ride-rest day.
-  Allowed: after a threshold session on the same day.
-- During maximum, never place strength on the day of or the day before a
-  VO2max session or a long ride.
-- Never two strength sessions on consecutive days.
+- Place each strength session on the first feasible slot in this ranked order:
+  1. A day with no ride (rest day).
+  2. A day with an easy aerobic or recovery ride, after the ride.
+  3. A day with a threshold session, after the ride.
+- Never place strength on a long-ride day, VO2max day, or race day. Never
+  schedule strength on consecutive days; leave at least two calendar days
+  between strength sessions.
+- An athlete's explicit preference naming strength days overrides the ranked
+  order, but not the no-long-ride/VO2max/race-day exclusions, spacing rules,
+  safety constraints, or calendar availability.
+- Name the chosen strength days and the reason in one sentence. Ensure the
+  plan-text daily list is generated from the final upload JSON so the dates
+  and strength entries match exactly.
 - Maximum counts as hard for the "never two hard days in a row" rule;
   adaptation, transition, and maintenance do not. Preserve full rest days,
   race protection, and `training_allowed: false` constraints.

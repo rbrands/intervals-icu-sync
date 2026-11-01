@@ -236,11 +236,29 @@ definition:
       `library_workout_id`, carry exactly one canonical strength phase tag, and
       use the phase-table duration and fixed description in workout-library.md:
       adaptation 45-60, transition 45-60, maximum 50-75, maintenance 30-45 minutes.
-      The description has Phase, Exercises, Sets × reps @ % 1RM, Rest, Notes.
+      Write the entire description, labels included, in
+      `{{response_language}}`; keep the canonical tag in English. Its first
+      line is the phase counter: translate the label and render
+      `Phase: <localized phase name> — <localized "session n of target in the
+      phase">`, where n = `week_summary.strength.phase_session_count` plus this
+      workout's position in the target week. Target is the total phase target,
+      not weekly frequency. When n reaches the phase maximum (6 adaptation,
+      3 transition, 12 maximum), append one localized sentence that the phase
+      is complete and the next phase starts with the following session.
     - Plan strength per decision-process.md, Strength; use week_summary.strength
       for phase/frequency. Strength is not a ride domain or limiter; no intensity
       distribution, decoupling, or fueling interpretation. Never mention missing RPE.
     - At most one ride and at most one WeightTraining entry per calendar day.
+    - Write the plan-text day-by-day list from the final upload JSON, one line
+      per JSON entry, same dates and including every strength entry. Do not
+      describe a placement that differs from the JSON.
+    - Name the selected strength days and the reason in one sentence.
+    - Place strength in this order of first feasible slot: no-ride rest day;
+      easy aerobic/recovery ride day after the ride; threshold day after the
+      ride. Never on a long-ride, VO2max, or race day; no consecutive days and
+      at least two calendar days between strength sessions. A stated athlete
+      day preference overrides this order only, not these exclusions or safety
+      constraints.
     - A workout may carry multiple tags when it serves multiple purposes.
     - Do not emit a `ride_type` field. Downstream logic derives ride intent from
       the tags; each tag maps independently and the session counts toward all

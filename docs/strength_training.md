@@ -127,12 +127,20 @@ all exported activities. These two are not directly comparable today, and streng
 Four entries, one per phase, with the table from section 2 as the "structure" column, the exercise selection rules, and a fixed description template:
 
 ```
-Phase: <AA|MT|MS|SM> (session <n> of <target>)
-Exercises: <1–2 primary> + leg curl + core
-Sets × reps @ % 1RM: <from table>
-Rest: <from table>
-Notes: <progression hint, e.g. "add 2.5 kg if all sets completed">
+Phase: <phase name> — Einheit <n> von <target> der Phase
+Übungen: <1–2 Hauptübungen> + Beinbeuger + Rumpf
+Sätze × Wiederholungen @ % 1RM: <aus der Tabelle>
+Pause: <aus der Tabelle>
+Hinweise: <Progression>
 ```
+
+The whole description, labels included, is written in `response_language`;
+translate the phase name and prose, but keep the canonical tag in English.
+`n = phase_session_count + position in the target week`; `<target>` is the
+total phase target, not sessions per week. When n reaches the phase maximum
+(6 adaptation, 3 transition, 12 maximum), append one sentence in the response
+language stating that the phase is complete and the next phase starts with the
+following session.
 
 No `steps`; `activity_type: WeightTraining`; `tss` = planned RPE-based load as intervals.icu will compute it (duration × RPE model), stated for
 information only.
@@ -166,9 +174,19 @@ Frequency (decision D2):
 
 Placement:
 
-- Strength may share a day with a ride (exception to the one-workout-per-day rule, see 4.3). Preferred: after an easy/aerobic ride or on the rest day. Allowed: after a threshold session (same day). Never on the day of or the day before a VO2max session during `maximum`; never the day before the long ride during `maximum`.
-- Never two strength sessions on consecutive days.
-- `maximum` counts as a hard session for the "never two hard days in a row" rule; `adaptation`, `transition`, `maintenance` do not.
+- Place each strength session on the first feasible slot in this order:
+  1. A day with no ride (rest day).
+  2. A day with an easy aerobic or recovery ride, after the ride.
+  3. A day with a threshold session, after the ride.
+- Never on the long-ride day, VO2max day, or race day. Never schedule strength
+  on consecutive days; leave at least two calendar days between sessions.
+- An athlete preference naming strength days overrides this ranking only, not
+  the exclusions, spacing, safety rules, or calendar availability.
+- Name the chosen days and the reason in one sentence. Build the day-by-day
+  list from final upload JSON, one line per entry, with matching dates and
+  strength sessions included.
+- `maximum` counts as a hard session for the "never two hard days in a row"
+  rule; `adaptation`, `transition`, `maintenance` do not.
 
 Fatigue inference: the existing rule in `prompts/discipline_fitness.md` ("assume unseen off-bike load") is removed; strength load is now visible.
 

@@ -180,7 +180,25 @@ Rules:
   `library_workout_id`, carry exactly one canonical strength phase tag, and
   use the phase-table duration and fixed description in workout-library.md:
   adaptation 45-60, transition 45-60, maximum 50-75, maintenance 30-45 minutes.
-  The description has Phase, Exercises, Sets × reps @ % 1RM, Rest, Notes.
+  Write the complete description, including all labels, in `response_language`;
+  preserve the tag in English. Its first line is the phase counter:
+  `Phase: <localized phase name> — Einheit <n> von <target> der Phase`, where
+  n is `phase_session_count + position in the target week`, and target is the
+  total phase target rather than the weekly frequency. When n reaches the
+  phase maximum (6 adaptation, 3 transition, 12 maximum), append one
+  `response_language` sentence that the phase is complete and the next phase
+  starts with the following session. Include the translated Exercises,
+  Sets × reps @ % 1RM, Rest, and Notes labels from workout-library.md.
+- Place each strength session on the first feasible slot in this ranked order:
+  no-ride rest day; easy aerobic/recovery ride day after the ride; threshold
+  day after the ride. Never on long-ride, VO2max, or race days; never on
+  consecutive days and leave at least two calendar days between strength
+  sessions. An athlete preference naming strength days overrides the ranking
+  only, not exclusions, spacing, safety, or availability.
+- Name the selected strength days and the reason in one sentence.
+- Write the plan-text day-by-day list from the final upload JSON, one line per
+  JSON entry, with identical dates and all strength entries included. Do not
+  describe a different placement in prose.
 - Plan strength per decision-process.md, Strength; use week_summary.strength
   for phase/frequency. Strength is not a ride domain or limiter; no intensity
   distribution, decoupling, or fueling interpretation. Never mention missing RPE.
