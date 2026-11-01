@@ -785,7 +785,7 @@ list. To refresh input first, run `prepare_week_for_coach.py`.
 
 ### `check_plan_tss.py`
 
-Checks whether a generated plan's stated TSS values match the deterministic step-based calculation and whether the weekly total is within the requested target tolerance.
+Checks whether a generated plan's stated Ride TSS values match the deterministic step-based calculation and whether completed plus planned Ride TSS is within the weekly Ride target tolerance. Run and WeightTraining entries are listed but excluded.
 
 ```bash
 # Check a generated plan file against the target load
@@ -795,9 +795,26 @@ python scripts/check_plan_tss.py --plan /tmp/plan.json --load-target 300 --toler
 python scripts/check_plan_tss.py --plan data/plans/my_plan.json --load-target 300
 ```
 
-The script accepts either a bare workout array or an object shaped like `{ "workouts": [...] }`. For workouts with `library_workout_id`, the `tss` value is kept as-is. For generated workouts with `steps`, TSS is recomputed from the step durations and power values and compared against the stated value using a ±5% tolerance floor of 2 TSS points.
+The script accepts either a bare workout array or an object shaped like `{ "workouts": [...] }`. Ride types are `Ride`, `VirtualRide`, `MountainBikeRide`, and `GravelRide`; absent or null `activity_type` defaults to Ride. For ride workouts with `library_workout_id`, the `tss` value is kept as-is. For generated rides with `steps`, TSS is recomputed from the step durations and power values and compared against the stated value using a ±5% tolerance floor of 2 TSS points. Non-ride entries keep their stated TSS as computed TSS without a mismatch check.
 
 Output: a JSON object with `workouts`, `week`, `valid`, and `issues` keys.
+Each workout has `counted` to indicate Ride-target inclusion. `week.planned_tss`
+is retained and equals `planned_ride_tss`; `planned_other_tss` sums excluded
+entries. `total_tss = planned_ride_tss + completed_tss`. Pass completed **Ride**
+TSS with `--completed-tss` for the current week and zero for a future week.
+`week.planned_ride_hours` and `planned_other_hours` report the matching duration
+split. Optional `--weekly-time-target-hours` checks an upper budget for planned
+Ride hours only (no lower-bound or percentage tolerance); `time_within_budget`
+reports the result and a violation makes `valid` false.
+
+The local MCP `check_plan_tss(plan_json, load_target, tolerance_pct=10,
+completed_tss=0, athlete_data="")` returns the same JSON. Optional `athlete_data`
+is a coach-input JSON string; it derives completed TSS from
+`week_summary.ride_load`, falling back to `total_training_load` only when
+`ride_load` is absent. Omit athlete data and keep completed TSS zero for a
+future week.
+The local MCP TSS tool also accepts `weekly_time_target_hours` explicitly;
+it does not infer the intended week from athlete data.
 
 ---
 
@@ -866,6 +883,29 @@ Output: one `Created` or `Updated` line per workout, summary of counts.
 ### `validate_plan.py`
 
 Validates a plan JSON file against the upload schema before calendar upload.
+WeightTraining entries require `tags` containing exactly one canonical phase
+tag (`strength-adaptation`, `strength-transition`, `strength-maximum`, or
+`strength-maintenance`), duration 30-75 minutes, absent or empty steps
+(including nested `workout.steps`), and no `library_workout_id`. The legacy
+`tag` field remains tolerated but does not replace the required `tags` array.
+Schema errors include JSON locations and readable messages.
+
+The local MCP `validate_week_plan(plan_json="", max_errors=10, athlete_data="")`
+also checks at most one ride and one WeightTraining entry per calendar date;
+a ride and strength session on the same date are allowed. Optional
+`athlete_data` is a coach-input JSON string: entries of every sport are rejected
+on dates marked `training_allowed: false` in
+`week_summary.training_plan[].day_constraints`. Availability checks are skipped
+when no constraints are supplied. These date-level semantic checks are in the
+local MCP tool; the standalone script validates the schema.
+The local MCP validator checks `weekly_time_target_hours` in each supplied
+training-plan week against planned rides in that ISO week only. On `LIMITED`
+days, `max_training_time_hours` caps the sum of ALL entries on the date.
+For example, 60 minutes Ride plus 45 minutes WeightTraining requires 1.75
+hours: a 1.75-hour day cap passes, while 1.5 or 1.0 hours fails. Time checks
+are skipped when the respective target or constraints are absent. After schema
+validation, the result includes `week.planned_ride_hours` and
+`week.planned_other_hours` for the supplied plan.
 
 Default inputs:
 - Plan: `data/plans/week_plan.json`

@@ -52,7 +52,7 @@ Exercise selection per session (3–4 exercises):
 ### 3.1 Activities export
 
 - `scripts/get_activities.py`: include activity type `WeightTraining`.
-  Always keep such activities regardless of `icu_training_load`; load is optional. STRAVA-source duplicates remain excluded.
+  Keep such activities whenever intervals.icu supplies `icu_training_load` (same rule as runs; no 20-TSS threshold).
 - `scripts/prepare_activities_for_coach.py`: for `WeightTraining` omit all power-, zone-, decoupling-, W'bal-, power-curve-, DFA- and fueling fields.
   Export `id`, `type`, `date`, `name`, `tags`, `duration_hours`, `rpe`, `notes`, `training_load`, `ctl`, `atl`, `form_absolute` and the deltas.
 - `is_hard_session`: `true` for `strength-maximum`, `false` for the other three strength tags. (The generic "TSS ≥ 150 % of CTL" rule stays.)
@@ -60,11 +60,11 @@ Exercise selection per session (3–4 exercises):
 
 ### 3.2 Strength history (decision D1)
 
-The 7-day activity window cannot track a phase that spans 4–6 weeks, and `training_load_history` is aggregated. Preparation therefore fetches completed activities and planned WORKOUT events for the last 16 weeks (`STRENGTH_HISTORY_WEEKS` can override the window). The activities request uses a minimal `fields=` projection and filters WeightTraining and STRAVA duplicates client-side; no streams or per-activity analysis are fetched. `strength_history` is an internal intermediate, never a top-level coach_input or MCP payload field:
+The 7-day activity window cannot track a phase that spans 4–6 weeks, and `training_load_history` is aggregated. `prepare_week_data` therefore fetches a compact list of `WeightTraining` events of the last 16 weeks (one events call with a type filter; no streams, no per-activity analysis) and exports:
 
 ```json
-[
-  { "date": "2026-10-28", "tags": ["strength-maximum"], "phase_source": "activity", "duration_minutes": 50, "training_load": 38, "rpe": 8 }
+"strength_history": [
+  { "date": "2026-10-28", "tags": ["strength-maximum"], "duration_minutes": 50, "training_load": 38 }
 ]
 ```
 
@@ -74,11 +74,12 @@ Tag resolution per completed `WeightTraining` activity:
 2. Otherwise fall back to the `strength-*` tag of the planned `WORKOUT` event (`WeightTraining`, same calendar day) — intervals.icu matches planned rides to completed activities and carries tags over, but this is not guaranteed for strength, and athletes rarely tag by hand. `prepare_week_data` already has the planned events in scope; the history fetch requests planned events for the same 16-week window.
 3. No tag from either source → the activity is listed with `tags: []` and `phase_source: "none"`; it does not advance any phase counter.
 
-Each internal history row carries `phase_source` (`activity` | `planned` | `none`). Only the derived compact summary below is exported; untagged rows contribute to session counts, not payload size.
+Each history row carries `phase_source` (`activity` | `planned` | `none`) so the coach can mention untagged sessions. Payload size at 2–3 sessions
+per week ≈ 30–50 rows.
 
 ### 3.3 `week_summary.strength`
 
-Derived from internal `strength_history`, today's date, and the existing current-week per-sport totals:
+Derived from `strength_history` (and the current week's activities):
 
 ```json
 "strength": {
@@ -89,20 +90,14 @@ Derived from internal `strength_history`, today's date, and the existing current
   "sessions_this_week": 1,
   "days_since_last_strength": 3,
   "last_session_tags": ["strength-maximum"],
-  "weekly_strength_load": 38,
-  "sessions_per_week_last_4": [2, 2, 2, 2],
-  "untagged_sessions_last_16_weeks": 0
+  "weekly_strength_load": 38
 }
 ```
 
 - `current_phase`: phase of the most recent tagged session; `null` when the history is empty.
-- `phase_session_count`: number of consecutive most-recent tagged sessions carrying the same phase tag. Untagged rows are skipped without counting or breaking the run; a different phase tag ends it.
+- `phase_session_count`: number of consecutive most-recent sessions carrying the same phase tag (a different phase tag resets the count).
 - `phase_started`: date of the first session in that run.
 - A gap of ≥ 21 days since the last session resets `current_phase` to `null` (the coach then restarts with AA, see 4.2).
-- `sessions_this_week` and `weekly_strength_load` reuse `strength_sessions` and `strength_load`.
-- `sessions_per_week_last_4`: four integer counts of ALL completed WeightTraining sessions (tagged or not) per completed ISO week, oldest first and aligned with `training_load_history`. The current incomplete week is excluded.
-- `untagged_sessions_last_16_weeks`: count of internal rows with `phase_source: "none"` in the configured history window (16 weeks by default).
-- When the untagged count is positive and `current_phase` is null or stale, the coach should ask the athlete to tag WeightTraining sessions.
 
 ### 3.4 Load accounting
 
@@ -188,7 +183,7 @@ Fatigue inference: the existing rule in `prompts/discipline_fitness.md` ("assume
 - Plan card: own icon, phase label, sets/reps line from the description; TSS shown but excluded from the weekly Ride TSS indicator.
 - `PlanTssCheckResult` consumer: strength rows displayed, not summed.
 - Week overview: a small "Strength: MS 5/8–12" badge fed by `week_summary.strength`.
-- DTO/schema regeneration for `week_summary.strength`; raw `strength_history` stays internal.
+- DTO/schema regeneration for the new `week_summary.strength` and `strength_history` fields.
 
 ---
 
@@ -198,7 +193,7 @@ intervals-icu-sync
 
 - [ ] `scripts/get_activities.py` — include `WeightTraining`
 - [ ] `scripts/prepare_activities_for_coach.py` — strength field set,
-      `is_hard_session`, internal `strength_history`, exported `week_summary.strength`,
+      `is_hard_session`, `strength_history`, `week_summary.strength`,
       per-sport load breakdown, `achievement_pct` on `ride_load`
 - [ ] `src/intervals_icu/client.py` — events fetch with type filter for the
       16-week strength history
