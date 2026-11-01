@@ -60,22 +60,22 @@ Exercise selection per session (3–4 exercises):
 
 ### 3.2 Strength history (decision D1)
 
-The 7-day activity window cannot track a phase that spans 4–6 weeks, and `training_load_history` is aggregated. `prepare_week_data` therefore fetches a compact list of `WeightTraining` events of the last 16 weeks (one events call with a type filter; no streams, no per-activity analysis) and exports:
+The 7-day activity window cannot track a phase that spans 4–6 weeks, and `training_load_history` is aggregated. `prepare_week_data` therefore fetches projected completed WeightTraining activities for the last 16 weeks and planned WeightTraining WORKOUT events. Completed sessions end at today; planned events cover complete ISO weeks, from the Monday containing the history start through the Sunday of the current week. No streams or per-activity analysis are fetched. The list is an internal intermediate, never exported to the coach or MCP client:
 
 ```json
 "strength_history": [
-  { "date": "2026-10-28", "tags": ["strength-maximum"], "duration_minutes": 50, "training_load": 38 }
+  { "date": "2026-10-28", "tags": ["strength-maximum"], "phase_source": "planned_week", "duration_minutes": 50, "training_load": 38 }
 ]
 ```
 
 Tag resolution per completed `WeightTraining` activity:
 
 1. A canonical `strength-*` tag on the activity itself wins.
-2. Otherwise fall back to the `strength-*` tag of the planned `WORKOUT` event (`WeightTraining`, same calendar day) — intervals.icu matches planned rides to completed activities and carries tags over, but this is not guaranteed for strength, and athletes rarely tag by hand. `prepare_week_data` already has the planned events in scope; the history fetch requests planned events for the same 16-week window.
-3. No tag from either source → the activity is listed with `tags: []` and `phase_source: "none"`; it does not advance any phase counter.
+2. Otherwise fall back to canonical tags of a planned WeightTraining WORKOUT on the same calendar date, with `phase_source: "planned"`.
+3. Otherwise use canonical tags of the closest planned WeightTraining WORKOUT in the same ISO year/week (Monday–Sunday), with `phase_source: "planned_week"`. For a mid-week phase change, the closest date wins; equal-distance ties prefer the earlier date. Never use an event in the following or previous ISO week.
+4. No resolved tag → `tags: []` and `phase_source: "none"`; the session does not advance any phase counter.
 
-Each history row carries `phase_source` (`activity` | `planned` | `none`) so the coach can mention untagged sessions. Payload size at 2–3 sessions
-per week ≈ 30–50 rows.
+Each internal history row carries `phase_source` (`activity` | `planned` | `planned_week` | `none`) and whether any planned WeightTraining event existed in its week. Only `none` contributes to `untagged_sessions_last_16_weeks`. The coach receives only the derived compact summary, including `tagging_reminder_needed`.
 
 ### 3.3 `week_summary.strength`
 
@@ -90,7 +90,10 @@ Derived from `strength_history` (and the current week's activities):
   "sessions_this_week": 1,
   "days_since_last_strength": 3,
   "last_session_tags": ["strength-maximum"],
-  "weekly_strength_load": 38
+  "weekly_strength_load": 38,
+  "sessions_per_week_last_4": [2, 2, 2, 2],
+  "untagged_sessions_last_16_weeks": 0,
+  "tagging_reminder_needed": false
 }
 ```
 
@@ -98,6 +101,10 @@ Derived from `strength_history` (and the current week's activities):
 - `phase_session_count`: number of consecutive most-recent sessions carrying the same phase tag (a different phase tag resets the count).
 - `phase_started`: date of the first session in that run.
 - A gap of ≥ 21 days since the last session resets `current_phase` to `null` (the coach then restarts with AA, see 4.2).
+- `sessions_per_week_last_4`: all completed sessions per last four completed ISO weeks, oldest first and aligned with `training_load_history`.
+- `untagged_sessions_last_16_weeks`: only sessions whose internal `phase_source` is `none`.
+- `tagging_reminder_needed`: true when the current or previous ISO week contains unresolved strength sessions and no planned WeightTraining event existed in that same week. An untagged planned event also suppresses the reminder. Plan text mentions tagging only when this Boolean is true.
+- For analysis with `current_phase: null` and `strength_sessions > 0`, describe adaptation as a working assumption, not a finding, and add inside the Strength bullet: "Tag sessions or let the coach plan strength so the phase can be tracked." Never issue a separate warning or missing-RPE reminder.
 
 ### 3.4 Load accounting
 
@@ -228,4 +235,4 @@ coach-logic docs → prompts → frontend. Each step is independently testable.
 - **D2 — Frequency**: max 2 sessions/week in AA/MT/MS, 1 on yellow readiness, 0 on red; 1/week in SM.
 - **D3 — Frontend**: `WorkoutType.Strength` with phase, own card, excluded from the Ride TSS indicator.
 - **D4 — Legacy tag `strength`**: ignored.
-- **D5 — Tag fallback**: an untagged completed `WeightTraining` activity inherits the `strength-*` tag of the planned `WeightTraining` event on the same day (section 3.2). The coach always tags the planned event; manual tagging of the completed activity is optional.
+- **D5 — Tag fallback**: canonical completed tags win; otherwise inherit canonical tags from a same-date planned WeightTraining event (`planned`), then the closest planned WeightTraining event in the same ISO year/week (`planned_week`). Equal-distance ties prefer the earlier date; no cross-week fallback. Without a match use `none`. The coach tags planned events; manual tagging of completed sessions is optional.

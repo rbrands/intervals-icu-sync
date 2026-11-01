@@ -101,6 +101,10 @@ Regel fuer Sicherheitsgrad:
   Diesen Punkt weglassen, wenn `current_phase` null und
   `week_summary.strength_sessions == 0` ist. Strength-Load ist nur informativ;
   keine Intensitaetsverteilungs-, Decoupling- oder Missing-RPE-Bewertung.
+  Bei `current_phase` null und `strength_sessions > 0` adaptation als
+  Arbeitsannahme nennen, nicht als Befund. Innerhalb dieses Punkts einen
+  neutralen Satz hinzufuegen: Einheiten taggen oder Kraft vom Coach planen
+  lassen, damit die Phase verfolgt werden kann. Keine Warnung daraus machen.
 
 **Fueling**
 - Durchschnittliche Carb-Aufnahme pro Stunde
@@ -161,6 +165,10 @@ Confidence level rule:
   Skip this bullet when current_phase is null and
   `week_summary.strength_sessions == 0`. Strength load is informational only;
   do not interpret intensity distribution or decoupling, or mention missing RPE.
+  When current_phase is null and strength_sessions > 0, name adaptation as a
+  working assumption, not a finding. Inside this bullet add one neutral sentence:
+  "Tag sessions or let the coach plan strength so the phase can be tracked."
+  Do not turn it into a warning.
 
 **Fueling**
 - Average carb intake per hour

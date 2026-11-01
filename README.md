@@ -642,7 +642,14 @@ canonical phase tags, and exports only `week_summary.strength`; the raw history
 stays internal and is not included in coach or MCP payloads. The compact summary
 includes `sessions_per_week_last_4` (all sessions per completed ISO week, oldest
 first, aligned with `training_load_history`) and
-`untagged_sessions_last_16_weeks` (sessions with no resolved canonical tag).
+`untagged_sessions_last_16_weeks` (only sessions with phase_source `none`) and
+`tagging_reminder_needed` (unresolved sessions in the current/previous ISO week
+with no planned strength event in that same week). Activity phase tags win,
+then same-date planned tags, then tags from the nearest planned WeightTraining
+event in the same ISO year/week; equal-distance ties prefer the earlier date.
+Planned events are fetched through Sunday of the current week, including the
+full ISO week containing the history start. The raw history remains internal.
+Week-data schema version is 1.8.0.
 The local and hosted MCP `prepare_week_data` tools use the same derivation.
 Set `STRENGTH_HISTORY_WEEKS` to change the default history window, including
 the window used for the untagged count. In the coach activity payload, `is_hard_session` is true for

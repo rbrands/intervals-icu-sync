@@ -167,6 +167,7 @@ class StrengthSummary(_SchemaModel):
     weekly_strength_load: float | int
     sessions_per_week_last_4: list[int] = Field(min_length=4, max_length=4)
     untagged_sessions_last_16_weeks: int
+    tagging_reminder_needed: bool
 
 
 class WeekSummary(_SchemaModel):

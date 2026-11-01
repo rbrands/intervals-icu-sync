@@ -58,14 +58,18 @@ def build_strength_history(
     completed_activities: list[dict],
     planned_events: list[dict],
 ) -> list[dict]:
-    """Resolve canonical phase tags for completed strength sessions."""
+    """Resolve phase tags by activity, same-day plan, then nearest ISO-week plan."""
     planned_tags_by_date: dict[str, list[str]] = {}
+    planned_weeks: set[tuple[int, int]] = set()
     for event in planned_events:
         if event.get("type") not in (None, "WeightTraining"):
             continue
         event_date = (event.get("start_date_local") or event.get("date") or "")[:10]
+        if not event_date:
+            continue
+        planned_weeks.add(date.fromisoformat(event_date).isocalendar()[:2])
         tags = _canonical_strength_tags(event.get("tags"))
-        if event_date and tags:
+        if tags:
             target = planned_tags_by_date.setdefault(event_date, [])
             target.extend(tag for tag in tags if tag not in target)
 
@@ -79,6 +83,8 @@ def build_strength_history(
         session_date = (activity.get("start_date_local") or "")[:10]
         if not session_date:
             continue
+        session_day = date.fromisoformat(session_date)
+        session_week = session_day.isocalendar()[:2]
 
         tags = _canonical_strength_tags(activity.get("tags"))
         if tags:
@@ -86,6 +92,22 @@ def build_strength_history(
         else:
             tags = planned_tags_by_date.get(session_date, [])
             phase_source = "planned" if tags else "none"
+            if not tags:
+                candidates = [
+                    planned_date
+                    for planned_date in planned_tags_by_date
+                    if date.fromisoformat(planned_date).isocalendar()[:2] == session_week
+                ]
+                if candidates:
+                    closest_date = min(
+                        candidates,
+                        key=lambda day: (
+                            abs((date.fromisoformat(day) - session_day).days),
+                            day,
+                        ),
+                    )
+                    tags = planned_tags_by_date[closest_date]
+                    phase_source = "planned_week"
 
         moving_time = _optional_number(activity.get("moving_time")) or 0
         history.append(
@@ -93,6 +115,7 @@ def build_strength_history(
                 "date": session_date,
                 "tags": list(tags),
                 "phase_source": phase_source,
+                "planned_week_exists": session_week in planned_weeks,
                 "duration_minutes": int((moving_time + 30) // 60),
                 "training_load": _optional_number(activity.get("icu_training_load")),
                 "rpe": _optional_number(activity.get("icu_rpe")),
@@ -151,11 +174,18 @@ def build_strength_week_summary(
     }
     current_monday = today - timedelta(days=today.weekday())
     sessions_per_week = [0, 0, 0, 0]
+    tagging_reminder_needed = False
     first_week = current_monday - timedelta(weeks=4)
     for row in history:
         session_date = date.fromisoformat(row["date"])
         if first_week <= session_date < current_monday:
             sessions_per_week[(session_date - first_week).days // 7] += 1
+        if (
+            current_monday - timedelta(weeks=1) <= session_date <= today
+            and row.get("phase_source") == "none"
+            and not row.get("planned_week_exists", False)
+        ):
+            tagging_reminder_needed = True
     return {
         "current_phase": current_phase,
         "phase_started": phase_started,
@@ -169,6 +199,7 @@ def build_strength_week_summary(
         "untagged_sessions_last_16_weeks": sum(
             row.get("phase_source") == "none" for row in history
         ),
+        "tagging_reminder_needed": tagging_reminder_needed,
     }
 
 
@@ -189,10 +220,15 @@ def fetch_strength_history(
         api_key = API_KEY if api_key is None else api_key
         athlete_id = ATHLETE_ID if athlete_id is None else athlete_id
 
-    oldest = (today - timedelta(weeks=_strength_history_weeks())).isoformat()
+    oldest_day = today - timedelta(weeks=_strength_history_weeks())
+    oldest = oldest_day.isoformat()
     newest = today.isoformat()
     completed = get_strength_history_activities(api_key, athlete_id, oldest, newest)
-    planned = get_planned_strength_events(api_key, athlete_id, oldest, newest)
+    planned_oldest = (oldest_day - timedelta(days=oldest_day.weekday())).isoformat()
+    planned_newest = (today + timedelta(days=6 - today.weekday())).isoformat()
+    planned = get_planned_strength_events(
+        api_key, athlete_id, planned_oldest, planned_newest,
+    )
     return build_strength_history(completed, planned)
 
 

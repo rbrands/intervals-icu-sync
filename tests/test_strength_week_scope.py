@@ -416,6 +416,7 @@ class StrengthHistoryTests(unittest.TestCase):
                     "date": "2026-10-12",
                     "tags": ["strength-maintenance"],
                     "phase_source": "planned",
+                    "planned_week_exists": True,
                     "duration_minutes": 30,
                     "training_load": None,
                     "rpe": None,
@@ -424,6 +425,7 @@ class StrengthHistoryTests(unittest.TestCase):
                     "date": "2026-10-11",
                     "tags": ["strength-transition"],
                     "phase_source": "planned",
+                    "planned_week_exists": True,
                     "duration_minutes": 40,
                     "training_load": 25,
                     "rpe": 6,
@@ -432,14 +434,16 @@ class StrengthHistoryTests(unittest.TestCase):
                     "date": "2026-10-10",
                     "tags": ["strength-transition"],
                     "phase_source": "activity",
+                    "planned_week_exists": True,
                     "duration_minutes": 50,
                     "training_load": 35,
                     "rpe": 8,
                 },
                 {
                     "date": "2026-10-09",
-                    "tags": [],
-                    "phase_source": "none",
+                    "tags": ["strength-transition"],
+                    "phase_source": "planned_week",
+                    "planned_week_exists": True,
                     "duration_minutes": 30,
                     "training_load": 10,
                     "rpe": 4,
@@ -468,6 +472,90 @@ class StrengthHistoryTests(unittest.TestCase):
 
         self.assertEqual(history[0]["tags"], ["strength-maximum"])
         self.assertEqual(history[0]["phase_source"], "activity")
+
+    def test_week_fallback_uses_nearest_plan_without_crossing_iso_weeks(self):
+        cases = [
+            ("2026-10-26", [("2026-10-27", "strength-maximum")],
+             ["strength-maximum"], "planned_week"),
+            ("2026-11-01", [("2026-11-02", "strength-maximum")], [], "none"),
+            ("2026-10-30", [("2026-10-27", "strength-adaptation"),
+                            ("2026-10-31", "strength-maximum")],
+             ["strength-maximum"], "planned_week"),
+            ("2026-10-29", [("2026-10-27", "strength-adaptation"),
+                            ("2026-10-31", "strength-maximum")],
+             ["strength-adaptation"], "planned_week"),
+            ("2026-10-30", [("2026-10-30", "strength-adaptation"),
+                            ("2026-10-31", "strength-maximum")],
+             ["strength-adaptation"], "planned"),
+            ("2025-12-29", [("2026-01-02", "strength-maximum")],
+             ["strength-maximum"], "planned_week"),
+        ]
+        for day, planned, tags, source in cases:
+            with self.subTest(day=day, planned=planned):
+                history = prepare_week.build_strength_history(
+                    [_raw_activity("WeightTraining", None, 3600,
+                                   start_date_local=day + "T09:00:00")],
+                    [{"type": "WeightTraining", "date": event_day, "tags": [tag]}
+                     for event_day, tag in planned],
+                )
+                self.assertEqual(history[0]["tags"], tags)
+                self.assertEqual(history[0]["phase_source"], source)
+                summary = prepare_week.build_strength_week_summary(
+                    history, date.fromisoformat(day), {},
+                )
+                self.assertEqual(summary["untagged_sessions_last_16_weeks"],
+                                 int(source == "none"))
+                self.assertEqual(summary["phase_session_count"], int(source != "none"))
+
+    def test_reminder_requires_recent_unresolved_session_in_unplanned_week(self):
+        today = date(2026, 11, 1)
+        for day, plans, expected in [
+            ("2026-10-26", [], True),
+            ("2026-10-19", [], True),
+            ("2026-10-18", [], False),
+            ("2026-10-26", [{"date": "2026-10-27", "tags": []}], False),
+            ("2026-10-26", [{"date": "2026-10-27",
+                             "tags": ["strength-maximum"]}], False),
+            ("2026-10-26", [{"date": "2026-11-02",
+                             "tags": ["strength-maximum"]}], True),
+        ]:
+            with self.subTest(day=day, plans=plans):
+                history = prepare_week.build_strength_history(
+                    [_raw_activity("WeightTraining", None, 3600,
+                                   start_date_local=day + "T09:00:00")], plans,
+                )
+                summary = prepare_week.build_strength_week_summary(history, today, {})
+                self.assertEqual(summary["tagging_reminder_needed"], expected)
+
+    def test_plan_in_current_week_does_not_suppress_previous_week_reminder(self):
+        history = prepare_week.build_strength_history(
+            [
+                _raw_activity("WeightTraining", None, 3600,
+                              start_date_local=day + "T09:00:00")
+                for day in ("2026-10-20", "2026-10-27")
+            ],
+            [{"date": "2026-10-28", "tags": ["strength-maximum"]}],
+        )
+        summary = prepare_week.build_strength_week_summary(
+            history, date(2026, 11, 1), {},
+        )
+        self.assertEqual(summary["current_phase"], "maximum")
+        self.assertEqual(summary["untagged_sessions_last_16_weeks"], 1)
+        self.assertTrue(summary["tagging_reminder_needed"])
+
+    def test_fetch_includes_full_iso_weeks_for_planned_events_only(self):
+        with (
+            patch.object(prepare_week, "_strength_history_weeks", return_value=16),
+            patch("intervals_icu.client.get_strength_history_activities",
+                  return_value=[]) as completed,
+            patch("intervals_icu.client.get_planned_strength_events",
+                  return_value=[]) as planned,
+        ):
+            prepare_week.fetch_strength_history(
+                date(2026, 10, 28), api_key="key", athlete_id="athlete",
+            )
+        completed.assert_called_once_with("key", "athlete", "2026-07-08", "2026-10-28")
+        planned.assert_called_once_with("key", "athlete", "2026-07-06", "2026-11-01")
 
     def test_phase_count_skips_untagged_rows_and_stops_at_phase_change(self):
         history = [
@@ -591,6 +679,7 @@ class StrengthHistoryTests(unittest.TestCase):
         self.assertEqual(fields["sessions_per_week_last_4"]["minItems"], 4)
         self.assertEqual(fields["sessions_per_week_last_4"]["maxItems"], 4)
         self.assertIn("untagged_sessions_last_16_weeks", fields)
+        self.assertEqual(fields["tagging_reminder_needed"]["type"], "boolean")
 
     def test_compact_counts_include_untagged_sessions_and_completed_iso_weeks(self):
         today = date(2026, 11, 1)
@@ -687,6 +776,7 @@ class StrengthHistoryTests(unittest.TestCase):
             )
 
         self.assertNotIn("strength_history", payload)
+        self.assertNotIn("planned_week_exists", json.dumps(payload))
         self.assertEqual(payload["week_summary"]["strength"]["current_phase"], "maximum")
         self.assertEqual(payload["week_summary"]["strength"]["sessions_this_week"], 1)
         self.assertEqual(payload["week_summary"]["strength"]["sessions_per_week_last_4"], [0, 0, 0, 0])
@@ -738,6 +828,7 @@ class StrengthMcpPayloadTests(unittest.TestCase):
                         credentials = {"api_key": "request-key", "athlete_id": "request-athlete"}
                 fetch.assert_called_once_with(today, **credentials)
                 self.assertNotIn("strength_history", payload)
+                self.assertNotIn("planned_week_exists", json.dumps(payload))
                 self.assertEqual(payload["week_summary"]["strength"], expected)
 
 

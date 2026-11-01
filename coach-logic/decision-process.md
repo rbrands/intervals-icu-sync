@@ -179,16 +179,20 @@ race classification from those tags.
 
 ### Untagged-session reminder
 
-- If `week_summary.strength.untagged_sessions_last_16_weeks > 0` AND
-  (`current_phase` is null OR the last untagged session is newer than
-  `phase_started`), mention once in the plan text that strength sessions
-  should carry a `strength-<phase>` tag; otherwise stay silent.
-- Apply only provable cases from existing fields: when the latest session's
-  `last_session_tags` is empty, derive its date as `current_date` minus
-  `days_since_last_strength` and compare with `phase_started`. If the latest
-  session is tagged, the compact payload does not reveal the last untagged
-  date; do not infer it or request raw history, and stay silent unless
-  `current_phase` is null.
+- In plan text, mention tagging once only when
+  `week_summary.strength.tagging_reminder_needed` is true: the current or
+  previous ISO week has completed strength sessions with `phase_source: "none"`
+  and no planned WeightTraining event existed in that same week. These are
+  sessions the coach did not plan. Otherwise never mention tagging in plan text;
+  an absent Boolean in an older payload is not evidence for a reminder.
+- Same-date planned tags take precedence over the nearest same-ISO-week
+  planned tags; both resolve the phase and avoid an untagged-session reminder.
+  Do not infer a reminder from the 16-week untagged count or phase age.
+- For analysis requests with `current_phase` null and
+  `week_summary.strength_sessions > 0`, name adaptation as a working assumption,
+  not a finding. Inside the Strength bullet, add one neutral sentence:
+  "Tag sessions or let the coach plan strength so the phase can be tracked."
+  This is analysis context, not a warning or a separate tagging reminder.
 - Never mention missing RPE.
 
 ---

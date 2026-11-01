@@ -19,6 +19,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Extended strength phase fallback to the nearest planned WeightTraining event in the same ISO week (`planned_week`), preserving activity/same-date priority and preferring the earlier date on ties. Planned-event fetches cover full ISO weeks. Added compact `tagging_reminder_needed` for unresolved current/previous-week sessions without a planned strength event; analysis uses adaptation only as a working assumption when the phase is unknown. Week-data schema is 1.8.0 with regenerated JSON/C# contracts.
 - Kept strength history internal instead of exporting its raw rows to coach/MCP clients. `week_summary.strength` now includes four completed ISO-week session counts (oldest first) and an untagged-session count for the history window. Local and hosted MCP preparation share the compact derivation; week-data schema version is now 1.7.0 and the JSON Schema/C# contracts are regenerated.
 
 ### Fixed

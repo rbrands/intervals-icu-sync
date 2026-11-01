@@ -158,19 +158,27 @@ value is missing or no previous exported activity exists.
     WeightTraining sessions, tagged or not, in the last four completed ISO
     weeks, oldest first and aligned with `training_load_history` weeks.
   - `untagged_sessions_last_16_weeks`: number of sessions with no canonical
-    phase tag resolved from either the activity or its same-date planned
-    WeightTraining event in the internal history (16 weeks by default).
+    phase tag resolved from the activity or a planned WeightTraining event
+    on the same date or in the same ISO week in the internal history
+    (16 weeks by default). Only `phase_source: "none"` counts.
+  - `tagging_reminder_needed`: true only when the current or previous ISO
+    week contains unresolved completed strength sessions and no planned
+    WeightTraining event existed in that same week (even an untagged planned
+    event suppresses the reminder). False otherwise.
   - Phase state resets when `days_since_last_strength` is at least 21: phase
     becomes null, count becomes zero, and `phase_started` becomes null.
-  - Canonical activity tags take precedence over same-date planned
-    WeightTraining WORKOUT tags; legacy `strength` tags are ignored.
-  - The coach should ask the athlete to tag WeightTraining sessions when
-    `untagged_sessions_last_16_weeks > 0` and `current_phase` is null or the
-    last untagged session is provably newer than `phase_started`. The compact
-    payload has no last-untagged-date field: when `last_session_tags` is empty,
-    the latest session's date is `current_date - days_since_last_strength`;
-    otherwise do not infer the last untagged date. Mention tagging once in
-    plan text, never missing RPE.
+  - Internal `phase_source` resolution: canonical activity tags (`activity`)
+    win, then same-date planned WORKOUT tags (`planned`), then nearest-date
+    planned WeightTraining tags in the same ISO year/week (`planned_week`).
+    Equal-distance ties prefer the earlier date; never cross a Monday/Sunday
+    boundary. Otherwise tags are empty and source is `none`. Legacy `strength`
+    tags are ignored; the raw rows and source are not exported.
+  - Mention tagging once in plan text only when `tagging_reminder_needed`
+    is true; do not infer reminders from the 16-week count. For analysis with
+    `current_phase` null and `strength_sessions > 0`, describe adaptation as
+    a working assumption, not a finding, and add one neutral sentence inside
+    the Strength bullet: tag sessions or let the coach plan strength so the
+    phase can be tracked. Never mention missing RPE.
 - `aerobic_threshold_estimate`: week-level aggregate of the per-ride
   `dfa_a1_summary` entries (see activities). Present ONLY when at least one
   valid ride in the lookback actually crossed DFA a1 = 0.75 (i.e. has a

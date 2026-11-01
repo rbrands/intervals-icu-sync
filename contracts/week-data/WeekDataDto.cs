@@ -706,6 +706,9 @@ public class StrengthSummaryDto
     [JsonPropertyName("untagged_sessions_last_16_weeks")]
     public int UntaggedSessionsLast16Weeks { get; set; }
 
+    [JsonPropertyName("tagging_reminder_needed")]
+    public bool TaggingReminderNeeded { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }

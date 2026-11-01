@@ -2533,6 +2533,10 @@
         "untagged_sessions_last_16_weeks": {
           "title": "Untagged Sessions Last 16 Weeks",
           "type": "integer"
+        },
+        "tagging_reminder_needed": {
+          "title": "Tagging Reminder Needed",
+          "type": "boolean"
         }
       },
       "required": [
@@ -2541,7 +2545,8 @@
         "last_session_tags",
         "weekly_strength_load",
         "sessions_per_week_last_4",
-        "untagged_sessions_last_16_weeks"
+        "untagged_sessions_last_16_weeks",
+        "tagging_reminder_needed"
       ],
       "title": "StrengthSummary",
       "type": "object"

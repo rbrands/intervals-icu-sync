@@ -33,7 +33,8 @@ Use this skill when the user requests one of the following:
 - WeightTraining uses exactly one canonical strength phase tag, phase-table
   duration and fixed description, no steps or library ID, informational TSS.
 - Use the existing compact week_summary.strength fields; mention tagging
-  only in the provable cases defined in decision-process.md. Never mention missing RPE.
+  only when tagging_reminder_needed is true, as defined in decision-process.md.
+  Never mention missing RPE.
 - Keep output deterministic and aligned with the agent output contract.
 - If required inputs are missing, ask only the minimum required question.
 
