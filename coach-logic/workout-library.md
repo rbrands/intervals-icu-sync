@@ -1,15 +1,15 @@
 # Workout Library
 
 A catalog of concrete interval structures, grouped by training domain and
-dose level (high / moderate / low). The coach selects from this library
+dose level (high / moderate / low), except strength, which uses Friel phases. The coach selects from this library
 when generating a plan.
 
 - Selection logic (which domain, which dose, when) is in decision-process.md.
-- All intensities reference the zones in training-zones.md — this file
+- All ride intensities reference the zones in training-zones.md — this file
   names zones (Z1–Z7), never FTP percentages.
 - Tags follow the canonical taxonomy in interpretation-rules.md.
   Every workout carries one or more "`<domain>-<level>`" tags.
-- The structures below are MAIN SETS; warmup and cooldown are added per
+- The ride structures below are MAIN SETS; warmup and cooldown are added per
   the modeling rules in decision-process.md.
 
 Dose levels:
@@ -176,9 +176,66 @@ includes cooling and a pre-race carbohydrate note.
 
 
 
+## Strength (off-bike)
+
+Strength uses phase levels, not low/moderate/high doses. Based on Friel's
+muscular-force progression; this project caps AA/MT/MS at two sessions per week.
+
+| Phase level | Friel phase | Sessions total | Sessions/week | Load (% 1RM) | Sets x reps | Rest | Typical duration | Tag |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| adaptation | Anatomical Adaptation (AA) | 4-6 | 2 | 40-60 | 3-5 x 15-20 | 1-1.5 min | 45-60 min | strength-adaptation |
+| transition | Max Transition (MT) | 2-3 | 2 | 70-80 | 3-5 x 8-12 | 2-3 min | 45-60 min | strength-transition |
+| maximum | Max Strength (MS) | 8-12 | 2 | 85-95 | 3-4 x 3-6 | 3-4 min | 50-75 min | strength-maximum |
+| maintenance | Strength Maintenance (SM) | ongoing | 1 | set 1: 60; set 2: 85 | 2 sets: 12 reps / 6 reps | 1-2 min | 30-45 min | strength-maintenance |
+
+### Exercise selection
+
+Select 3-4 exercises per session:
+- One or two primary lifts: squat, single-leg squat, deadlift, step-up
+  (optionally explosive power step-ups with lighter load), lunge, or leg press.
+- Leg curl is always included for muscle balance.
+- Core planks every session: front plank, side plank, and/or front plank with rows.
+- Power clean may replace a primary lift only for experienced lifters and
+  only on explicit athlete request; never prescribe it by default.
+
+### 1RM estimation
+
+Use a load allowing only 4-10 repetitions with good technique; estimated
+1RM = lifted load / factor. This is description guidance, not a mandatory
+maximal test.
+
+| Repetitions | Factor |
+| --- | --- |
+| 4 | 0.90 |
+| 5 | 0.875 |
+| 6 | 0.85 |
+| 7 | 0.825 |
+| 8 | 0.80 |
+| 9 | 0.775 |
+| 10 | 0.75 |
+
+### Description and upload contract
+
+Use this fixed description template, filling the values from the phase table:
+
+```text
+Phase: <AA|MT|MS|SM> (session <n> of <target>)
+Exercises: <1–2 primary> + leg curl + core
+Sets × reps @ % 1RM: <from table>
+Rest: <from table>
+Notes: <progression hint, e.g. "add 2.5 kg if all sets completed">
+```
+
+No `steps` (including nested steps), no `library_workout_id`;
+`activity_type: WeightTraining`, exactly one canonical `strength-<phase>` tag,
+and `duration_minutes` from the phase table. `tss` remains numeric and
+informational only: use a supplied planned value, or 0 if none is available;
+never invent power steps or increase strength TSS to fill a Ride target.
+Strength has no fueling prescription. RPE is optional.
+
 ## Consistency Rules (CRITICAL)
 
-- Every interval maps to a defined zone (training-zones.md). Do not use
+- Every ride interval maps to a defined zone (training-zones.md). Do not use
   arbitrary %FTP values outside the zone definitions.
 - Interval description, intensity, and tag must be consistent within a workout.
 - At least one tag per workout, from the canonical taxonomy.

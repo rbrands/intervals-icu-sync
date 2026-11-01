@@ -69,6 +69,11 @@ This keeps the base prompt stable while allowing the athlete profile to be swapp
 
 **`coach-logic/`** — Modular dxocumentation of the coaching domain knowledge:
 
+Canonical tag domains are `vo2max`, `lactate-threshold`, `aerobic-threshold`,
+`race-specific`, and `recovery` with dose levels `low`, `moderate`, `high`;
+`strength` alone uses phase levels `adaptation`, `transition`, `maximum`,
+`maintenance`. Legacy `strength` is not a canonical tag.
+
 | File | Content |
 |---|---|
 | `coaching-principles.md` | Training philosophy and foundational coaching principles based on Joe Friel |
@@ -323,6 +328,12 @@ and `gpt-6-sol`. The additional models are configured in
 `foundry-agent/infra/main.bicep` via `additionalModelDeployments`; agent model
 selection remains separate. See the [Foundry infrastructure guide](foundry-agent/README.md#infrastructure-bicep)
 for versions, capacities, and the manual preview/apply workflow.
+
+The [Foundry agent deployment workflow](.github/workflows/deploy-agent.yml)
+deploys only the staging agent for same-repository pull requests targeting `main`.
+Pushes to `main` and manual runs deploy both production and staging; fork PRs
+are skipped. See the [agent CI/CD guide](foundry-agent/README.md#github-actions)
+for Azure OIDC requirements.
 
 > macOS note: if `python`/`pip` are not available (or point to Python 2), use `python3` and `pip3` for all commands below.
 

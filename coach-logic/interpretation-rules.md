@@ -266,14 +266,20 @@ and automatic distribution.
 
 Priority: tags > interval detection > automatic classification
 
-If a session has multiple canonical tags, all matching tag mappings apply.
+For rides, if a session has multiple canonical tags, all matching tag mappings apply.
 Tags do not compete. A single session can classify into multiple ride types
 and should be counted in each mapped domain.
 
 ### Tag taxonomy (canonical source)
 Format: "<domain>-<level>"
-- domains: vo2max, lactate-threshold, aerobic-threshold, recovery, race-specific
-- levels:  low, moderate, high
+- dose domains: vo2max, lactate-threshold, aerobic-threshold, recovery, race-specific
+- dose levels: low, moderate, high
+- strength domain: strength; phase levels: adaptation, transition, maximum, maintenance
+
+Strength is the only domain with a non-dose level set: the Friel phase fixes
+load (% 1RM), repetitions, and frequency together. Its canonical tags are
+`strength-adaptation`, `strength-transition`, `strength-maximum`, and
+`strength-maintenance`; never strength-low/moderate/high.
 
 These prefixes are shared with the workout library (decision-process.md)
 and with library filter tooling. Do not rename without updating all three.
@@ -286,8 +292,13 @@ and with library filter tooling. Do not rename without updating all three.
     - else            → endurance
 - recovery-*          → recovery
 - race-specific-*     → race
-- strength-*          → strength (excluded from ride-domain counts and fueling)
-- `strength_load` is not interpreted: HR- or RPE-derived load is informational only; phase and frequency come from tags and dates.
+- strength-*          → strength
+- WeightTraining never counts toward vo2, threshold, endurance, long_ride, or
+  recovery domains; exclude it from intensity-distribution, decoupling, and
+  fueling reasoning, even if an activity also carries a ride tag.
+- `strength_load` is informational (HR- or RPE-derived); phase and frequency
+  come from tags and dates via `week_summary.strength`. Legacy tag `strength`
+  is ignored for classification, not for counting completed strength sessions.
 
 ### Multiple tags on one session (CRITICAL)
 - Resolve each tag independently using the mapping above.

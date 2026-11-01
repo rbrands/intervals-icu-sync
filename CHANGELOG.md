@@ -9,9 +9,11 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added pull-request deployment of the Foundry staging agent for same-repository PRs targeting `main`; production deployment remains limited to pushes on `main` and manual runs.
 - Added `WeightTraining` activities to the raw and coach activity exports when intervals.icu supplies training load. The coach export contains only the reduced strength field set and excludes ride/run power, heart-rate, zone, interval, decoupling, W'bal, power-curve, DFA, fueling, and weather analyses.
 - Added per-sport Ride, Run, and Strength load/session/time totals to `week_summary`; combined totals remain Ride+Run, while strength sessions are excluded from ride-focused analyses and fueling.
 - Added Ride-only planned TSS accounting with additive `counted`, `planned_ride_tss`, and `planned_other_tss` fields, plus a local MCP `check_plan_tss` tool using completed Ride load. WeightTraining plan validation requires one canonical phase tag, 30-75 minutes, no steps or library ID; local MCP validation allows one ride plus one strength session per date and optionally checks supplied athlete day constraints.
+- Added Friel off-bike strength taxonomy, phase library, progression/frequency/placement rules, and compact-summary coaching across coach logic, system/discipline/weekly-analysis/planning prompts, and the Foundry agent/skill. Plans permit one ride plus one strength session per day, keep weekly TSS/hours Ride-only, and include strength in LIMITED-day caps; optional RPE generates no missing-data reminders.
 - Added `planned_ride_hours` / `planned_other_hours` reporting and optional Ride-only weekly time-budget checks. Local MCP plan validation applies LIMITED-day time caps to the combined duration of all sports, including WeightTraining.
 - Added internal 16-week strength history with activity/planned tag resolution and exported `week_summary.strength` phase tracking. Only `strength-maximum` WeightTraining sessions count as hard sessions; the generic TSS-to-CTL hard-session threshold is disabled for strength.
 

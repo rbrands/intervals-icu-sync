@@ -34,6 +34,7 @@ Resolve conflicts in this order:
 4. **Determine weekly requirements** — from goal/discipline emphasis and
    the primary limiter, decide which key sessions are still missing.
    Schedule only those.
+   Determine strength requirements alongside ride key sessions per "Strength" below.
 5. **Combine limiter + fatigue → stimulus**
    - fresh + clear limiter → add stimulus in the limiter domain
    - optimal fatigue + limiter → continue structured progression
@@ -111,6 +112,87 @@ race classification from those tags.
 
 ---
 
+## Strength
+
+### Phase selection (in priority order)
+
+1. An explicit athlete statement in the chat ("start max strength", "skip gym
+   this week") wins for the target week, subject to safety and recovery.
+2. Read `week_summary.strength.current_phase` and `phase_session_count`:
+   - `adaptation` and count >= 4: may advance to `transition`; must at 6.
+   - `transition` and count >= 2: may advance to `maximum`; must at 3.
+   - `maximum` and count >= 8: may advance to `maintenance`; must at 12.
+   - `maintenance`: stays.
+3. Apply the cycling-phase guard from the target-week entry in
+   `week_summary.training_plan[].phase`:
+   - Prep / early Base: adaptation or transition; maximum only in Base.
+   - Base: any strength phase allowed; maximum only here.
+   - Build / Peak: maintenance only. Cut short an unfinished maximum run
+     and explain this in the plan text.
+   - Transition: no strength, or restart with adaptation if the athlete asks.
+   - No cycling phase supplied: treat as Base.
+4. No history (`current_phase: null`) and Base: start with adaptation.
+   A gap of at least 21 days since the last strength session resets phase
+   state; use the supplied summary, not a reconstructed raw history.
+
+### Frequency
+
+- AA / MT / MS: 2 sessions per week; 1 when
+  `week_summary.training_readiness.status` is yellow; 0 when red.
+  Maintain the MS counter across a reduced week: it counts sessions, not weeks.
+- SM: 1 session per week; red readiness excludes strength.
+- RECOVERY week: at most 1 strength session, never maximum.
+- RACE week: maintenance only, not within 3 days before the race.
+- Apply the most restrictive readiness/week rule. Unknown or low-confidence
+  readiness requires the existing manual recovery assessment.
+- Count completed and anchored planned strength sessions toward the frequency;
+  do not duplicate them. Use `sessions_this_week` for the current week and
+  `sessions_per_week_last_4` as context, not as missed sessions to make up.
+
+### Placement
+
+- At most one ride and at most one WeightTraining entry per calendar day.
+  Never two rides; one ride plus one strength session is allowed.
+- Preferred: strength after an easy/aerobic ride or on a ride-rest day.
+  Allowed: after a threshold session on the same day.
+- During maximum, never place strength on the day of or the day before a
+  VO2max session or a long ride.
+- Never two strength sessions on consecutive days.
+- Maximum counts as hard for the "never two hard days in a row" rule;
+  adaptation, transition, and maintenance do not. Preserve full rest days,
+  race protection, and `training_allowed: false` constraints.
+
+### Load and time accounting
+
+- Strength load is visible in `week_summary.strength` but is informational
+  only, whether HR- or RPE-derived. Phase and frequency come from tags and dates.
+- Weekly TSS and hours guardrails compare rides only: Ride, VirtualRide,
+  MountainBikeRide, GravelRide; absent or null `activity_type` counts as Ride.
+  Use completed `ride_load` and `ride_time_hours`, never Ride+Run combined
+  totals. Strength and running never fill the weekly Ride target.
+- `weekly_time_target_hours` is a Ride-only upper budget. On LIMITED days,
+  `max_training_time_hours` caps the sum of ALL entries on that date,
+  including WeightTraining; no entry on unavailable days.
+- Emit strength entries using "Strength (off-bike)" in workout-library.md:
+  exactly one phase tag, phase-table duration, fixed description, no steps
+  or library ID, and numeric informational `tss`.
+
+### Untagged-session reminder
+
+- If `week_summary.strength.untagged_sessions_last_16_weeks > 0` AND
+  (`current_phase` is null OR the last untagged session is newer than
+  `phase_started`), mention once in the plan text that strength sessions
+  should carry a `strength-<phase>` tag; otherwise stay silent.
+- Apply only provable cases from existing fields: when the latest session's
+  `last_session_tags` is empty, derive its date as `current_date` minus
+  `days_since_last_strength` and compare with `phase_started`. If the latest
+  session is tagged, the compact payload does not reveal the last untagged
+  date; do not infer it or request raw history, and stay silent unless
+  `current_phase` is null.
+- Never mention missing RPE.
+
+---
+
 ## W' Actions
 
 Acting on the W' signals from interpretation-rules.md:
@@ -156,10 +238,11 @@ Session fueling strategy (write into the workout description):
   recovery, and performance signals take precedence.
 - Never compensate for missed historical load by adding it to the current or
   next week.
-- The weekly time target (hours) is an upper bound: completed plus planned
-  workout durations in that week must not exceed it.
+- The weekly time target (hours) is a Ride-only upper bound: completed plus
+  planned ride durations in that week must not exceed it. LIMITED-day caps
+  sum ALL sessions on the date, including strength and running.
 - The weekly load target (TSS) is the planning reference: completed plus
-  planned load in that week should be within ±10% of it (matching the
+  planned Ride load in that week should be within ±10% of it (matching the
   `check_plan_tss` default tolerance). Go further below
   only when safety rules (readiness, fatigue) or repeated historical
   over-/under-achievement together with current readiness justify a safer
@@ -179,7 +262,7 @@ Decide per workout how it will most likely be ridden. This drives the
    - ≥ 2 rides and the majority are `Ride` or other outdoor ride types
      → outdoor default
    - fewer than 2 rides → outdoor default
-3. The default applies to every planned workout, including long rides and
+3. The default applies to every planned ride, including long rides and
    recovery rides; there are no per-type exceptions.
 
 Set `activity_type` accordingly: `VirtualRide` for indoor; omit the field
@@ -193,6 +276,7 @@ athlete can correct it. Do not ask.
 
 - `activity_type: VirtualRide` → detailed steps (warmup, intervals,
   recovery, cooldown)
+- WeightTraining → no steps; use the Strength (off-bike) description template.
 - outdoor (`Ride`) → simplified, max 3–5 steps (warmup, main, optional key
   effort, cooldown); embedded sprints go into the description, not into steps
 - Event → exactly one key effort; may replace a structured session

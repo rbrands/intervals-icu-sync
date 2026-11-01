@@ -2,6 +2,8 @@ import importlib.util
 from pathlib import Path
 import unittest
 
+import yaml
+
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _MODULE_PATH = _REPO_ROOT / "foundry-agent" / "deploy_agent.py"
@@ -14,6 +16,34 @@ spec.loader.exec_module(deploy_agent)
 
 
 class DeployAgentTests(unittest.TestCase):
+    def test_pull_requests_deploy_only_staging(self):
+        workflow = yaml.load(
+            (_REPO_ROOT / ".github" / "workflows" / "deploy-agent.yml").read_text(
+                encoding="utf-8"
+            ),
+            Loader=yaml.BaseLoader,
+        )
+        self.assertEqual(workflow["on"]["pull_request"]["branches"], ["main"])
+        self.assertEqual(
+            workflow["on"]["pull_request"]["paths"], workflow["on"]["push"]["paths"]
+        )
+        job = workflow["jobs"]["deploy-agent"]
+        self.assertEqual(
+            job["if"],
+            "github.event_name != 'pull_request' || "
+            "github.event.pull_request.head.repo.full_name == github.repository",
+        )
+        steps = {step["name"]: step for step in job["steps"]}
+        self.assertEqual(
+            steps["Deploy production agent"]["if"],
+            "github.event_name != 'pull_request'",
+        )
+        self.assertNotIn("if", steps["Deploy staging agent"])
+        self.assertIn(
+            "--config foundry-agent/agent-staging.yaml",
+            steps["Deploy staging agent"]["run"],
+        )
+
     def test_staging_config_inherits_agent_and_uses_isolated_resources(self):
         production = deploy_agent._load_agent_definition()
         staging = deploy_agent._load_agent_definition(
@@ -24,9 +54,15 @@ class DeployAgentTests(unittest.TestCase):
         self.assertEqual(staging["name"], "training-architect-agent-staging")
         self.assertEqual(staging["definition"]["model"], "gpt-6-luna")
         self.assertEqual(staging["definition"]["tools"], production["definition"]["tools"])
-        self.assertEqual(
+        self.assertNotEqual(
             staging["definition"]["instructions"],
             production["definition"]["instructions"],
+        )
+        self.assertIn("strength-maximum", staging["definition"]["instructions"])
+        self.assertNotIn("strength-maximum", production["definition"]["instructions"])
+        self.assertEqual(
+            staging["definition"]["structured_inputs"],
+            production["definition"]["structured_inputs"],
         )
         self.assertEqual(staging["deployment"]["vector_store_name"], "coach-logic-staging")
         self.assertEqual(

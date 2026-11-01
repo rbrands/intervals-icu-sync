@@ -94,6 +94,14 @@ Regel fuer Sicherheitsgrad:
   ein Muster. Schlage daraus allein nie eine Zonenänderung vor; lasse den
   Punkt ganz weg, wenn das Feld fehlt.
 
+**Strength**
+- Aus `week_summary.strength`: aktuelle Phase und `phase_session_count` gegen
+  `phase_target_sessions`, `sessions_this_week` gegen die Frequenzregel aus
+  decision-process.md, Strength, sowie Platzierung relativ zu Schluesseleinheiten.
+  Diesen Punkt weglassen, wenn `current_phase` null und
+  `week_summary.strength_sessions == 0` ist. Strength-Load ist nur informativ;
+  keine Intensitaetsverteilungs-, Decoupling- oder Missing-RPE-Bewertung.
+
 **Fueling**
 - Durchschnittliche Carb-Aufnahme pro Stunde
 - Kritische Einheiten mit unzureichender Versorgung
@@ -146,6 +154,14 @@ Confidence level rule:
   changing zones from this alone; skip the point entirely when the field is
   absent.
 
+**Strength**
+- Use `week_summary.strength`: current_phase, phase_session_count versus
+  phase_target_sessions; sessions_this_week versus the frequency rule in
+  decision-process.md, Strength; placement relative to ride key sessions.
+  Skip this bullet when current_phase is null and
+  `week_summary.strength_sessions == 0`. Strength load is informational only;
+  do not interpret intensity distribution or decoupling, or mention missing RPE.
+
 **Fueling**
 - Average carb intake per hour
 - Critical sessions with insufficient fueling
@@ -173,7 +189,7 @@ Hole die aktuellen Daten von intervals.icu per prepare_week_data. Erstelle mir b
 Rahmenbedingungen:
 - Berücksichtige aktuelle Form (TSB) und Ermüdung (ATL)
 - Passe die Belastung an den primären Limiter an
-- Maximal [X] Stunden Gesamtumfang
+- Maximal [X] Stunden Radumfang (Kraft und Laufen ausgeschlossen)
 - Verfügbare Tage: [Tage eintragen, z. B. Mo, Mi, Do, Sa, So]
 - Geplante Events oder Rennen: [ggf. eintragen]
 
@@ -186,6 +202,18 @@ Planungslogik:
 3. Fueling-Strategie für intensive Einheiten berücksichtigen
 4. Regenerationstage explizit einplanen
 5. Keine Dopplung bereits absolvierter Schlüsselreize
+
+Strength-Regeln:
+- Kraft nach decision-process.md, Strength und workout-library.md, Strength
+  (off-bike) planen; week_summary.strength verwenden.
+- At most one ride and at most one WeightTraining entry per calendar day.
+- Wochen-TSS und Stunden: nur Rad (Ride, VirtualRide, MountainBikeRide,
+  GravelRide; fehlender/null activity_type = Ride). LIMITED-Tageslimits:
+  Summe ALLER Einheiten; keine Einheit an nicht verfuegbaren Tagen.
+- WeightTraining: genau ein kanonischer strength-Phasentag, Dauer und feste
+  Beschreibung aus der Phasentabelle, keine Steps oder Library-ID, TSS nur
+  informativ (vorgegebener Wert, sonst 0). RPE ist optional.
+- Der folgende Library-Lookup und die Step-TSS-Pruefung gelten nur fuer Rad.
 
 Workout-Library (falls `list_library_workouts` verfügbar ist):
 1. Zuerst alle Einheiten und ihre vollständigen kanonischen Tags festlegen.
@@ -201,10 +229,10 @@ Workout-Library (falls `list_library_workouts` verfügbar ist):
 Format: Tageweise mit Einheit, Dauer, Intensität (Zone), Ziel der Einheit, geschätztem TSS und Fueling-Empfehlung.
 
 Abschließender Selbstcheck vor der Ausgabe:
-1. Für jedes neu erzeugte Workout den TSS aus den finalen `steps` neu berechnen
+1. Fuer jede neu erzeugte Radeinheit den TSS aus den finalen `steps` neu berechnen
        und prüfen, dass er mit dem Wert in `description` übereinstimmt.
-2. Prüfen, dass die gesamte geplante Dauer den manuell vorgegebenen maximalen
-       Gesamtumfang nicht überschreitet.
+2. Nur Raddauer gegen die manuell vorgegebenen Stunden pruefen;
+       LIMITED-Tageslimits gelten fuer die Summe ALLER Einheiten.
 Falls eine Prüfung fehlschlägt, zuerst Steps oder Planzusammenstellung korrigieren und anschließend erneut prüfen.
 ```
 
@@ -216,7 +244,7 @@ Fetch the current data from intervals.icu via prepare_week_data. Based on the we
 Constraints:
 - Consider current form (TSB) and fatigue (ATL)
 - Adjust load to the primary limiter
-- Maximum [X] hours total volume
+- Maximum [X] hours Ride volume (strength and running excluded)
 - Available days: [enter days, e.g. Mon, Wed, Thu, Sat, Sun]
 - Planned events or races: [enter if applicable]
 
@@ -229,6 +257,18 @@ Planning logic:
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli
+
+Strength and guardrails:
+- Plan strength per decision-process.md, Strength and the Strength (off-bike)
+  library; use week_summary.strength.
+- At most one ride and at most one WeightTraining entry per calendar day.
+- Weekly TSS and hours compare rides only (Ride, VirtualRide, MountainBikeRide,
+  GravelRide; absent or null activity_type = Ride). LIMITED-day caps sum ALL
+  entries; no entry on unavailable days.
+- WeightTraining: exactly one canonical strength phase tag, phase-table
+  duration and fixed description, no steps or library ID, informational tss
+  (supplied value, otherwise 0). RPE is optional.
+- The following library lookup and step-TSS self-check apply only to rides.
 
 Workout library lookup (when `list_library_workouts` is available):
 1. Determine all planned sessions and their full canonical tags first.
@@ -243,10 +283,10 @@ Workout library lookup (when `list_library_workouts` is available):
 Format: Day-by-day with session type, duration, intensity (zone), session goal, estimated TSS, and fueling recommendation.
 
 Final self-check before returning output:
-1. For every generated workout, recompute TSS from the final `steps` and
+1. For every generated ride, recompute TSS from the final `steps` and
        verify it matches the value in `description`.
-2. Verify the total planned duration does not exceed the manually specified
-       maximum total volume.
+2. Verify Ride duration against the manually specified Ride hours;
+       LIMITED-day caps sum ALL entries, including strength.
 If a check fails, correct steps or plan composition first, then re-verify.
 ```
 
@@ -272,10 +312,22 @@ Entnimm die Planungsgrundlage direkt aus den intervals.icu-Daten. Die Wocheneint
 
 Planungslogik:
 1. Schlüsseleinheiten passend zur Trainingsphase zuerst platzieren (VO2max, Schwelle, Lange Ausfahrt)
-2. Gesamtumfang am Wochenziel ausrichten: nach dem TSS aus `weekly_load_target` planen und den geschätzten TSS je Einheit ausweisen. Für die Wochensumme den TSS strikt nach den Regeln zur TSS-Berechnung aus dem System-Prompt summieren: bei neu erzeugten Workouts aus den Steps berechnen, bei ausgewählten Library-Workouts den Library-TSS und bei verankerten `planned_workouts` den dort angegebenen TSS verwenden. Die geplante Wochensumme soll innerhalb von ±10 % des `weekly_load_target` liegen, sofern Einschränkungen oder Ermüdung keine begründete Abweichung erfordern. Das vorgegebene Ziel bleibt maßgeblich, außer wiederholte historische Abweichungen und die aktuelle Trainingsbereitschaft rechtfertigen gemeinsam eine sicherere Reduzierung.
+2. Radumfang am Wochenziel ausrichten: nur Rad-TSS nach den Regeln zur TSS-Berechnung aus dem System-Prompt summieren (neue Radeinheiten aus Steps, Library-Radeinheiten unveraendert, geplante Radeinheiten wie angegeben). Absolvierte plus geplante Rad-TSS innerhalb ±10 % von `weekly_load_target`, ausser Sicherheit verlangt eine Reduzierung; Radstunden hoechstens `weekly_time_target_hours`, falls vorhanden.
 3. Fueling-Strategie für intensive Einheiten berücksichtigen
 4. Regenerationstage explizit einplanen
 5. Keine Dopplung bereits absolvierter Schlüsselreize
+
+Strength-Regeln:
+- Kraft nach decision-process.md, Strength und workout-library.md, Strength
+  (off-bike) planen; week_summary.strength verwenden.
+- At most one ride and at most one WeightTraining entry per calendar day.
+- Wochen-TSS und Stunden: nur Rad (Ride, VirtualRide, MountainBikeRide,
+  GravelRide; fehlender/null activity_type = Ride). LIMITED-Tageslimits:
+  Summe ALLER Einheiten; keine Einheit an nicht verfuegbaren Tagen.
+- WeightTraining: genau ein kanonischer strength-Phasentag, Dauer und feste
+  Beschreibung aus der Phasentabelle, keine Steps oder Library-ID, TSS nur
+  informativ (vorgegebener Wert, sonst 0). RPE ist optional.
+- Der folgende Library-Lookup und die Step-TSS-Pruefung gelten nur fuer Rad.
 
 Workout-Library (falls `list_library_workouts` verfügbar ist):
 1. Zuerst alle Einheiten und ihre vollständigen kanonischen Tags festlegen.
@@ -291,9 +343,10 @@ Workout-Library (falls `list_library_workouts` verfügbar ist):
 Format: Tageweise mit Einheit, Dauer, Intensität (Zone), Ziel der Einheit, geschätztem TSS und Fueling-Empfehlung.
 
 Abschließender Selbstcheck vor der Ausgabe:
-1. Für jedes neu erzeugte Workout den TSS aus den finalen `steps` neu berechnen
+1. Fuer jede neu erzeugte Radeinheit den TSS aus den finalen `steps` neu berechnen
        und prüfen, dass er mit dem Wert in `description` übereinstimmt.
-2. Die wöchentliche TSS-Summe gegen `weekly_load_target` prüfen (±10 %).
+2. Nur Rad-TSS gegen `weekly_load_target` pruefen (±10 %), Radstunden gegen
+       `weekly_time_target_hours`; LIMITED-Tageslimits summieren ALLE Einheiten.
 Falls eine Prüfung fehlschlägt, zuerst Steps oder Planzusammenstellung korrigieren und anschließend erneut prüfen.
 ```
 
@@ -314,10 +367,22 @@ Derive the planning parameters directly from the intervals.icu data. The week en
 
 Planning logic:
 1. Place key sessions matched to the training phase first (VO2max, threshold, long ride)
-2. Align total volume to the weekly target: use TSS from `weekly_load_target`. Still show estimated TSS per session. For the weekly total, sum TSS strictly per the TSS Calculation rules from the system prompt: computed from steps for generated workouts, library TSS for selected library workouts, and the stated TSS for anchored `planned_workouts`. The planned weekly total should land within ±10% of `weekly_load_target` unless constraints or fatigue clearly justify a deviation. Keep the provided target authoritative unless repeated historical deviation and current readiness together justify a safer reduction.
+2. Align Ride volume to the weekly target: use Ride TSS from `weekly_load_target`. For Ride totals, follow the TSS Calculation rules from the system prompt: generated rides from steps, library rides unchanged, anchored rides as stated. Completed plus planned Ride TSS should be within ±10% of the target unless constraints or fatigue justify a safer reduction; Ride hours must not exceed `weekly_time_target_hours` when supplied.
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli
+
+Strength and guardrails:
+- Plan strength per decision-process.md, Strength and the Strength (off-bike)
+  library; use week_summary.strength.
+- At most one ride and at most one WeightTraining entry per calendar day.
+- Weekly TSS and hours compare rides only (Ride, VirtualRide, MountainBikeRide,
+  GravelRide; absent or null activity_type = Ride). LIMITED-day caps sum ALL
+  entries; no entry on unavailable days.
+- WeightTraining: exactly one canonical strength phase tag, phase-table
+  duration and fixed description, no steps or library ID, informational tss
+  (supplied value, otherwise 0). RPE is optional.
+- The following library lookup and step-TSS self-check apply only to rides.
 
 Workout library lookup (when `list_library_workouts` is available):
 1. Determine all planned sessions and their full canonical tags first.
@@ -332,9 +397,10 @@ Workout library lookup (when `list_library_workouts` is available):
 Format: Day-by-day with session type, duration, intensity (zone), session goal, estimated TSS, and fueling recommendation.
 
 Final self-check before returning output:
-1. For every generated workout, recompute TSS from the final `steps` and
+1. For every generated ride, recompute TSS from the final `steps` and
        verify it matches the value in `description`.
-2. Verify the weekly TSS total against `weekly_load_target` (±10%).
+2. Verify Ride-only TSS against `weekly_load_target` (±10%) and Ride hours
+       against `weekly_time_target_hours`; LIMITED-day caps sum ALL entries.
 If a check fails, correct steps or plan composition first, then re-verify.
 ```
 

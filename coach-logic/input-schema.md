@@ -111,9 +111,11 @@ value is missing or no previous exported activity exists.
 - `run_load`, `run_sessions`, and `run_time_hours` are Run totals for `Run`,
   `TrailRun`, and `VirtualRun`.
 - `strength_load`, `strength_sessions`, and `strength_time_hours` are
-  `WeightTraining` totals.
+  `WeightTraining` totals. Sessions count even when load is null or zero;
+  null load contributes zero to sums and remains null on activity rows.
 - `vo2_sessions`, `threshold_sessions`, `endurance_sessions`, decoupling
-  fields, `aerobic_threshold_estimate`, and `days_since_*` remain scoped to
+  fields, `aerobic_threshold_estimate`, `days_since_last_hiit`, and
+  `days_since_last_polarized` remain scoped to
   ride training analysis; WeightTraining activities do not contribute.
 - `ctl` / `atl`: current fitness/fatigue snapshot copied from daily metrics to
   keep readiness (`ctl`, `atl`, `form_*`) together in one section.
@@ -163,7 +165,12 @@ value is missing or no previous exported activity exists.
   - Canonical activity tags take precedence over same-date planned
     WeightTraining WORKOUT tags; legacy `strength` tags are ignored.
   - The coach should ask the athlete to tag WeightTraining sessions when
-    `untagged_sessions_last_16_weeks > 0` and `current_phase` is null or stale.
+    `untagged_sessions_last_16_weeks > 0` and `current_phase` is null or the
+    last untagged session is provably newer than `phase_started`. The compact
+    payload has no last-untagged-date field: when `last_session_tags` is empty,
+    the latest session's date is `current_date - days_since_last_strength`;
+    otherwise do not infer the last untagged date. Mention tagging once in
+    plan text, never missing RPE.
 - `aerobic_threshold_estimate`: week-level aggregate of the per-ride
   `dfa_a1_summary` entries (see activities). Present ONLY when at least one
   valid ride in the lookback actually crossed DFA a1 = 0.75 (i.e. has a
