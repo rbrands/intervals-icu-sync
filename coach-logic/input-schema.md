@@ -132,7 +132,38 @@ value is missing or no previous exported activity exists.
   ride whose `training_distribution` is `HIIT` or `Polarized`.
 - `days_since_last_hard_session`: integer number of calendar days since the
   last session with TSS at least 50% above current CTL, the last `HIIT` or
-  `Polarized` ride, or the last `Threshold` ride with at least 50 TSS or RPE 7+.
+  `Polarized` ride, the last `Threshold` ride with at least 50 TSS or RPE 7+,
+  or a `WeightTraining` session tagged `strength-maximum`. The generic TSS
+  threshold does not make a strength activity hard.
+- `strength`: compact summary derived from internal completed strength history
+  and the per-sport totals in this object. The raw history is not exported.
+  - `current_phase`: phase (`adaptation`, `transition`, `maximum`, or
+    `maintenance`) of the most recent tagged strength session; null when no
+    recent tagged session is available.
+  - `phase_started`: date of the oldest session in the current consecutive
+    phase run; null when the phase is unset or reset.
+  - `phase_session_count`: number of tagged sessions in the current phase run.
+    Untagged rows are skipped; a different tagged phase ends the run.
+  - `phase_target_sessions`: phase target from the strength taxonomy: `4-6`,
+    `2-3`, `8-12`, or `ongoing`; null when there is no current phase.
+  - `sessions_this_week`: current-week count copied from `strength_sessions`.
+  - `days_since_last_strength`: calendar days since the most recent completed
+    strength session; null when history is empty or no date is available.
+  - `last_session_tags`: canonical strength tags for the most recent completed
+    strength session; an empty list when that session has no resolved phase tag.
+  - `weekly_strength_load`: current-week load copied from `strength_load`.
+  - `sessions_per_week_last_4`: four integer counts of all completed
+    WeightTraining sessions, tagged or not, in the last four completed ISO
+    weeks, oldest first and aligned with `training_load_history` weeks.
+  - `untagged_sessions_last_16_weeks`: number of sessions with no canonical
+    phase tag resolved from either the activity or its same-date planned
+    WeightTraining event in the internal history (16 weeks by default).
+  - Phase state resets when `days_since_last_strength` is at least 21: phase
+    becomes null, count becomes zero, and `phase_started` becomes null.
+  - Canonical activity tags take precedence over same-date planned
+    WeightTraining WORKOUT tags; legacy `strength` tags are ignored.
+  - The coach should ask the athlete to tag WeightTraining sessions when
+    `untagged_sessions_last_16_weeks > 0` and `current_phase` is null or stale.
 - `aerobic_threshold_estimate`: week-level aggregate of the per-ride
   `dfa_a1_summary` entries (see activities). Present ONLY when at least one
   valid ride in the lookback actually crossed DFA a1 = 0.75 (i.e. has a

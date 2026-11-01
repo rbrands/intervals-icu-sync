@@ -109,6 +109,7 @@ def _tool_span(name: str):
 
 # Allow imports from src/ and from this package when run directly
 sys.path.insert(0, str(_ROOT / "src"))
+sys.path.insert(0, str(SCRIPTS_DIR))
 _WEBSERVICE_DIR = Path(__file__).resolve().parent
 if str(_WEBSERVICE_DIR) not in sys.path:
     sys.path.insert(0, str(_WEBSERVICE_DIR))
@@ -123,6 +124,7 @@ from intervals_icu.client import (
     get_library_workouts,
 )
 from intervals_icu.training_readiness import annotate_hard_sessions, compute_training_readiness
+from prepare_week_for_coach import build_strength_week_summary, fetch_strength_history
 
 from context import api_key_var, athlete_id_var
 from intervals_icu.prompt_templates import render_coach_prompt
@@ -1321,6 +1323,11 @@ def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) 
                 week_data["ctl"] = ctl
             if week_data.get("atl") is None and atl is not None:
                 week_data["atl"] = atl
+            week_data["strength"] = build_strength_week_summary(
+                fetch_strength_history(today, api_key=api_key, athlete_id=athlete_id),
+                today,
+                week_data,
+            )
             week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
 
             ride_plan = _extract_ride_plan_summary(plan_data, monday)

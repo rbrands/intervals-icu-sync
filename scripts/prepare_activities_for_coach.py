@@ -414,8 +414,10 @@ def _has_training_load(activity: dict) -> bool:
 
 def _passes_load_filter(activity: dict) -> bool:
     """Return True when an activity should be kept by load/metric rules."""
+    if activity.get("type") in _STRENGTH_ACTIVITY_TYPES:
+        return True
     if (
-        activity.get("type") in _RUN_ACTIVITY_TYPES | _STRENGTH_ACTIVITY_TYPES
+        activity.get("type") in _RUN_ACTIVITY_TYPES
         and _has_training_load(activity)
     ):
         return True

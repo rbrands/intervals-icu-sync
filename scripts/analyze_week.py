@@ -167,6 +167,7 @@ _RIDE_ACTIVITY_TYPES = {"Ride", "VirtualRide", "MountainBikeRide", "GravelRide"}
 _RUN_ACTIVITY_TYPES = {"Run", "TrailRun", "VirtualRun"}
 _STRENGTH_ACTIVITY_TYPES = {"WeightTraining"}
 _RIDE_RUN_ACTIVITY_TYPES = _RIDE_ACTIVITY_TYPES | _RUN_ACTIVITY_TYPES
+_HARD_SESSION_ACTIVITY_TYPES = _RIDE_RUN_ACTIVITY_TYPES | _STRENGTH_ACTIVITY_TYPES
 MIN_DECOUPLING_DURATION_HOURS = 1.5
 
 
@@ -177,8 +178,10 @@ def _has_training_load(activity: dict) -> bool:
 
 def _passes_load_filter(activity: dict) -> bool:
     """Return True when an activity should be kept by load/metric rules."""
+    if activity.get("type") in _STRENGTH_ACTIVITY_TYPES:
+        return True
     if (
-        activity.get("type") in _RUN_ACTIVITY_TYPES | _STRENGTH_ACTIVITY_TYPES
+        activity.get("type") in _RUN_ACTIVITY_TYPES
         and _has_training_load(activity)
     ):
         return True
@@ -600,7 +603,10 @@ def compute_metrics(activities: list, current_ctl: float | None = None) -> dict:
         "days_since_last_hiit": compute_days_since_last_distribution(ride_activities, ["HIIT"], date.today()),
         "days_since_last_polarized": compute_days_since_last_distribution(ride_activities, ["HIIT", "Polarized"], date.today()),
         "days_since_last_hard_session": compute_days_since_last_hard_session(
-            ride_activities,
+            [
+                activity for activity in activities
+                if activity.get("type") in _HARD_SESSION_ACTIVITY_TYPES
+            ],
             date.today(),
             current_ctl,
         ),

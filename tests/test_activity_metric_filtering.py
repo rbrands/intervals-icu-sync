@@ -173,12 +173,52 @@ class ActivityMetricFilteringTests(unittest.TestCase):
         self.assertTrue(prepare_activities._passes_load_filter(light_strength))
         self.assertEqual(prepare_activities.filter_activities([light_strength]), [light_strength])
 
-    def test_weight_training_without_load_is_dropped_by_both_activity_load_filters(self):
-        strength = _activity(type="WeightTraining", tags=[], icu_training_load=None)
+    def test_weight_training_with_optional_load_is_kept(self):
+        for load in (None, 0):
+            for tags in ([], ["strength-maximum"]):
+                with self.subTest(load=load, tags=tags):
+                    strength = _activity(type="WeightTraining", tags=tags, icu_training_load=load)
+                    self.assertTrue(get_activities._passes_load_filter(strength))
+                    self.assertTrue(prepare_activities._passes_load_filter(strength))
+                    self.assertEqual(prepare_activities.filter_activities([strength]), [strength])
+                    self.assertEqual(analyze_week.filter_activities([strength]), [strength])
+                    exported = prepare_activities.extract_fields(strength)
+                    self.assertEqual(exported["training_load"], load)
+                    prepare_activities._add_training_load_deltas([exported])
+                    for field in ("ctl_delta", "atl_delta", "form_absolute_delta"):
+                        self.assertIsNone(exported[field])
+                    duplicate = dict(strength, source="STRAVA")
+                    self.assertEqual(prepare_activities.filter_activities([duplicate]), [])
+                    self.assertEqual(analyze_week.filter_activities([duplicate]), [])
 
-        self.assertFalse(get_activities._passes_load_filter(strength))
-        self.assertFalse(prepare_activities._passes_load_filter(strength))
-        self.assertEqual(prepare_activities.filter_activities([strength]), [])
+    def test_raw_and_coach_exports_keep_strength_with_null_and_zero_load(self):
+        strengths = [
+            _activity(id=f"strength-{index}", type="WeightTraining",
+                      tags=["strength-maximum"], icu_training_load=load)
+            for index, load in enumerate((None, 0))
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            with (
+                patch.object(get_activities, "API_KEY", "test-key"),
+                patch.object(get_activities, "ATHLETE_ID", "test-athlete"),
+                patch.object(get_activities, "DATA_DIR", directory),
+                patch.object(get_activities, "get_activities", return_value=[
+                    *strengths, dict(strengths[0], source="STRAVA"),
+                ]),
+            ):
+                get_activities.main()
+            raw = json.loads((directory / f"activities_{date.today().isoformat()}.json").read_text())
+            self.assertEqual(raw, strengths)
+            with (
+                patch.object(prepare_activities, "OUTPUT_DIR", directory),
+                patch.object(prepare_activities, "load_data", return_value=raw),
+                patch.object(prepare_activities.subprocess, "run", return_value=Mock(returncode=0)),
+            ):
+                prepare_activities.main()
+            monday = date.today() - timedelta(days=date.today().weekday())
+            exported = json.loads((directory / f"coach_input_{monday.isoformat()}.json").read_text())
+            self.assertEqual([row["training_load"] for row in exported], [None, 0])
 
     def test_weight_training_export_has_only_the_reduced_field_set(self):
         strength = _activity(

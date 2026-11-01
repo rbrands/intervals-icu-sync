@@ -11,6 +11,15 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 - Added `WeightTraining` activities to the raw and coach activity exports when intervals.icu supplies training load. The coach export contains only the reduced strength field set and excludes ride/run power, heart-rate, zone, interval, decoupling, W'bal, power-curve, DFA, fueling, and weather analyses.
 - Added per-sport Ride, Run, and Strength load/session/time totals to `week_summary`; combined totals remain Ride+Run, while strength sessions are excluded from ride-focused analyses and fueling.
+- Added internal 16-week strength history with activity/planned tag resolution and exported `week_summary.strength` phase tracking. Only `strength-maximum` WeightTraining sessions count as hard sessions; the generic TSS-to-CTL hard-session threshold is disabled for strength.
+
+### Changed
+
+- Kept strength history internal instead of exporting its raw rows to coach/MCP clients. `week_summary.strength` now includes four completed ISO-week session counts (oldest first) and an untagged-session count for the history window. Local and hosted MCP preparation share the compact derivation; week-data schema version is now 1.7.0 and the JSON Schema/C# contracts are regenerated.
+
+### Fixed
+
+- Retained WeightTraining activities with null or zero training load in raw/coach exports and weekly analysis. Missing load stays null on activities and contributes zero to strength load totals; tag/date-based phase, session counts, and hard-session classification do not require load. STRAVA duplicate exclusion and ride/run filters are unchanged.
 
 ## [1.5.0] - 2026-10-31
 

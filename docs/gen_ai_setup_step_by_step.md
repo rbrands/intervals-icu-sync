@@ -333,9 +333,7 @@ For the coaching assessment to be meaningful, enter the following in intervals.i
 - **Carbohydrates consumed** (grams) — required for fueling analysis
 - **Description / Notes** *(optional but recommended)* — a short comment on how the ride felt, any issues, or context the coach should know about
 
-For **WeightTraining** sessions, enter an RPE as well. intervals.icu derives
-their training load from RPE × duration; HR-only load estimates are unreliable
-for strength work.
+For **WeightTraining** sessions, the coach needs the `strength-<phase>` tag; RPE is optional.
 
 The more consistently you log these, the better the coaching output.
 

@@ -2432,6 +2432,120 @@
       "title": "RaceEvent",
       "type": "object"
     },
+    "StrengthSummary": {
+      "additionalProperties": true,
+      "properties": {
+        "current_phase": {
+          "anyOf": [
+            {
+              "enum": [
+                "adaptation",
+                "transition",
+                "maximum",
+                "maintenance"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current Phase"
+        },
+        "phase_started": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Started"
+        },
+        "phase_session_count": {
+          "title": "Phase Session Count",
+          "type": "integer"
+        },
+        "phase_target_sessions": {
+          "anyOf": [
+            {
+              "enum": [
+                "4-6",
+                "2-3",
+                "8-12",
+                "ongoing"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Target Sessions"
+        },
+        "sessions_this_week": {
+          "title": "Sessions This Week",
+          "type": "integer"
+        },
+        "days_since_last_strength": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Days Since Last Strength"
+        },
+        "last_session_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Last Session Tags",
+          "type": "array"
+        },
+        "weekly_strength_load": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Weekly Strength Load"
+        },
+        "sessions_per_week_last_4": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Sessions Per Week Last 4",
+          "type": "array"
+        },
+        "untagged_sessions_last_16_weeks": {
+          "title": "Untagged Sessions Last 16 Weeks",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "phase_session_count",
+        "sessions_this_week",
+        "last_session_tags",
+        "weekly_strength_load",
+        "sessions_per_week_last_4",
+        "untagged_sessions_last_16_weeks"
+      ],
+      "title": "StrengthSummary",
+      "type": "object"
+    },
     "TrainingLoadHistoryEntry": {
       "additionalProperties": true,
       "properties": {
@@ -3389,6 +3503,17 @@
           "anyOf": [
             {
               "$ref": "#/$defs/TrainingReadiness"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "strength": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StrengthSummary"
             },
             {
               "type": "null"

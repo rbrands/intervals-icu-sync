@@ -1,7 +1,11 @@
 import importlib.util
+import json
+import os
+import tempfile
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -23,9 +27,11 @@ fueling_analysis = _load_module(
 prepare_week = _load_module(
     "prepare_week_strength_scope_script", "scripts/prepare_week_for_coach.py"
 )
-week_data_schema = _load_module(
-    "week_data_schema_strength_scope", "src/intervals_icu/week_data_schema.py"
+prepare_activities = _load_module(
+    "prepare_activities_strength_scope_script", "scripts/prepare_activities_for_coach.py"
 )
+from intervals_icu import week_data_schema
+client = _load_module("intervals_icu_client_strength_scope", "src/intervals_icu/client.py")
 
 
 def _raw_activity(activity_type: str, load: int, moving_time: int, **overrides) -> dict:
@@ -139,6 +145,29 @@ class StrengthFuelingScopeTests(unittest.TestCase):
 
 
 class StrengthWeekSummaryTests(unittest.TestCase):
+    def test_strength_without_load_counts_toward_phase_week_and_hard_recency(self):
+        for load in (None, 0):
+            with self.subTest(load=load):
+                activity = _raw_activity(
+                    "WeightTraining", load, 3600, tags=["strength-maximum"],
+                )
+                kept = analyze_week.filter_activities([activity])
+                week = analyze_week.compute_metrics(kept)
+                history = prepare_week.build_strength_history([activity], [])
+                strength = prepare_week.build_strength_week_summary(history, date.today(), week)
+                self.assertEqual(history[0]["training_load"], load)
+                self.assertEqual(strength["phase_session_count"], 1)
+                self.assertEqual(strength["sessions_this_week"], 1)
+                self.assertEqual(week["strength_load"], 0)
+                self.assertEqual(strength["weekly_strength_load"], 0)
+                exported = prepare_activities.extract_fields(
+                    prepare_activities.filter_activities([activity])[0]
+                )
+                self.assertEqual(exported["training_load"], load)
+                annotated = prepare_week.annotate_hard_sessions([exported])
+                self.assertTrue(annotated[0]["is_hard_session"])
+                self.assertEqual(week["days_since_last_hard_session"], 0)
+
     def test_sample_strength_activity_does_not_change_ride_run_totals(self):
         rides = [
             _raw_activity("Ride", 100, 3600),
@@ -186,10 +215,7 @@ class StrengthWeekSummaryTests(unittest.TestCase):
             with_strength["days_since_last_polarized"],
             without_strength["days_since_last_polarized"],
         )
-        self.assertEqual(
-            with_strength["days_since_last_hard_session"],
-            without_strength["days_since_last_hard_session"],
-        )
+        self.assertEqual(with_strength["days_since_last_hard_session"], 0)
         self.assertIsNone(
             analyze_week.compute_aerobic_threshold_estimate(
                 [
@@ -238,6 +264,481 @@ class StrengthWeekSummaryTests(unittest.TestCase):
                 "strength_time_hours",
             }.issubset(fields)
         )
+
+    def test_strength_maximum_is_hard_but_other_strength_tags_ignore_tss_threshold(self):
+        maximum = _raw_activity(
+            "WeightTraining",
+            100,
+            3600,
+            tags=["strength-maximum"],
+        )
+        adaptation = _raw_activity(
+            "WeightTraining",
+            100,
+            3600,
+            tags=["strength-adaptation"],
+        )
+        maximum_with_low_load = dict(maximum, icu_training_load=1)
+        ride = _raw_activity("Ride", 100, 3600)
+
+        self.assertTrue(analyze_week.is_hard_session(maximum_with_low_load, current_ctl=100))
+        self.assertFalse(analyze_week.is_hard_session(adaptation, current_ctl=10))
+        self.assertTrue(analyze_week.is_hard_session(ride, current_ctl=60))
+
+    def test_hard_strength_updates_recency_and_readiness_veto(self):
+        maximum_today = _raw_activity(
+            "WeightTraining",
+            8,
+            3600,
+            tags=["strength-maximum"],
+        )
+
+        summary = analyze_week.compute_metrics([maximum_today], current_ctl=100)
+        readiness = prepare_week.compute_training_readiness(
+            {},
+            {
+                "ctl": 100,
+                "atl": 80,
+                "form_zone": "fresh",
+                "days_since_last_hard_session": summary["days_since_last_hard_session"],
+            },
+        )
+
+        self.assertEqual(summary["days_since_last_hard_session"], 0)
+        self.assertEqual(readiness["status"], "red")
+        self.assertIn("A hard session was completed today.", readiness["safety_vetoes"])
+
+    def test_adaptation_strength_does_not_update_hard_session_recency(self):
+        adaptation_today = _raw_activity(
+            "WeightTraining",
+            100,
+            3600,
+            tags=["strength-adaptation"],
+        )
+
+        summary = analyze_week.compute_metrics([adaptation_today], current_ctl=10)
+
+        self.assertIsNone(summary["days_since_last_hard_session"])
+
+
+class StrengthHistoryTests(unittest.TestCase):
+    def test_history_fetch_keeps_null_and_zero_load_without_load_query_filter(self):
+        response = unittest.mock.Mock()
+        response.json.return_value = [
+            _raw_activity("WeightTraining", load, 3600, tags=["strength-maximum"])
+            for load in (None, 0)
+        ]
+        with patch.object(client.requests, "get", return_value=response) as request:
+            completed = client.get_strength_history_activities(
+                "test-key", "test-athlete", "2026-07-12", "2026-11-01",
+            )
+        self.assertEqual([row["icu_training_load"] for row in completed], [None, 0])
+        self.assertEqual(set(request.call_args.kwargs["params"]), {"oldest", "newest", "fields"})
+        history = prepare_week.build_strength_history(completed, [])
+        self.assertEqual(len(history), 2)
+        self.assertEqual([row["training_load"] for row in history], [None, 0])
+
+    def test_activity_planned_and_missing_tag_resolution_excludes_strava_duplicate(self):
+        completed = [
+            {
+                "id": 1,
+                "type": "WeightTraining",
+                "source": "GARMIN",
+                "start_date_local": "2026-10-10T09:00:00",
+                "tags": ["strength-transition", "legacy"],
+                "moving_time": 3000,
+                "icu_training_load": 35,
+                "icu_rpe": 8,
+            },
+            {
+                "id": 2,
+                "type": "WeightTraining",
+                "source": "GARMIN",
+                "start_date_local": "2026-10-11T09:00:00",
+                "tags": ["strength"],
+                "moving_time": 2400,
+                "icu_training_load": 25,
+                "icu_rpe": 6,
+            },
+            {
+                "id": 3,
+                "type": "WeightTraining",
+                "source": "GARMIN",
+                "start_date_local": "2026-10-09T09:00:00",
+                "tags": ["strength"],
+                "moving_time": 1800,
+                "icu_training_load": 10,
+                "icu_rpe": 4,
+            },
+            {
+                "id": 4,
+                "type": "WeightTraining",
+                "source": "GARMIN",
+                "start_date_local": "2026-10-12T09:00:00",
+                "tags": ["legacy"],
+                "moving_time": 1800,
+                "icu_training_load": None,
+                "icu_rpe": None,
+            },
+            {
+                "id": 5,
+                "type": "WeightTraining",
+                "source": "STRAVA",
+                "start_date_local": "2026-10-13T09:00:00",
+                "tags": ["strength-maximum"],
+                "moving_time": 1800,
+            },
+        ]
+        planned = [
+            {
+                "type": "WeightTraining",
+                "start_date_local": "2026-10-11T08:00:00",
+                "tags": ["strength-transition"],
+            },
+            {
+                "type": "WeightTraining",
+                "start_date_local": "2026-10-12T08:00:00",
+                "tags": ["strength-maintenance"],
+            },
+            {
+                "type": "Ride",
+                "start_date_local": "2026-10-12T08:00:00",
+                "tags": ["strength-transition"],
+            },
+        ]
+
+        history = prepare_week.build_strength_history(completed, planned)
+
+        self.assertEqual(
+            history,
+            [
+                {
+                    "date": "2026-10-12",
+                    "tags": ["strength-maintenance"],
+                    "phase_source": "planned",
+                    "duration_minutes": 30,
+                    "training_load": None,
+                    "rpe": None,
+                },
+                {
+                    "date": "2026-10-11",
+                    "tags": ["strength-transition"],
+                    "phase_source": "planned",
+                    "duration_minutes": 40,
+                    "training_load": 25,
+                    "rpe": 6,
+                },
+                {
+                    "date": "2026-10-10",
+                    "tags": ["strength-transition"],
+                    "phase_source": "activity",
+                    "duration_minutes": 50,
+                    "training_load": 35,
+                    "rpe": 8,
+                },
+                {
+                    "date": "2026-10-09",
+                    "tags": [],
+                    "phase_source": "none",
+                    "duration_minutes": 30,
+                    "training_load": 10,
+                    "rpe": 4,
+                },
+            ],
+        )
+
+    def test_activity_tag_takes_precedence_over_planned_tag(self):
+        history = prepare_week.build_strength_history(
+            [
+                {
+                    "type": "WeightTraining",
+                    "start_date_local": "2026-10-10T09:00:00",
+                    "tags": ["strength-maximum"],
+                    "moving_time": 3600,
+                }
+            ],
+            [
+                {
+                    "type": "WeightTraining",
+                    "start_date_local": "2026-10-10T08:00:00",
+                    "tags": ["strength-adaptation"],
+                }
+            ],
+        )
+
+        self.assertEqual(history[0]["tags"], ["strength-maximum"])
+        self.assertEqual(history[0]["phase_source"], "activity")
+
+    def test_phase_count_skips_untagged_rows_and_stops_at_phase_change(self):
+        history = [
+            {"date": "2026-10-31", "tags": ["strength-maximum"], "phase_source": "activity"},
+            {"date": "2026-10-29", "tags": ["strength-maximum"], "phase_source": "planned"},
+            {"date": "2026-10-27", "tags": [], "phase_source": "none"},
+            {"date": "2026-10-25", "tags": ["strength-maximum"], "phase_source": "activity"},
+            {"date": "2026-10-23", "tags": ["strength-transition"], "phase_source": "activity"},
+        ]
+
+        summary = prepare_week.build_strength_week_summary(
+            history,
+            date.fromisoformat("2026-11-01"),
+            {"strength_sessions": 1, "strength_load": 9},
+        )
+
+        self.assertEqual(summary["current_phase"], "maximum")
+        self.assertEqual(summary["phase_session_count"], 3)
+        self.assertEqual(summary["phase_started"], "2026-10-25")
+        self.assertEqual(summary["phase_target_sessions"], "8-12")
+        self.assertEqual(summary["sessions_this_week"], 1)
+        self.assertEqual(summary["weekly_strength_load"], 9)
+
+    def test_phase_state_resets_after_21_days(self):
+        summary = prepare_week.build_strength_week_summary(
+            [
+                {
+                    "date": "2026-10-11",
+                    "tags": ["strength-maximum"],
+                    "phase_source": "activity",
+                }
+            ],
+            date.fromisoformat("2026-11-01"),
+            {"strength_sessions": 0, "strength_load": 0},
+        )
+
+        self.assertEqual(summary["days_since_last_strength"], 21)
+        self.assertIsNone(summary["current_phase"])
+        self.assertEqual(summary["phase_session_count"], 0)
+        self.assertIsNone(summary["phase_started"])
+
+    def test_activity_fetch_uses_small_projection_then_filters_type_and_strava(self):
+        with patch.object(
+            client,
+            "get_activities",
+            return_value=[
+                {"id": 1, "type": "WeightTraining", "source": "GARMIN"},
+                {"id": 2, "type": "WeightTraining", "source": "STRAVA"},
+                {"id": 3, "type": "Ride", "source": "GARMIN"},
+            ],
+        ) as get_activities:
+            result = client.get_strength_history_activities("key", "athlete", "old", "new")
+
+        self.assertEqual(
+            result,
+            [
+                {
+                    "id": 1,
+                    "start_date_local": None,
+                    "type": "WeightTraining",
+                    "tags": None,
+                    "moving_time": None,
+                    "icu_training_load": None,
+                    "icu_rpe": None,
+                }
+            ],
+        )
+        self.assertEqual(
+            get_activities.call_args.kwargs["fields"],
+            (
+                "id",
+                "start_date_local",
+                "type",
+                "tags",
+                "moving_time",
+                "icu_training_load",
+                "icu_rpe",
+                "source",
+            ),
+        )
+
+    def test_planned_events_use_projection_and_filter_weight_training(self):
+        with patch.object(
+            client,
+            "get_events",
+            return_value=[
+                {
+                    "id": 1,
+                    "type": "WeightTraining",
+                    "start_date_local": "2026-10-10T09:00:00",
+                    "tags": ["strength-maximum"],
+                },
+                {
+                    "id": 2,
+                    "type": "Ride",
+                    "start_date_local": "2026-10-11T09:00:00",
+                    "tags": ["strength-transition"],
+                },
+            ],
+        ) as get_events:
+            result = client.get_planned_strength_events("key", "athlete", "old", "new")
+
+        self.assertEqual(
+            result,
+            [
+                {
+                    "date": "2026-10-10",
+                    "tags": ["strength-maximum"],
+                }
+            ],
+        )
+        self.assertIn("tags", get_events.call_args.kwargs["fields"])
+
+    def test_only_strength_summary_is_typed_in_week_data_schema(self):
+        self.assertNotIn("strength_history", week_data_schema.WeekData.model_fields)
+        self.assertIn("strength", week_data_schema.WeekSummary.model_fields)
+        self.assertIn("current_phase", week_data_schema.StrengthSummary.model_fields)
+        schema = week_data_schema.WeekData.model_json_schema()
+        self.assertNotIn("StrengthHistoryEntry", schema["$defs"])
+        fields = schema["$defs"]["StrengthSummary"]["properties"]
+        self.assertEqual(fields["sessions_per_week_last_4"]["minItems"], 4)
+        self.assertEqual(fields["sessions_per_week_last_4"]["maxItems"], 4)
+        self.assertIn("untagged_sessions_last_16_weeks", fields)
+
+    def test_compact_counts_include_untagged_sessions_and_completed_iso_weeks(self):
+        today = date(2026, 11, 1)
+        monday = today - timedelta(days=today.weekday())
+        history = []
+        for weeks_ago in range(4, 0, -1):
+            week_start = monday - timedelta(weeks=weeks_ago)
+            for offset, source in ((0, "activity"), (6, "none")):
+                history.append({
+                    "date": (week_start + timedelta(days=offset)).isoformat(),
+                    "tags": ["strength-maximum"] if source == "activity" else [],
+                    "phase_source": source,
+                })
+        history.extend([
+            {"date": today.isoformat(), "tags": [], "phase_source": "none"},
+            {
+                "date": (monday - timedelta(weeks=5)).isoformat(),
+                "tags": [],
+                "phase_source": "none",
+            },
+        ])
+        summary = prepare_week.build_strength_week_summary(history, today, {})
+        self.assertEqual(summary["sessions_per_week_last_4"], [2, 2, 2, 2])
+        self.assertEqual(summary["untagged_sessions_last_16_weeks"], 6)
+
+    def test_completed_week_counts_are_oldest_first_across_iso_year_boundary(self):
+        summary = prepare_week.build_strength_week_summary(
+            [
+                {"date": day, "tags": [], "phase_source": "none"}
+                for day in ("2025-12-08", "2025-12-15", "2025-12-21",
+                            "2025-12-29", "2026-01-04", "2026-01-05")
+            ],
+            date(2026, 1, 7),
+            {},
+        )
+        self.assertEqual(summary["sessions_per_week_last_4"], [1, 2, 0, 2])
+        self.assertEqual(summary["untagged_sessions_last_16_weeks"], 6)
+
+    def test_empty_history_has_zero_compact_counts(self):
+        summary = prepare_week.build_strength_week_summary([], date(2026, 11, 1), {})
+        self.assertEqual(summary["sessions_per_week_last_4"], [0, 0, 0, 0])
+        self.assertEqual(summary["untagged_sessions_last_16_weeks"], 0)
+
+    def test_consolidation_exports_strength_summary_without_history(self):
+        today = date.today()
+        monday = today - timedelta(days=today.weekday())
+        activity = {
+            "id": 10,
+            "type": "WeightTraining",
+            "date": today.isoformat(),
+            "name": "Heavy strength",
+            "duration_hours": 1,
+            "training_load": 9,
+            "tags": ["strength-maximum"],
+        }
+        source_data = {
+            f"coach_input_{monday.isoformat()}.json": [activity],
+            f"fueling_analysis_{monday.isoformat()}.json": {"activities": []},
+            f"week_summary_{monday.isoformat()}.json": {
+                "strength_sessions": 1,
+                "strength_load": 9,
+                "days_since_last_hard_session": 0,
+            },
+            f"training_plan_{today.isoformat()}.json": None,
+            f"planned_workouts_{monday.isoformat()}.json": None,
+        }
+        history = [
+            {
+                "date": today.isoformat(),
+                "tags": ["strength-maximum"],
+                "phase_source": "activity",
+                "duration_minutes": 60,
+                "training_load": 9,
+                "rpe": 8,
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            processed = Path(tmpdir)
+            (processed / f"metrics_{today.isoformat()}.json").write_text("{}")
+            with (
+                patch.object(prepare_week, "PROCESSED_DIR", processed),
+                patch.object(
+                    prepare_week,
+                    "_load_json",
+                    side_effect=lambda path: source_data.get(path.name),
+                ),
+                patch.object(prepare_week, "fetch_strength_history", return_value=history),
+            ):
+                prepare_week.consolidate()
+
+            payload = json.loads(
+                (processed / f"coach_input_{monday.isoformat()}.json").read_text()
+            )
+
+        self.assertNotIn("strength_history", payload)
+        self.assertEqual(payload["week_summary"]["strength"]["current_phase"], "maximum")
+        self.assertEqual(payload["week_summary"]["strength"]["sessions_this_week"], 1)
+        self.assertEqual(payload["week_summary"]["strength"]["sessions_per_week_last_4"], [0, 0, 0, 0])
+        self.assertEqual(payload["week_summary"]["strength"]["untagged_sessions_last_16_weeks"], 0)
+        self.assertTrue(payload["activities"][0]["is_hard_session"])
+
+
+class StrengthMcpPayloadTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        with patch.dict(os.environ, {"INTERVALS_API_KEY": "test-key", "ATHLETE_ID": "test-athlete"}):
+            cls.local = _load_module("strength_local_mcp", "scripts/mcp_server.py")
+        from webservice import mcp_server
+
+        cls.hosted = mcp_server
+
+    def test_local_and_hosted_mcp_export_only_compact_strength_summary(self):
+        today = date.today()
+        monday = today - timedelta(days=today.weekday())
+        history = [{
+            "date": today.isoformat(),
+            "tags": [],
+            "phase_source": "none",
+        }]
+        expected = prepare_week.build_strength_week_summary(history, today, {})
+        for server in (self.local, self.hosted):
+            with self.subTest(server=server.__name__), tempfile.TemporaryDirectory() as tmpdir:
+                processed = Path(tmpdir)
+                with (
+                    patch.object(server, "PROCESSED_DIR", processed),
+                    patch.object(server, "_load_json_file", return_value=None),
+                    patch.object(server, "fetch_strength_history", return_value=history) as fetch,
+                    patch.object(
+                        server,
+                        "_run_script",
+                        return_value=(True, "", 0) if server is self.hosted else (True, ""),
+                    ),
+                ):
+                    if server is self.local:
+                        server.prepare_week_data()
+                        payload = json.loads(
+                            (processed / f"coach_input_{monday.isoformat()}.json").read_text()
+                        )
+                        credentials = {"api_key": server.API_KEY, "athlete_id": server.ATHLETE_ID}
+                    else:
+                        payload = json.loads(server._run_week_pipeline(
+                            7, "request-athlete", "request-key", server._NoOpSpan(),
+                        ))
+                        credentials = {"api_key": "request-key", "athlete_id": "request-athlete"}
+                fetch.assert_called_once_with(today, **credentials)
+                self.assertNotIn("strength_history", payload)
+                self.assertEqual(payload["week_summary"]["strength"], expected)
 
 
 if __name__ == "__main__":

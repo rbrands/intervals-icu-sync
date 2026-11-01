@@ -286,6 +286,8 @@ and with library filter tooling. Do not rename without updating all three.
     - else            → endurance
 - recovery-*          → recovery
 - race-specific-*     → race
+- strength-*          → strength (excluded from ride-domain counts and fueling)
+- `strength_load` is not interpreted: HR- or RPE-derived load is informational only; phase and frequency come from tags and dates.
 
 ### Multiple tags on one session (CRITICAL)
 - Resolve each tag independently using the mapping above.

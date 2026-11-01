@@ -102,7 +102,13 @@ def _raise_for_status_with_context(response: requests.Response, operation: str) 
         raise requests.HTTPError(message, response=response, request=response.request) from exc
 
 
-def get_events(api_key: str, athlete_id: str, oldest: str, newest: str) -> list:
+def get_events(
+    api_key: str,
+    athlete_id: str,
+    oldest: str,
+    newest: str,
+    fields: tuple[str, ...] | None = None,
+) -> list:
     """Fetch WORKOUT events for the given date range.
 
     Returns:
@@ -113,10 +119,13 @@ def get_events(api_key: str, athlete_id: str, oldest: str, newest: str) -> list:
         requests.HTTPError: If the response status code is not 2xx.
     """
     url = f"{BASE_URL}/athlete/{athlete_id}/events.json"
+    params = {"oldest": oldest, "newest": newest, "category": "WORKOUT"}
+    if fields:
+        params["fields"] = ",".join(fields)
     response = requests.get(
         url,
         auth=("API_KEY", api_key),
-        params={"oldest": oldest, "newest": newest, "category": "WORKOUT"},
+        params=params,
         timeout=30,
     )
     _raise_for_status_with_context(response, "get_events")
@@ -207,7 +216,13 @@ def delete_events_range(api_key: str, athlete_id: str, oldest: str, newest: str)
     _raise_for_status_with_context(response, "delete_events_range")
 
 
-def get_activities(api_key: str, athlete_id: str, start_date: str, end_date: str) -> list:
+def get_activities(
+    api_key: str,
+    athlete_id: str,
+    start_date: str,
+    end_date: str,
+    fields: tuple[str, ...] | None = None,
+) -> list:
     """Fetch activities from intervals.icu for the given date range.
 
     Args:
@@ -224,16 +239,79 @@ def get_activities(api_key: str, athlete_id: str, start_date: str, end_date: str
     """
     url = f"{BASE_URL}/athlete/{athlete_id}/activities"
 
+    params = {"oldest": start_date, "newest": end_date}
+    if fields:
+        params["fields"] = ",".join(fields)
     response = requests.get(
         url,
         auth=("API_KEY", api_key),
-        params={"oldest": start_date, "newest": end_date},
+        params=params,
         timeout=30,
     )
 
     _raise_for_status_with_context(response, "get_activities")
 
     return response.json()
+
+
+_STRENGTH_ACTIVITY_FIELDS = (
+    "id",
+    "start_date_local",
+    "type",
+    "tags",
+    "moving_time",
+    "icu_training_load",
+    "icu_rpe",
+    "source",
+)
+_STRENGTH_EVENT_FIELDS = ("start_date_local", "type", "tags")
+
+
+def get_strength_history_activities(
+    api_key: str,
+    athlete_id: str,
+    oldest: str,
+    newest: str,
+) -> list[dict]:
+    """Fetch compact completed WeightTraining activity rows for the date range."""
+    activities = get_activities(
+        api_key,
+        athlete_id,
+        oldest,
+        newest,
+        fields=_STRENGTH_ACTIVITY_FIELDS,
+    )
+    fields = _STRENGTH_ACTIVITY_FIELDS[:-1]
+    return [
+        {field: activity.get(field) for field in fields}
+        for activity in activities
+        if activity.get("type") == "WeightTraining"
+        and activity.get("source") != "STRAVA"
+    ]
+
+
+def get_planned_strength_events(
+    api_key: str,
+    athlete_id: str,
+    oldest: str,
+    newest: str,
+) -> list[dict]:
+    """Fetch compact planned WeightTraining WORKOUT events for the date range."""
+    events = get_events(
+        api_key,
+        athlete_id,
+        oldest,
+        newest,
+        fields=_STRENGTH_EVENT_FIELDS,
+    )
+    return [
+        {
+            "date": (event.get("start_date_local") or "")[:10],
+            "tags": event.get("tags") or [],
+        }
+        for event in events
+        if event.get("type") == "WeightTraining"
+    ]
 
 
 def get_athlete_summary(

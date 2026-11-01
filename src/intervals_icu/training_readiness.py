@@ -1,5 +1,7 @@
 """Compute an explainable daily training-readiness signal."""
 
+from intervals_icu.strength import STRENGTH_MAXIMUM_TAG
+
 
 def _as_float(value: object) -> float:
     try:
@@ -14,6 +16,10 @@ def is_hard_session(
     distribution: str | None = None,
 ) -> bool:
     """Return whether an activity creates meaningful recovery demand."""
+    if activity.get("type") == "WeightTraining":
+        tags = activity.get("tags") or []
+        return STRENGTH_MAXIMUM_TAG in tags
+
     training_load = _as_float(
         activity.get("icu_training_load", activity.get("training_load"))
     )

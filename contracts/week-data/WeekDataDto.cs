@@ -674,6 +674,42 @@ public class RaceEventDto
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
+public class StrengthSummaryDto
+{
+    [JsonPropertyName("current_phase")]
+    public JsonElement? CurrentPhase { get; set; }
+
+    [JsonPropertyName("phase_started")]
+    public string? PhaseStarted { get; set; }
+
+    [JsonPropertyName("phase_session_count")]
+    public int PhaseSessionCount { get; set; }
+
+    [JsonPropertyName("phase_target_sessions")]
+    public JsonElement? PhaseTargetSessions { get; set; }
+
+    [JsonPropertyName("sessions_this_week")]
+    public int SessionsThisWeek { get; set; }
+
+    [JsonPropertyName("days_since_last_strength")]
+    public int? DaysSinceLastStrength { get; set; }
+
+    [JsonPropertyName("last_session_tags")]
+    public List<string> LastSessionTags { get; set; }
+
+    [JsonPropertyName("weekly_strength_load")]
+    public double WeeklyStrengthLoad { get; set; }
+
+    [JsonPropertyName("sessions_per_week_last_4")]
+    public List<int> SessionsPerWeekLast4 { get; set; }
+
+    [JsonPropertyName("untagged_sessions_last_16_weeks")]
+    public int UntaggedSessionsLast16Weeks { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
 public class TrainingLoadHistoryEntryDto
 {
     [JsonPropertyName("week_starting")]
@@ -918,6 +954,9 @@ public class WeekSummaryDto
 
     [JsonPropertyName("training_readiness")]
     public TrainingReadinessDto? TrainingReadiness { get; set; }
+
+    [JsonPropertyName("strength")]
+    public StrengthSummaryDto? Strength { get; set; }
 
     [JsonPropertyName("fueling_form_analysis")]
     public FuelingFormAnalysisDto? FuelingFormAnalysis { get; set; }
