@@ -159,6 +159,10 @@ def _merge_fueling_into_activities(
 
     merged_activities: list[dict] = []
     for activity in activity_list:
+        if activity.get("type") == "WeightTraining":
+            merged_activities.append(dict(activity))
+            continue
+
         date_key = activity.get("date")
         queue = fueling_by_date.get(date_key, []) if isinstance(date_key, str) else []
         fueling_match = queue.pop(0) if queue else None

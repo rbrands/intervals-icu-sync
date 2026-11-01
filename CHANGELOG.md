@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added `WeightTraining` activities to the raw and coach activity exports when intervals.icu supplies training load. The coach export contains only the reduced strength field set and excludes ride/run power, heart-rate, zone, interval, decoupling, W'bal, power-curve, DFA, fueling, and weather analyses.
+- Added per-sport Ride, Run, and Strength load/session/time totals to `week_summary`; combined totals remain Ride+Run, while strength sessions are excluded from ride-focused analyses and fueling.
 
 ## [1.5.0] - 2026-10-31
 

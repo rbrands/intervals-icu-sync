@@ -165,6 +165,15 @@ class WeekSummary(_SchemaModel):
     number_of_activities: int | None = None
     total_time_hours: float | int | None = None
     longest_activity_hours: float | int | None = None
+    ride_load: float | int | None = None
+    run_load: float | int | None = None
+    strength_load: float | int | None = None
+    ride_sessions: int | None = None
+    run_sessions: int | None = None
+    strength_sessions: int | None = None
+    ride_time_hours: float | int | None = None
+    run_time_hours: float | int | None = None
+    strength_time_hours: float | int | None = None
     vo2_sessions: int | None = None
     threshold_sessions: int | None = None
     endurance_sessions: int | None = None

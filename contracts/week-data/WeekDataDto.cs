@@ -847,6 +847,33 @@ public class WeekSummaryDto
     [JsonPropertyName("longest_activity_hours")]
     public double? LongestActivityHours { get; set; }
 
+    [JsonPropertyName("ride_load")]
+    public double? RideLoad { get; set; }
+
+    [JsonPropertyName("run_load")]
+    public double? RunLoad { get; set; }
+
+    [JsonPropertyName("strength_load")]
+    public double? StrengthLoad { get; set; }
+
+    [JsonPropertyName("ride_sessions")]
+    public int? RideSessions { get; set; }
+
+    [JsonPropertyName("run_sessions")]
+    public int? RunSessions { get; set; }
+
+    [JsonPropertyName("strength_sessions")]
+    public int? StrengthSessions { get; set; }
+
+    [JsonPropertyName("ride_time_hours")]
+    public double? RideTimeHours { get; set; }
+
+    [JsonPropertyName("run_time_hours")]
+    public double? RunTimeHours { get; set; }
+
+    [JsonPropertyName("strength_time_hours")]
+    public double? StrengthTimeHours { get; set; }
+
     [JsonPropertyName("vo2_sessions")]
     public int? Vo2Sessions { get; set; }
 

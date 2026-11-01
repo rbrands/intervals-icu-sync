@@ -103,6 +103,18 @@ value is missing or no previous exported activity exists.
 
 ## week_summary — non-obvious fields
 
+- `total_training_load`, `number_of_activities`, `total_time_hours`, and
+  `longest_activity_hours` aggregate Ride and Run activities together; they
+  exclude `WeightTraining`.
+- `ride_load`, `ride_sessions`, and `ride_time_hours` are Ride totals for
+  `Ride`, `VirtualRide`, `MountainBikeRide`, and `GravelRide`.
+- `run_load`, `run_sessions`, and `run_time_hours` are Run totals for `Run`,
+  `TrailRun`, and `VirtualRun`.
+- `strength_load`, `strength_sessions`, and `strength_time_hours` are
+  `WeightTraining` totals.
+- `vo2_sessions`, `threshold_sessions`, `endurance_sessions`, decoupling
+  fields, `aerobic_threshold_estimate`, and `days_since_*` remain scoped to
+  ride training analysis; WeightTraining activities do not contribute.
 - `ctl` / `atl`: current fitness/fatigue snapshot copied from daily metrics to
   keep readiness (`ctl`, `atl`, `form_*`) together in one section.
 - `form_absolute` / `form_pct` / `form_zone`: CTL−ATL, its ratio, the zone
@@ -184,6 +196,9 @@ value is missing or no previous exported activity exists.
 
 - `id` identifies the activity in intervals.icu; `type` contains the source
   activity type (for example `Ride`, `Run`, or `VirtualRide`).
+- `WeightTraining` entries carry only `id`, `type`, `date`, `name`,
+  `duration_hours`, `training_load`, CTL/ATL/form and their deltas, `rpe`,
+  `tags`, and `notes`; tags are their only classifier.
 - `notes`: free-text athlete description; qualitative context (effort,
   conditions, how legs felt); null if unset.
 - `weather`: null for indoor rides (no GPS). `max_rain` > 0 = wet.

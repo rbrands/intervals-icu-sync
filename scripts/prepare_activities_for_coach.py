@@ -382,9 +382,11 @@ _SUPPORTED_ACTIVITY_TYPES = {
     "Run",
     "TrailRun",
     "VirtualRun",
+    "WeightTraining",
 }
 
 _RUN_ACTIVITY_TYPES = {"Run", "TrailRun", "VirtualRun"}
+_STRENGTH_ACTIVITY_TYPES = {"WeightTraining"}
 
 _POWER_METRIC_FIELDS = (
     "icu_average_watts",
@@ -412,7 +414,10 @@ def _has_training_load(activity: dict) -> bool:
 
 def _passes_load_filter(activity: dict) -> bool:
     """Return True when an activity should be kept by load/metric rules."""
-    if activity.get("type") in _RUN_ACTIVITY_TYPES and _has_training_load(activity):
+    if (
+        activity.get("type") in _RUN_ACTIVITY_TYPES | _STRENGTH_ACTIVITY_TYPES
+        and _has_training_load(activity)
+    ):
         return True
     return (
         _as_float(activity.get("icu_training_load")) > 20
@@ -617,6 +622,23 @@ def extract_fields(
     interval_hr_analysis: dict | None = None,
     dfa_a1_summary: dict | None = None,
 ) -> dict:
+    if activity.get("type") in _STRENGTH_ACTIVITY_TYPES:
+        training_load_state = _extract_training_load_state(activity)
+        return {
+            "id": activity.get("id"),
+            "type": activity.get("type"),
+            "date": (activity.get("start_date_local") or "")[:10],
+            "name": activity.get("name"),
+            "duration_hours": round((activity.get("moving_time") or 0) / 3600, 2),
+            "training_load": activity.get("icu_training_load"),
+            "ctl": training_load_state["ctl"],
+            "atl": training_load_state["atl"],
+            "form_absolute": training_load_state["form_absolute"],
+            "rpe": activity.get("icu_rpe"),
+            "tags": activity.get("tags") or [],
+            "notes": activity.get("description") or None,
+        }
+
     avg_hr, max_hr = _extract_heart_rate(activity)
     w_prime = _activity_w_prime(activity)
     max_wbal_depletion = activity.get("icu_max_wbal_depletion")
@@ -717,6 +739,10 @@ def main() -> None:
     output = []
     dfa_a1_budget = MAX_DFA_A1_ANALYSES_PER_RUN
     for a in rides:
+        if a.get("type") in _STRENGTH_ACTIVITY_TYPES:
+            output.append(extract_fields(a))
+            continue
+
         zone_dist = _zone_distribution(_activity_zone_times(a))
         ride_class = classify_ride(
             zone_dist["z1_z2_pct"], zone_dist["z3_z4_pct"], zone_dist["z5_plus_pct"]

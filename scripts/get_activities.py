@@ -43,9 +43,11 @@ _SUPPORTED_ACTIVITY_TYPES = {
     "Run",
     "TrailRun",
     "VirtualRun",
+    "WeightTraining",
 }
 
 _RUN_ACTIVITY_TYPES = {"Run", "TrailRun", "VirtualRun"}
+_STRENGTH_ACTIVITY_TYPES = {"WeightTraining"}
 
 
 def _has_training_load(activity: dict) -> bool:
@@ -55,7 +57,10 @@ def _has_training_load(activity: dict) -> bool:
 
 def _passes_load_filter(activity: dict) -> bool:
     """Return True when an activity should be kept by load/metric rules."""
-    if activity.get("type") in _RUN_ACTIVITY_TYPES and _has_training_load(activity):
+    if (
+        activity.get("type") in _RUN_ACTIVITY_TYPES | _STRENGTH_ACTIVITY_TYPES
+        and _has_training_load(activity)
+    ):
         return True
     return (
         _as_float(activity.get("icu_training_load")) > 20
