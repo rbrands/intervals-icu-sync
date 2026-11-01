@@ -38,7 +38,8 @@ Resolve conflicts in this order:
 5. **Combine limiter + fatigue → stimulus**
    - fresh + clear limiter → add stimulus in the limiter domain
    - optimal fatigue + limiter → continue structured progression
-   - high fatigue → reduce intensity, prioritize recovery, keep frequency if possible
+   - persistent high fatigue from form / CTL-ATL / history → reduce intensity,
+     prioritize recovery, keep frequency if possible
 6. **Apply phase** (if no phase is provided, apply Base)
    - Base → volume, limit high intensity
    - Build → VO2max + threshold, moderate–high intensity
@@ -50,13 +51,22 @@ Resolve conflicts in this order:
 ## Session Decision Rules
 
 ### Training readiness
-- Green permits the planned hard session when subjective readiness is also good;
-   it does not by itself justify adding another hard session.
-- Yellow requires checking subjective recovery and reducing, moving, or replacing
-   intensity when concerns remain.
-- Red excludes hard training; prioritize recovery or an easy session.
-- Unknown requires a manual assessment before prescribing intensity.
-- Low-confidence readiness must never be presented as a definitive clearance.
+- Readiness (`week_summary.training_readiness`) is a same-day signal, not a
+  multi-day forecast. Scope it by planning mode:
+  - **Next best training:** apply it fully to today's session.
+  - **Current-week plan:** apply it only to today and tomorrow. For later days,
+    use form zone, CTL/ATL trend, `week_type`, and `training_load_history`.
+  - **Next-week plan:** ignore readiness entirely and never cite today's
+    readiness as a reason to choose or reduce a session.
+- Within its applicable window, green permits the planned hard session when
+  subjective readiness is also good; it does not justify adding another hard
+  session. Yellow requires checking subjective recovery and may modify a
+  session on a date within the applicable window. Red excludes hard training
+  on that date; prioritize recovery or an easy session. Preserve applicable
+  same-day safety vetoes.
+- Unknown readiness requires manual assessment before prescribing intensity.
+  Low-confidence readiness is never definitive clearance. Neither unknown nor
+  low confidence should extend readiness influence beyond its planning window.
 
 ### VO2max (CRITICAL — age rule)
 - Athletes 50+: exactly 1 VO2max session per week, in ALL phases, unless
@@ -66,10 +76,16 @@ Resolve conflicts in this order:
   - form_pct < -20%        → vo2max-low      (30/15, 6–8×1 min)
   - -20% ≤ form_pct ≤ -10% → vo2max-moderate (5×2 min)
   - form_pct > -10%        → vo2max-high     (4×4, 5×3 min)
+- A next-week plan follows form zone, ramp, `week_type`, and
+  `training_load_history`; never reduce VO2max dose because of today's
+  `training_readiness`.
 
 ### Threshold
 When FTP is the limiter, in Build phase, or when fatigue allows sustained
 efforts. Typical: 2×12, 3×8, over/unders.
+For next-week plans, use form zone, ramp, `week_type`, and
+`training_load_history`; never reduce threshold dose because of today's
+`training_readiness`.
 
 ### Long ride
 When durability is the limiter or weekly structure needs it. ≥ 2–4 h,
@@ -137,14 +153,21 @@ race classification from those tags.
 
 ### Frequency
 
-- AA / MT / MS: 2 sessions per week; 1 when
-  `week_summary.training_readiness.status` is yellow; 0 when red.
-  Maintain the MS counter across a reduced week: it counts sessions, not weeks.
-- SM: 1 session per week; red readiness excludes strength.
+- AA / MT / MS: target 2 sessions per week. Reduce to 1 when `week_type` is
+  RECOVERY, form zone is `high_risk` (or TSB is clearly negative at plan
+  start), or `sessions_per_week_last_4` shows the athlete consistently
+  completes only one. Maintain the MS counter across a reduced week: it counts
+  sessions, not weeks.
+- SM: 1 session per week, unchanged.
+- Only for next-best-training today and dates today/tomorrow in a current-week
+  plan, yellow readiness excludes a `maximum` strength session on that date
+  and red excludes strength on that date. This same-day limit does not reduce
+  weekly frequency. For next-week plans, ignore readiness entirely.
 - RECOVERY week: at most 1 strength session, never maximum.
 - RACE week: maintenance only, not within 3 days before the race.
-- Apply the most restrictive readiness/week rule. Unknown or low-confidence
-  readiness requires the existing manual recovery assessment.
+- Apply the most restrictive weekly phase/week/form rule. Assess unknown or
+  low-confidence readiness only for decisions within its applicable
+  planning-mode window.
 - Count completed and anchored planned strength sessions toward the frequency;
   do not duplicate them. Use `sessions_this_week` for the current week and
   `sessions_per_week_last_4` as context, not as missed sessions to make up.

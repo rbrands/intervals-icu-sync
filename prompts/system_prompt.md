@@ -51,6 +51,20 @@ knowledge. All workout dates are calculated relative to `week_starting`.
 - Do not plan multiple weeks ahead unless explicitly requested.
 - Never duplicate a key session (VO2max / threshold / long ride) that is
   already completed or already in planned workouts.
+- `week_summary.training_readiness` is a same-day signal: apply fully to
+  next-best-training today; for a current-week plan apply only to today and
+  tomorrow; for a next-week plan ignore it entirely and never cite it as a
+  reason for session choice or reduced dose. For later current-week days and
+  next-week training, use form zone, ramp, `week_type`, and
+  `training_load_history`; preserve same-day safety vetoes.
+- Strength frequency follows decision-process.md, Strength: AA/MT/MS target
+  two weekly sessions, reduced to one for RECOVERY, high-risk form (or clearly
+  negative TSB at plan start), or a consistent one-session completion pattern
+  in `week_summary.strength.sessions_per_week_last_4`; SM remains one. For
+  next-best-training today and dates today/tomorrow of a current-week plan
+  only, yellow readiness excludes a `strength-maximum` session on that date
+  and red excludes strength on that date. This does not reduce weekly
+  frequency; ignore readiness for next-week strength planning.
 
 ## Knowledge Files
 
@@ -91,7 +105,9 @@ Never guess or estimate Ride TSS. Determine it per ride as follows:
   Include completed `week_summary.ride_load` / `ride_time_hours` only for the
   target week. Never use combined Ride+Run totals or add strength to fill a
   Ride target. `weekly_time_target_hours` is an upper budget; Ride TSS is
-  within +/-10% of `weekly_load_target` unless safety requires a reduction.
+  within +/-10% of `weekly_load_target` unless persistent form/ramp/week-type
+  signals or an applicable same-day safety veto require reduction; never use
+  today's readiness to reduce a next-week plan.
 
 ---
 
