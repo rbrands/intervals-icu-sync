@@ -269,7 +269,10 @@ class DataQualityTests(unittest.TestCase):
             [c["area"] for c in report["checks"] if c["status"] != "OK"], ["strength_untagged"],
         )
         self.assertEqual(report["overall"], "Partial")
-        self.assertIn("Tag the listed WeightTraining activities", report["suggested_fix"])
+        self.assertEqual(
+            report["suggested_fix"],
+            "Tag the session with a strength-<phase> tag so it counts toward the phase.",
+        )
 
     def test_strength_untagged_suggests_adaptation_without_phase_or_listed_activities(self):
         data = complete_data()
@@ -302,6 +305,12 @@ class DataQualityTests(unittest.TestCase):
             "phase_source": "inferred", "phase": "adaptation",
         }])
         self.assertEqual(report["non_ok_count"], 1)
+        self.assertEqual(
+            report["suggested_fix"],
+            "Untagged strength sessions are counted as the current phase. "
+            "Tag a session only if it was a different phase.",
+        )
+        self.assertTrue(report["report_text"].endswith(report["suggested_fix"]))
         data["week_summary"]["strength"]["tagging_reminder_needed"] = False
         report = check_athlete_data(data)
         self.assertEqual(area(report, "strength_untagged")["status"], "OK")
@@ -329,6 +338,41 @@ class DataQualityTests(unittest.TestCase):
         self.assertIn("no canonical strength phase tag", check["explanation"])
         self.assertIn("Suggested tag: strength-adaptation", check["explanation"])
         self.assertIn("counted as adaptation", check["explanation"])
+
+    def test_strength_summary_guidance_matches_session_sources(self):
+        counted = (
+            "Untagged strength sessions are counted as the current phase. "
+            "Tag a session only if it was a different phase."
+        )
+        unresolved = "Tag the session with a strength-<phase> tag so it counts toward the phase."
+        for sources, phase, expected in (
+            (["inferred"], "adaptation", counted),
+            (["none"], None, unresolved),
+            (["none"], "adaptation", unresolved),
+            (["inferred", "none"], "adaptation", counted + " " + unresolved),
+            ([None], None, unresolved),
+            ([], None, unresolved),
+            ([], "adaptation", counted),
+        ):
+            with self.subTest(sources=sources, phase=phase):
+                data = complete_data()
+                data["week_summary"]["strength"] = {
+                    "current_phase": phase, "tagging_reminder_needed": True,
+                }
+                for source in sources:
+                    activity = {
+                        "type": "WeightTraining", "date": "2026-10-07", "tags": [],
+                    }
+                    if source is not None:
+                        activity["strength_phase_source"] = source
+                        activity["strength_phase"] = "adaptation" if source == "inferred" else None
+                    data["activities"].append(activity)
+                report = check_athlete_data(data)
+                self.assertEqual(report["suggested_fix"], expected)
+                self.assertTrue(report["report_text"].endswith(expected))
+                self.assertEqual(area(report, "strength_untagged")["status"], "Warning")
+                if "none" in sources:
+                    self.assertIn(unresolved, area(report, "strength_untagged")["explanation"])
 
     def test_inferred_session_without_phase_is_invalid(self):
         data = complete_data()

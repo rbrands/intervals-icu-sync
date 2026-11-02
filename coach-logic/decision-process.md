@@ -188,9 +188,11 @@ race classification from those tags.
   weeks.
 - SM: 1 session per week, unchanged.
 - Only for next-best-training today and dates today/tomorrow in a current-week
-  plan, yellow readiness excludes a `maximum` strength session on that date
+  plan, yellow readiness excludes a `strength-maximum` session on that date
   and red excludes strength on that date. This same-day limit does not reduce
-  weekly frequency. For next-week plans, ignore readiness entirely.
+  weekly frequency. Yellow/red readiness never reduces weekly strength
+  frequency or makes "one session is enough".
+  For next-week plans, ignore readiness entirely.
 - RECOVERY weeks reduce endurance load only. Keep the normal strength
   frequency and current phase dose/tag: 2 sessions in adaptation, transition,
   or maximum; 1 in maintenance. Sessions count toward phase progression and

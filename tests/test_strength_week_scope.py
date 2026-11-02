@@ -48,6 +48,29 @@ def _raw_activity(activity_type: str, load: int, moving_time: int, **overrides) 
     return activity
 
 
+class StrengthReadinessPromptTests(unittest.TestCase):
+    def test_readiness_only_limits_session_not_weekly_strength_frequency(self):
+        for relative_path in (
+            "coach-logic/decision-process.md",
+            "prompts/system_prompt.md",
+            "foundry-agent/agent.yaml",
+            "foundry-agent/agent-staging.yaml",
+        ):
+            with self.subTest(path=relative_path):
+                text = " ".join((REPO_ROOT / relative_path).read_text(encoding="utf-8").split())
+                self.assertIn(
+                    "Yellow/red readiness never reduces weekly strength frequency "
+                    'or makes "one session is enough".',
+                    text,
+                )
+                self.assertIn(
+                    "yellow readiness excludes a `strength-maximum` session on that date "
+                    "and red excludes strength on that date.",
+                    text,
+                )
+                self.assertNotIn("reduced to one for RECOVERY", text)
+
+
 class StrengthFuelingScopeTests(unittest.TestCase):
     def test_strength_is_excluded_from_fueling_analysis_and_weekly_averages(self):
         ride = {

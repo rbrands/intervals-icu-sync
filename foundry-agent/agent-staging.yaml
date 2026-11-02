@@ -119,6 +119,8 @@ definition:
       `strength-maximum` session on that date and red excludes strength on
       that date. This does not reduce weekly frequency; ignore readiness for
       next-week strength planning.
+      Yellow/red readiness never reduces weekly strength frequency or makes
+      "one session is enough".
     - Plan or discuss strength only when the athlete asks for it in chat or
       shows strength activity: the sum of
       `week_summary.strength.sessions_per_week_last_4` is greater than zero,

@@ -128,6 +128,14 @@ priority: `Missing` before `Warning`, then season plan, wellness, FTP, W',
 feedback, activity density, historical targets, and strength tagging. This is a data-quality
 priority, not a training prescription; complete data requires no fix.
 
+When strength tagging is the suggested fix, the summary says: "Untagged strength
+sessions are counted as the current phase. Tag a session only if it was a
+different phase." For unresolved sessions (`phase_source: "none"`), it instead
+says: "Tag the session with a strength-<phase> tag so it counts toward the phase."
+Mixed inferred/unresolved findings include both instructions. The same wording
+is used in `suggested_fix` and the final line of `report_text`; per-activity
+phase evidence and the suggested tag remain available.
+
 `current_date`, `week_starting`, and a positive integer `lookback_days` are
 required. Dates must use `YYYY-MM-DD`, and `week_starting` must be the Monday
 of `current_date`. Missing optional sections are assessed as missing data;
@@ -813,7 +821,8 @@ Default output: eight compact status lines plus overall completeness and a
 single data-quality fix. `--json` prints the full report with evidence and
 context. Inferred strength sessions use their exported `strength_phase_source`
 and `strength_phase` to report the counted phase, with tagging needed only if
-it differed; unresolved sessions retain the suggested-tag wording. No file is
+it differed; unresolved sessions are instructed to add a phase tag so they count
+toward the phase. No file is
 written. Exit code `0` means the check ran successfully,
 including `Partial` or `Limited` results; `1` means the file could not be read
 or the input was invalid. Use the consolidated export, not a raw activity

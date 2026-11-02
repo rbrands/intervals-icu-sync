@@ -80,7 +80,9 @@ knowledge. All workout dates are calculated relative to `week_starting`.
   next-best-training today and dates today/tomorrow of a current-week plan
   only, yellow readiness excludes a `strength-maximum` session on that date
   and red excludes strength on that date. This does not reduce weekly
-  frequency; ignore readiness for next-week strength planning.
+  frequency. Yellow/red readiness never reduces weekly strength frequency
+  or makes "one session is enough". Ignore readiness for next-week strength
+  planning.
 - Plan or discuss strength only when the athlete asks for it in chat or the
   strength summary shows activity: the sum of
   `week_summary.strength.sessions_per_week_last_4` is greater than zero, or

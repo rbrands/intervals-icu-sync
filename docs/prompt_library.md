@@ -698,7 +698,7 @@ Bewerte jede unten genannte Stelle. Für jede Stelle gib einen Status (`OK`, `Wa
 **Strength tagging**
 - `Warning` (never `Missing`) when `week_summary.strength.tagging_reminder_needed` is true: list eligible exported WeightTraining activities of the current/previous ISO week (date, name, id). Exclude activity-/plan-resolved sessions and those with `strength_tagging_reminder_needed: false`. For source `none` or legacy payloads suggest `strength-<current_phase>` (or `strength-adaptation` when null). For `inferred`, say "counted as <strength_phase> - tag the session if it was a different phase", using the session's phase. Listings stay within the exported activity window.
 - `OK`, wenn das Flag false ist oder die Strength-Zusammenfassung fehlt.
-- Unresolved sessions cannot be tracked until tagged; inferred sessions already count toward the phase. Only the data quality check mentions tagging.
+- If strength tagging is the suggested fix, use "Untagged strength sessions are counted as the current phase. Tag a session only if it was a different phase." For unresolved (`none`) sessions use "Tag the session with a strength-<phase> tag so it counts toward the phase." Mixed findings include both instructions. Only the data quality check mentions tagging.
 
 **Summary**
 Beende mit einer Zeile: Gesamt-Datenvollständigkeit als `Good` (alle Bereiche `OK`), `Partial` (nur `Warning`/`Missing`-Bereiche, höchstens zwei) oder `Limited` (drei oder mehr `Warning`/`Missing`-Bereiche). Danach ein Satz, welche einzelne Maßnahme die Datenqualität am meisten verbessern würde (z. B. „ein Wellness-Tracker anschließen" oder „einen Saisonplan in intervals.icu einrichten").
@@ -774,7 +774,7 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Mi
 **Strength tagging**
 - `Warning` (never `Missing`) if `week_summary.strength.tagging_reminder_needed` is true: list eligible exported `WeightTraining` activities of the current/previous ISO week (date, name, id). Exclude activity-/plan-resolved sessions and those with `strength_tagging_reminder_needed: false`. For source `none` or legacy payloads suggest `strength-<current_phase>`, or `strength-adaptation` when `current_phase` is null. For `inferred`, say "counted as <strength_phase> - tag the session if it was a different phase", using the session's phase. Listings stay within the exported activity window.
 - `OK` if the flag is false or the strength summary is absent.
-- Impact for unresolved sessions: the strength phase cannot be tracked until tagged. Inferred sessions already count toward the phase. This is the only place tagging is mentioned.
+- If strength tagging is the suggested fix, use "Untagged strength sessions are counted as the current phase. Tag a session only if it was a different phase." For unresolved (`none`) sessions use "Tag the session with a strength-<phase> tag so it counts toward the phase." Mixed findings include both instructions. This is the only place tagging is mentioned.
 
 **Summary**
 End with one line: overall data completeness as `Good` (all areas `OK`), `Partial` (only `Warning`/`Missing` areas, no more than two), or `Limited` (three or more `Warning`/`Missing` areas). Follow this with one sentence on which single fix would improve the data quality most (e.g. "connecting a wellness tracker" or "setting up a season plan in intervals.icu").

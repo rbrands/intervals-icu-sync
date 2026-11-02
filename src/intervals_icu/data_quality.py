@@ -195,6 +195,10 @@ _LABELS = {
     "strength_untagged": "Strength tagging",
 }
 
+_STRENGTH_UNRESOLVED_FIX = (
+    "Tag the session with a strength-<phase> tag so it counts toward the phase."
+)
+
 _FIXES = {
     "season_plan": "Set up or update the season plan phase in intervals.icu for the current and next week.",
     "wellness_tracking": "Connect a wellness tracker or record recovery signals.",
@@ -203,7 +207,10 @@ _FIXES = {
     "activity_feedback": "Record RPE and carbohydrate intake for recent ride and run activities.",
     "recent_activity_density": "Check that recent activities are synced and included in the export.",
     "load_target_history": "Add weekly load targets to the season plan for historical comparisons.",
-    "strength_untagged": "Tag the listed WeightTraining activities with the suggested phase when unresolved, or only if the counted phase was different.",
+    "strength_untagged": (
+        "Untagged strength sessions are counted as the current phase. "
+        "Tag a session only if it was a different phase."
+    ),
 }
 
 
@@ -250,15 +257,17 @@ def _strength_untagged(
         )
     else:
         explanations = []
-        if unresolved or not candidates:
+        if unresolved:
             listed = "; ".join(unresolved)
             explanations.append(
                 "Completed WeightTraining activities in the current or previous ISO week have "
                 "no canonical strength phase tag and no planned strength event in that week"
-                + (f": {listed}." if listed else
-                   "; the affected activities are outside the exported activity list.")
-                + f" Suggested tag: {suggested_tag}. The strength phase cannot be tracked "
-                "until these sessions are tagged."
+                + f": {listed}. Suggested tag: {suggested_tag}. {_STRENGTH_UNRESOLVED_FIX}"
+            )
+        if not candidates:
+            explanations.append(
+                "The affected strength activities are outside the exported activity list. "
+                + (_STRENGTH_UNRESOLVED_FIX if phase is None else _FIXES["strength_untagged"])
             )
         explanations.extend(inferred)
         explanation = " ".join(explanations)
@@ -423,6 +432,19 @@ def check_athlete_data(athlete_data: dict[str, Any]) -> QualityReport:
         default=None,
     )
     fix = _FIXES[first["area"]] if first else "No data-quality fix is required."
+    if first and first["area"] == "strength_untagged":
+        entries = first["evidence"]["untagged_activities"]
+        has_inferred = any(entry.get("phase_source") == "inferred" for entry in entries)
+        has_unresolved = any(entry.get("phase_source") != "inferred" for entry in entries)
+        if not entries:
+            has_unresolved = first["evidence"]["current_phase"] is None
+            has_inferred = not has_unresolved
+        fix = " ".join(
+            text for needed, text in (
+                (has_inferred, _FIXES["strength_untagged"]),
+                (has_unresolved, _STRENGTH_UNRESOLVED_FIX),
+            ) if needed
+        )
     lines = [
         f"{_LABELS[check['area']]}: {check['status']} - {check['explanation']}"
         + (" Context: " + " ".join(check["context"]) if check["context"] else "")

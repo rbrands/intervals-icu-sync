@@ -90,9 +90,11 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or
   tag the session if it was a different phase", using the session's phase.
   The activity listing cannot extend beyond the exported activity window.
 - `OK` if the flag is false or the strength summary is absent.
-- Impact for unresolved sessions: the strength phase cannot be tracked until
-  they are tagged. Inferred sessions already count toward the phase.
-  This is the only place tagging is mentioned.
+- If strength tagging is the suggested fix, use: "Untagged strength sessions
+  are counted as the current phase. Tag a session only if it was a different
+  phase." For unresolved (`none`) sessions, use: "Tag the session with a
+  strength-<phase> tag so it counts toward the phase." Include both instructions
+  for mixed findings. This is the only place tagging is mentioned.
 
 **Summary**
 End with one line: overall data completeness as `Good` (all areas `OK`),
