@@ -246,7 +246,7 @@ Diagnostic signals:
 
 Identify the single primary limiter from combined signals:
 
-- VO2max → low p5min / VO2max; little recent high-intensity work
+- VO2max → low p5min / VO2max (see *Power profile validity* below); little recent high-intensity work
 - Threshold (FTP) → declining power in sustained efforts; cannot hold FTP
 - Aerobic durability → high decoupling (>8–10%) on steady efforts; power drop in long rides; DFA a1 `delta_pct` below −15 % on fresh days as supporting evidence
 - Fueling / energy availability → low carbs/h, low fueling ratio, high decoupling with low intake
@@ -254,6 +254,28 @@ Identify the single primary limiter from combined signals:
 
 If several signals point to fueling, resolve fueling FIRST — an
 underfueled session can mimic a fitness limitation.
+
+### Power profile validity
+`metrics.power_profile` holds the best efforts of the last `period_days`
+from normal training, not test results. A value is only evidence of
+capacity when it is plausibly maximal:
+
+| duration | plausible maximal effort |
+| -------- | ------------------------ |
+| p5min    | ≥ 105 % FTP              |
+| p20min   | ≥ 90 % FTP               |
+
+- `p5min` below FTP, or clearly below `p3min`, means no maximal 5-minute
+  effort exists in the window. Do NOT cite it as evidence of a low 5-minute
+  capacity or a VO2max limiter, and never compare it to FTP as if the two
+  were comparable ("5-min power is just below FTP" is meaningless). Say
+  instead that no 5-minute benchmark is available and base the VO2max
+  limiter on recent high-intensity work and the discipline priority; a
+  5-minute test may be suggested if the discipline block schedules one.
+- The same applies to `vo2max_classification`, which is derived from
+  `p5min`: a sub-maximal `p5min` understates it. Do not read a category
+  from an implausible `p5min` as a limiter.
+- `p20min` handling is defined in the consistency check (`prompts/library/06_consistency.md`).
 
 (Limiter-based session prescription is defined in decision-process.md.)
 

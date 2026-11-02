@@ -37,9 +37,8 @@ Summarize and assess:
   `week_summary.strength_sessions == 0`. Strength load is informational only;
   do not interpret intensity distribution or decoupling, or mention missing RPE.
   When current_phase is null and strength_sessions > 0, name adaptation as a
-  working assumption, not a finding. Inside this bullet add one neutral sentence:
-  "Tag sessions or let the coach plan strength so the phase can be tracked."
-  Do not turn it into a warning.
+  working assumption, not a finding. Do not mention tagging; tagging gaps are
+  reported by the data quality check, not by the analysis.
 
 **Fueling**
 - Average carb intake per hour

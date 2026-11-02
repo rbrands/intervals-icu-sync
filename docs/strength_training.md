@@ -106,8 +106,9 @@ Derived from `strength_history` (and the current week's activities):
 - A gap of ≥ 21 days since the last session resets `current_phase` to `null` (the coach then restarts with AA, see 4.2).
 - `sessions_per_week_last_4`: all completed sessions per last four completed ISO weeks, oldest first and aligned with `training_load_history`.
 - `untagged_sessions_last_16_weeks`: only sessions whose internal `phase_source` is `none`.
-- `tagging_reminder_needed`: true when the current or previous ISO week contains unresolved strength sessions and no planned WeightTraining event existed in that same week. An untagged planned event also suppresses the reminder. Plan text mentions tagging only when this Boolean is true.
-- For analysis with `current_phase: null` and `strength_sessions > 0`, describe adaptation as a working assumption, not a finding, and add inside the Strength bullet: "Tag sessions or let the coach plan strength so the phase can be tracked." Never issue a separate warning or missing-RPE reminder.
+- `tagging_reminder_needed`: true when the current or previous ISO week contains unresolved strength sessions and no planned WeightTraining event existed in that same week. An untagged planned event also suppresses it. The flag is surfaced by the data quality check (`src/intervals_icu/data_quality.py`, MCP `check_athlete_data`, `scripts/check_athlete_data.py`) as the `strength_untagged` area: a `Warning` (never `Missing`) listing the untagged WeightTraining activities of the current and previous ISO week (date, name, id) and suggesting `strength-<current_phase>` (`strength-adaptation` when `current_phase` is null). The coach does not mention tagging in plans or analyses.
+- The data quality `activity_feedback` area excludes WeightTraining from both the RPE and the carbohydrate completeness checks (decision D6); rides and runs are unchanged.
+- For analysis with `current_phase: null` and `strength_sessions > 0`, describe adaptation as a working assumption, not a finding. Never issue a tagging sentence, a separate warning or a missing-RPE reminder.
 
 ### 3.4 Load accounting
 
@@ -249,6 +250,9 @@ intervals-icu-sync
       16-week strength history
 - [x] `src/intervals_icu/week_data_schema.py` — new models
 - [x] `scripts/check_plan_tss.py` / MCP `check_plan_tss` — ride-only sum
+- [x] `src/intervals_icu/data_quality.py`, MCP `check_athlete_data`,
+      `scripts/check_athlete_data.py` — strength excluded from RPE/carbs
+      feedback, `strength_untagged` warning
 - [x] `scripts/validate_plan.py`, MCP `validate_week_plan` (`scripts/mcp_server.py`) + `contracts/week-plan/week-plan.schema.json`
 - [x] `coach-logic/interpretation-rules.md` — taxonomy, mapping
 - [x] `coach-logic/workout-library.md` — Strength section
@@ -279,7 +283,7 @@ coach-logic docs → prompts → frontend. Each step is independently testable.
 - **D3 — Frontend**: `WorkoutType.Strength` with phase, own card, excluded from the Ride TSS indicator.
 - **D4 — Legacy tag `strength`**: ignored.
 - **D5 — Tag fallback**: canonical completed tags win; otherwise inherit canonical tags from a same-date planned WeightTraining event (`planned`), then the closest planned WeightTraining event in the same ISO year/week (`planned_week`). Equal-distance ties prefer the earlier date; no cross-week fallback. Without a match use `none`. The coach tags planned events; manual tagging of completed sessions is optional.
-- **D6 — RPE for strength**: optional; no reminder when missing.
+- **D6 — RPE for strength**: optional; no reminder when missing. The data quality check excludes WeightTraining from the RPE and carbohydrate completeness checks.
 - **D7 — Strength opt-in**: strength is planned only when the athlete shows WeightTraining activity in the last 16 weeks or asks for it (4.2 rule 4).
 
 ---

@@ -9,6 +9,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added a `strength_untagged` area to the deterministic data quality check (`check_athlete_data` in both MCP servers, `scripts/check_athlete_data.py`, notebook): a `Warning` when `week_summary.strength.tagging_reminder_needed` is true, listing the untagged `WeightTraining` activities of the current and previous ISO week (date, name, id) and suggesting `strength-<current_phase>` (`strength-adaptation` when the phase is null); `OK` otherwise. The report now has eight areas.
 - Added pull-request deployment of the Foundry staging agent for same-repository PRs targeting `main`; production deployment remains limited to pushes on `main` and manual runs.
 - Added `WeightTraining` activities to the raw and coach activity exports when intervals.icu supplies training load. The coach export contains only the reduced strength field set and excludes ride/run power, heart-rate, zone, interval, decoupling, W'bal, power-curve, DFA, fueling, and weather analyses.
 - Added per-sport Ride, Run, and Strength load/session/time totals to `week_summary`; combined totals remain Ride+Run, while strength sessions are excluded from ride-focused analyses and fueling.
@@ -19,6 +20,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Excluded `WeightTraining` activities from the data quality `activity_feedback` RPE check as well as the carbohydrate check (decision D6); rides and runs are unchanged. Evidence fields are now `applicable_activities` and `strength_activities_excluded` (replacing `carbs_applicable_activities`).
+- Moved the strength tagging reminder out of the coach texts: `coach-logic/decision-process.md`, `coach-logic/input-schema.md`, the Foundry skill, the weekly-analysis prompt and `docs/strength_training.md` now state that `tagging_reminder_needed` is surfaced by the data quality check and the coach never mentions tagging in plans or analyses.
+- Added a *Power profile validity* rule to `coach-logic/interpretation-rules.md` and a matching note in `coach-logic/input-schema.md`: `power_profile` values are 42-day training bests, not tests. A `p5min` below FTP (or clearly below `p3min`) means no maximal 5-minute effort exists in the window and must not be cited as evidence of a low 5-minute capacity or VO2max limiter, nor compared to FTP.
 - Added a two-part RECOVERY-week structure: short low-intensity sessions and rest in days 1–3, short moderate/high-intensity sessions or due benchmark tests in days 4–6, and rest/easy spin on day 7; weekly TSS stays anchored to the reduced target, and strength starts on day 4.
 - Updated RECOVERY-week strength guidance: preserve normal phase, dose, and frequency; count sessions toward phase progression, but schedule strength only from day 4 onward.
 - Next-best-training may include one main session plus an optional same-day `WeightTraining` entry when strength opt-in applies; the easier alternative remains prose-only.

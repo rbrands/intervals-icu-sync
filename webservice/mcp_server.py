@@ -675,7 +675,7 @@ class AuthHeaderMiddleware:
     <table>
         <tr><th>Method</th><th>Description</th></tr>
         <tr><td><code>prepare_week_data</code></td><td>Runs the full pipeline and returns consolidated coach input JSON. Supports optional <code>lookback_days</code> (default: 7) for the activity/fueling window while <code>week_summary</code> stays calendar-week based.</td></tr>
-        <tr><td><code>check_athlete_data</code></td><td>Checks supplied athlete data JSON for completeness and consistency across seven areas, returning statuses, evidence and a compact report without API calls or coaching recommendations.</td></tr>
+        <tr><td><code>check_athlete_data</code></td><td>Checks supplied athlete data JSON for completeness and consistency across eight areas, returning statuses, evidence and a compact report without API calls or coaching recommendations.</td></tr>
         <tr><td><code>get_latest_activities</code></td><td>Returns a compact latest-first activity list to avoid large payload truncation.</td></tr>
         <tr><td><code>get_activity_streams_sampled</code></td><td>Returns a compact, down-sampled stream payload for a single activity. Supports optional stream selection, time/distance windows, and a point cap to keep outputs small.</td></tr>
         <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with library workout ID, duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
@@ -1133,8 +1133,8 @@ def check_athlete_data(athlete_data: str) -> QualityReport:
 
     Pass the complete JSON returned by prepare_week_data, or an attached coach
     input payload. No API calls, persistence or training recommendations.
-    Returns a native structured JSON object with seven checks (OK/Warning/Missing),
-    evidence, contextual p20min notes,
+    Returns a native structured JSON object with eight checks (OK/Warning/Missing),
+    evidence, contextual p20min notes, a strength tagging warning,
     overall completeness (Good/Partial/Limited), one suggested data-quality fix,
     and a compact report_text. Dates and lookback_days come only from the input.
     Malformed input raises a tool error; absent metrics produce Missing checks.

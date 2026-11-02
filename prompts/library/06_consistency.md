@@ -5,7 +5,7 @@ and why it matters for future assessments and plans.
 If current-week data from prepare_week_data is already present in this chat and still relevant, reuse it and do not call prepare_week_data again.
 
 If check_athlete_data is available, pass the existing complete JSON as its
-athlete_data argument and use its seven checks and summary as authoritative.
+athlete_data argument and use its eight checks and summary as authoritative.
 Present the compact report in the requested response language without changing
 statuses or thresholds. Do not fetch again solely to run this check.
 If the tool is unavailable, apply the manual rules below.
@@ -61,10 +61,13 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or
   interpretations are based on very little data and have low confidence.
 
 **Activity feedback tracking**
-- For activities in the same lookback window, check `rpe` and `carbs_ingested_g`.
-- `OK` if both fields are non-null for every activity; recorded zero counts.
-- `Missing` if there are no activities or either field is null/absent for all activities.
-- `Warning` otherwise if either field is missing for any activity.
+- For non-`WeightTraining` activities in the same lookback window, check `rpe`
+  and `carbs_ingested_g`; both are optional for strength sessions.
+- `OK` if both fields are non-null for every applicable activity, or if only
+  strength activities are present; recorded zero counts.
+- `Missing` if there are no activities at all, or either field is null/absent
+  for all applicable activities.
+- `Warning` otherwise if either field is missing for any applicable activity.
 - Impact: subjective exertion and actual fueling cannot be reliably compared with load.
 
 **Load target history**
@@ -75,6 +78,16 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or
   available; this is consistent with (and expected alongside) a missing
   season plan above.
 
+**Strength tagging**
+- `Warning` (never `Missing`) if `week_summary.strength.tagging_reminder_needed`
+  is true: list the `WeightTraining` activities from the Monday of the previous
+  ISO week through `current_date` without a canonical `strength-*` tag (date,
+  name, id) and suggest `strength-<current_phase>`, or `strength-adaptation`
+  when `current_phase` is null.
+- `OK` if the flag is false or the strength summary is absent.
+- Impact when `Warning`: the strength phase cannot be tracked until the
+  sessions are tagged. This is the only place tagging is mentioned.
+
 **Summary**
 End with one line: overall data completeness as `Good` (all areas `OK`),
 `Partial` (only `Warning`/`Missing` areas, no more than two), or `Limited`
@@ -82,8 +95,8 @@ End with one line: overall data completeness as `Good` (all areas `OK`),
 which single fix would improve the data quality most (e.g. "connecting a
 wellness tracker" or "setting up a season plan in intervals.icu").
 Prioritize `Missing` over `Warning`, then season plan, wellness, FTP, W',
-activity feedback, activity density, and historical targets. If all areas are
-`OK`, state that no data-quality fix is required. The p20min context alone
-does not lower any status or overall completeness.
+activity feedback, activity density, historical targets, and strength tagging.
+If all areas are `OK`, state that no data-quality fix is required. The p20min
+context alone does not lower any status or overall completeness.
 
 Keep the response compact: one short line per area, not a full paragraph.

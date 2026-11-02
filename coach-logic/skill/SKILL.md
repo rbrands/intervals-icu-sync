@@ -32,8 +32,9 @@ Use this skill when the user requests one of the following:
 - Weekly TSS/hours count rides only; LIMITED-day caps sum all sports.
 - WeightTraining uses exactly one canonical strength phase tag, phase-table
   duration and fixed description, no steps or library ID, informational TSS.
-- Use the existing compact week_summary.strength fields; mention tagging
-  only when tagging_reminder_needed is true, as defined in decision-process.md.
+- Use the existing compact week_summary.strength fields. Never mention tagging
+  in plans or analyses; tagging_reminder_needed is surfaced by the data quality
+  check (check_athlete_data), as defined in decision-process.md.
   Never mention missing RPE.
 - Keep output deterministic and aligned with the agent output contract.
 - If required inputs are missing, ask only the minimum required question.

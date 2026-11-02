@@ -58,6 +58,11 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   signal. It is NOT the in-ride DFA a1 reported in
   `activities[].dfa_a1_summary`; the two must never be mixed.
 - `rolling_p_max`: rolling max 1-second power (42-day).
+- `power_profile.p15s` … `p20min`: best efforts over the last
+  `period_days` (42) from normal training, not tests. Any value can be
+  sub-maximal when no all-out effort of that duration occurred in the
+  window (e.g. `p5min` below FTP). See interpretation rules, *Power profile
+  validity*, before using them as capacity evidence.
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)
   = aerobic/climber.
@@ -164,7 +169,9 @@ value is missing or no previous exported activity exists.
   - `tagging_reminder_needed`: true only when the current or previous ISO
     week contains unresolved completed strength sessions and no planned
     WeightTraining event existed in that same week (even an untagged planned
-    event suppresses the reminder). False otherwise.
+    event suppresses it). False otherwise. This flag is surfaced by the data
+    quality check (`check_athlete_data`, area `strength_untagged`), not by
+    the coach.
   - Phase state resets when `days_since_last_strength` is at least 21: phase
     becomes null, count becomes zero, and `phase_started` becomes null.
   - Internal `phase_source` resolution: canonical activity tags (`activity`)
@@ -173,12 +180,11 @@ value is missing or no previous exported activity exists.
     Equal-distance ties prefer the earlier date; never cross a Monday/Sunday
     boundary. Otherwise tags are empty and source is `none`. Legacy `strength`
     tags are ignored; the raw rows and source are not exported.
-  - Mention tagging once in plan text only when `tagging_reminder_needed`
-    is true; do not infer reminders from the 16-week count. For analysis with
-    `current_phase` null and `strength_sessions > 0`, describe adaptation as
-    a working assumption, not a finding, and add one neutral sentence inside
-    the Strength bullet: tag sessions or let the coach plan strength so the
-    phase can be tracked. Never mention missing RPE.
+  - The coach never mentions tagging in plans or analyses; tagging gaps are
+    reported by the data quality check. For analysis with `current_phase`
+    null and `strength_sessions > 0`, describe adaptation as a working
+    assumption, not a finding, inside the Strength bullet. Never mention
+    missing RPE.
 - `aerobic_threshold_estimate`: week-level aggregate of the per-ride
   `dfa_a1_summary` entries (see activities). Present ONLY when at least one
   valid ride in the lookback actually crossed DFA a1 = 0.75 (i.e. has a

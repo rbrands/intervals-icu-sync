@@ -240,22 +240,21 @@ race classification from those tags.
   exactly one phase tag, phase-table duration, fixed description, no steps
   or library ID, and numeric informational `tss`.
 
-### Untagged-session reminder
+### Untagged sessions
 
-- In plan text, mention tagging once only when
-  `week_summary.strength.tagging_reminder_needed` is true: the current or
+- `week_summary.strength.tagging_reminder_needed` (true when the current or
   previous ISO week has completed strength sessions with `phase_source: "none"`
-  and no planned WeightTraining event existed in that same week. These are
-  sessions the coach did not plan. Otherwise never mention tagging in plan text;
-  an absent Boolean in an older payload is not evidence for a reminder.
+  and no planned WeightTraining event existed in that same week) is surfaced by
+  the data quality check (`check_athlete_data`, area `strength_untagged`), which
+  lists the affected activities and suggests a tag. The coach does not read it
+  for coaching and never mentions tagging in plans or analyses.
 - Same-date planned tags take precedence over the nearest same-ISO-week
-  planned tags; both resolve the phase and avoid an untagged-session reminder.
-  Do not infer a reminder from the 16-week untagged count or phase age.
+  planned tags; both resolve the phase. Do not infer tagging gaps from the
+  16-week untagged count or phase age.
 - For analysis requests with `current_phase` null and
   `week_summary.strength_sessions > 0`, name adaptation as a working assumption,
-  not a finding. Inside the Strength bullet, add one neutral sentence:
-  "Tag sessions or let the coach plan strength so the phase can be tracked."
-  This is analysis context, not a warning or a separate tagging reminder.
+  not a finding, inside the Strength bullet. Do not add a tagging sentence or
+  a separate warning.
 - Never mention missing RPE.
 
 ---

@@ -383,8 +383,8 @@ def check_athlete_data(athlete_data: str) -> QualityReport:
 
     Pass the complete JSON returned by prepare_week_data, or an attached coach
     input payload. No API calls, persistence or training recommendations.
-    Returns a native structured JSON object with seven checks (OK/Warning/Missing),
-    evidence, contextual p20min notes,
+    Returns a native structured JSON object with eight checks (OK/Warning/Missing),
+    evidence, contextual p20min notes, a strength tagging warning,
     overall completeness (Good/Partial/Limited), one suggested data-quality fix,
     and a compact report_text. Dates and lookback_days come only from the input.
     Malformed input raises a tool error; absent metrics produce Missing checks.

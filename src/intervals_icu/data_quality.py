@@ -9,8 +9,11 @@ from typing import Any, Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from .strength import CANONICAL_STRENGTH_TAGS, STRENGTH_ADAPTATION_TAG
+
 
 Status = Literal["OK", "Warning", "Missing"]
+STRENGTH_TYPE = "WeightTraining"
 Number = int | float
 
 
@@ -59,13 +62,22 @@ class _PlanEntry(_InputModel):
         return _iso_date(value) if value is not None else None
 
 
+class _Strength(_InputModel):
+    current_phase: str | None = None
+    tagging_reminder_needed: bool | None = None
+
+
 class _Summary(_InputModel):
     training_plan: list[_PlanEntry] | None = None
+    strength: _Strength | None = None
 
 
 class _Activity(_InputModel):
     date: str
+    id: str | int | None = None
+    name: str | None = None
     type: str | None = None
+    tags: list[str] | None = None
     rpe: Number | None = None
     carbs_ingested_g: Number | None = None
 
@@ -170,6 +182,7 @@ _LABELS = {
     "recent_activity_density": "Recent activity density",
     "activity_feedback": "Activity feedback tracking",
     "load_target_history": "Load target history",
+    "strength_untagged": "Strength tagging",
 }
 
 _FIXES = {
@@ -177,10 +190,54 @@ _FIXES = {
     "wellness_tracking": "Connect a wellness tracker or record recovery signals.",
     "ftp_consistency": "Verify the configured FTP and the availability of its comparison estimates.",
     "w_prime_consistency": "Verify the configured W' and the availability of its rolling estimate.",
-    "activity_feedback": "Record RPE and carbohydrate intake for recent activities.",
+    "activity_feedback": "Record RPE and carbohydrate intake for recent ride and run activities.",
     "recent_activity_density": "Check that recent activities are synced and included in the export.",
     "load_target_history": "Add weekly load targets to the season plan for historical comparisons.",
+    "strength_untagged": "Tag the listed WeightTraining activities with the suggested strength phase tag in intervals.icu.",
 }
+
+
+def _is_untagged_strength(activity: _Activity) -> bool:
+    tags = {tag.lower() for tag in activity.tags or []}
+    return activity.type == STRENGTH_TYPE and not (tags & CANONICAL_STRENGTH_TAGS)
+
+
+def _strength_untagged(
+    strength: _Strength | None, activities: list[_Activity], window_start: date, today: date
+) -> QualityCheck:
+    needed = bool(strength and strength.tagging_reminder_needed)
+    phase = strength.current_phase if strength and strength.current_phase else None
+    suggested_tag = f"strength-{phase}" if phase else STRENGTH_ADAPTATION_TAG
+    untagged = [
+        {"date": activity.date, "name": activity.name, "id": activity.id}
+        for activity in sorted(activities, key=lambda activity: activity.date)
+        if window_start <= date.fromisoformat(activity.date) <= today
+        and _is_untagged_strength(activity)
+    ]
+    if not needed:
+        explanation = (
+            "No completed strength session in the current or previous ISO week needs a "
+            "phase tag."
+        )
+    else:
+        listed = "; ".join(
+            f"{entry['date']} {entry['name'] or 'unnamed'} (id {entry['id']})"
+            for entry in untagged
+        )
+        explanation = (
+            "Completed WeightTraining activities in the current or previous ISO week have "
+            "no canonical strength phase tag and no planned strength event in that week"
+            + (f": {listed}." if listed else
+               "; the affected activities are outside the exported activity list.")
+            + f" Suggested tag: {suggested_tag}. The strength phase cannot be tracked "
+            "until these sessions are tagged."
+        )
+    return _check(
+        "strength_untagged", "Warning" if needed else "OK", explanation,
+        tagging_reminder_needed=needed, untagged_activities=untagged if needed else [],
+        suggested_tag=suggested_tag, current_phase=phase,
+        window_start=window_start.isoformat(), window_end=today.isoformat(),
+    )
 
 
 def check_athlete_data(athlete_data: dict[str, Any]) -> QualityReport:
@@ -284,26 +341,31 @@ def check_athlete_data(athlete_data: dict[str, Any]) -> QualityReport:
         ),
         activity_count=count, window_start=lower.isoformat(), window_end=today.isoformat(),
     ))
-    rpe_count = sum(activity.rpe is not None for activity in activities)
-    fueling_activities = [
-        activity for activity in activities if activity.type != "WeightTraining"
+    # RPE and carbohydrate intake are optional for strength sessions (decision D6).
+    feedback_activities = [
+        activity for activity in activities if activity.type != STRENGTH_TYPE
     ]
-    carbs_count = sum(activity.carbs_ingested_g is not None for activity in fueling_activities)
+    applicable = len(feedback_activities)
+    strength_count = count - applicable
+    rpe_count = sum(activity.rpe is not None for activity in feedback_activities)
+    carbs_count = sum(activity.carbs_ingested_g is not None for activity in feedback_activities)
     feedback_status: Status = (
-        "Missing" if not count or not rpe_count or (
-            fueling_activities and not carbs_count
-        ) else
-        "OK" if rpe_count == count and carbs_count == len(fueling_activities) else "Warning"
+        "Missing" if not count else
+        "OK" if not applicable else
+        "Missing" if not rpe_count or not carbs_count else
+        "OK" if rpe_count == applicable and carbs_count == applicable else "Warning"
     )
     checks.append(_check(
         "activity_feedback", feedback_status,
-        f"RPE is recorded for {rpe_count}/{count} activities and carbohydrate intake for "
-        f"{carbs_count}/{len(fueling_activities)} applicable activities." + (
+        f"RPE is recorded for {rpe_count}/{applicable} and carbohydrate intake for "
+        f"{carbs_count}/{applicable} applicable activities (strength activities excluded: "
+        f"{strength_count})." + (
             " Subjective exertion and actual fueling cannot be reliably compared with load."
             if feedback_status != "OK" else ""
         ),
-        activity_count=count, rpe_recorded=rpe_count, carbs_recorded=carbs_count,
-        carbs_applicable_activities=len(fueling_activities),
+        activity_count=count, applicable_activities=applicable,
+        strength_activities_excluded=strength_count,
+        rpe_recorded=rpe_count, carbs_recorded=carbs_count,
     ))
     target_count = sum(
         entry.weekly_load_target is not None for entry in data.training_load_history or []
@@ -315,12 +377,16 @@ def check_athlete_data(athlete_data: dict[str, Any]) -> QualityReport:
         "cannot be assessed, as is expected when a season plan is missing.",
         recorded_targets=target_count,
     ))
+    checks.append(_strength_untagged(
+        data.week_summary.strength if data.week_summary else None,
+        data.activities or [], current_week - timedelta(days=7), today,
+    ))
     non_ok = [check for check in checks if check["status"] != "OK"]
     overall: Literal["Good", "Partial", "Limited"] = (
         "Good" if not non_ok else "Partial" if len(non_ok) <= 2 else "Limited"
     )
     # Prefer missing/inconsistent data, then a fixed priority headed by the season
-    # plan, which can also restore historical targets.
+    # plan, which can also restore historical targets; strength tagging comes last.
     priority = list(_FIXES)
     first = min(
         non_ok, key=lambda check: (check["status"] != "Missing", priority.index(check["area"])),

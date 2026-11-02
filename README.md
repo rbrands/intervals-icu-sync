@@ -100,7 +100,7 @@ recommendations. Python callers can use
 
 The MCP response is a native JSON object in `structuredContent`, with a
 declared output schema, not a serialized JSON string in a `result` field.
-It contains `checks` (seven areas, each with `area`, `status`,
+It contains `checks` (eight areas, each with `area`, `status`,
 `explanation`, `evidence`, and `context`), `overall`, `non_ok_count`,
 `suggested_fix`, `report_text`, and the input date/window metadata.
 `report_text` contains one line per area plus one summary line; explanations
@@ -113,8 +113,9 @@ are in English and can be translated by the caller without changing statuses.
 | W' consistency | Apply the same thresholds to `metrics.rolling_w_prime`, relative to `metrics.w_prime`. |
 | Wellness | `OK` if any of `metrics.resting_hr`, `metrics.hrv`, or `metrics.sleep_secs` is non-null; otherwise `Missing`. |
 | Activity density | Count activities dated from `current_date - lookback_days` through `current_date`, both inclusive, matching the preparation pipeline's lower boundary while excluding future entries. At least 3: `OK`; 1–2: `Warning`; 0: `Missing`. |
-| Activity feedback | In that same window, `OK` if every activity has non-null `rpe` and every non-`WeightTraining` activity has non-null `carbs_ingested_g` (zero counts as recorded); strength activities still require RPE but are excluded from the carbohydrate check. `Missing` if there are no activities, no RPE is recorded, or carbohydrate data is absent for all applicable activities (when any exist); otherwise incomplete feedback is `Warning`. |
+| Activity feedback | In that same window, consider only non-`WeightTraining` activities (RPE and carbohydrate intake are optional for strength, decision D6). `OK` if every applicable activity has non-null `rpe` and non-null `carbs_ingested_g` (zero counts as recorded), or if only strength activities are present. `Missing` if there are no activities at all, or if RPE or carbohydrate data is absent for every applicable activity; otherwise incomplete feedback is `Warning`. Evidence reports `applicable_activities` and `strength_activities_excluded`. |
 | Historical targets | `OK` if any `training_load_history` entry has a non-null `weekly_load_target` (including zero); otherwise `Missing`. |
+| Strength tagging | `Warning` (never `Missing`) when `week_summary.strength.tagging_reminder_needed` is true: lists the `WeightTraining` activities dated from the Monday of the previous ISO week through `current_date` that carry no canonical `strength-*` tag (date, name, id) and suggests `strength-<current_phase>`, or `strength-adaptation` when `current_phase` is null. `OK` when the flag is false or the strength summary is absent. Evidence: `tagging_reminder_needed`, `untagged_activities`, `suggested_tag`, `current_phase`, window dates. The coach itself never mentions tagging. |
 
 If `0.95 * metrics.power_profile.p20min.watts` is more than 20% below FTP,
 the FTP check adds context about the power-profile window and potentially
@@ -124,7 +125,7 @@ change the status or overall rating.
 Overall completeness is `Good` for zero non-OK areas, `Partial` for one or
 two, and `Limited` for three or more. The single suggested fix uses a stable
 priority: `Missing` before `Warning`, then season plan, wellness, FTP, W',
-feedback, activity density, and historical targets. This is a data-quality
+feedback, activity density, historical targets, and strength tagging. This is a data-quality
 priority, not a training prescription; complete data requires no fix.
 
 `current_date`, `week_starting`, and a positive integer `lookback_days` are
@@ -644,7 +645,8 @@ includes `sessions_per_week_last_4` (all sessions per completed ISO week, oldest
 first, aligned with `training_load_history`) and
 `untagged_sessions_last_16_weeks` (only sessions with phase_source `none`) and
 `tagging_reminder_needed` (unresolved sessions in the current/previous ISO week
-with no planned strength event in that same week). Activity phase tags win,
+with no planned strength event in that same week; surfaced as the `strength_untagged`
+warning of `check_athlete_data`, never by the coach). Activity phase tags win,
 then same-date planned tags, then tags from the nearest planned WeightTraining
 event in the same ISO year/week; equal-distance ties prefer the earlier date.
 Planned events are fetched through Sunday of the current week, including the
@@ -779,7 +781,7 @@ FastMCP server that exposes the training data pipeline and plan upload as MCP to
 ### `check_athlete_data.py`
 
 Checks a consolidated coach-input export using the same deterministic
-seven-area data-quality rules as the MCP tool.
+eight-area data-quality rules as the MCP tool.
 
 ```bash
 # Check the current week's consolidated export (no fresh API fetch)
@@ -792,7 +794,7 @@ python scripts/check_athlete_data.py --input data/processed/coach_input_2026-10-
 python scripts/check_athlete_data.py --json
 ```
 
-Default output: seven compact status lines plus overall completeness and a
+Default output: eight compact status lines plus overall completeness and a
 single data-quality fix. `--json` prints the full report with evidence and
 context. No file is written. Exit code `0` means the check ran successfully,
 including `Partial` or `Limited` results; `1` means the file could not be read
@@ -954,7 +956,7 @@ Exit code behavior:
 Interactive Jupyter notebook that loads the consolidated `coach_input_{monday}.json` and displays a structured overview of the current training week:
 
 - **Athlete Metrics**: FTP, eFTP, VO2Max, W\', HRV, weight — FTP values shown in W and W/kg
-- **Data Quality Check**: deterministic seven-area completeness/consistency report and status table, using the loaded consolidated export without a new API fetch; activities-only exports show an explicit unavailable message.
+- **Data Quality Check**: deterministic eight-area completeness/consistency report and status table, using the loaded consolidated export without a new API fetch; activities-only exports show an explicit unavailable message.
 - **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling (only from Base/Pyramidal/Threshold rides ≥ 90 min; shows `"no durability data"` if no eligible rides exist)
 - **Training Readiness**: CTL, ATL, Form Zone, HRV, and a color-coded readiness traffic light with score, confidence, recommendation, contributing signals, and safety limits (`ctl`, `atl`, and `training_readiness` are read from `week_summary`)
 - **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling (labeled only for Base/Pyramidal/Threshold rides ≥ 90 min), and carbohydrate data
