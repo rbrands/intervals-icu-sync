@@ -66,12 +66,26 @@ dates. Derive all dates from these (see system prompt, Date Handling).
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)
   = aerobic/climber.
-- `vo2max_classification.ml_per_kg_min`: VO2Max estimated from p5min power and weight (ml/kg/min).
+- `vo2max_classification.ml_per_kg_min`: VO2Max estimated as
+  `16.6 + 8.87 * (p5min watts / weight kg)` (ml/kg/min).
 - `vo2max_classification`: age- and sex-adjusted VO2Max category based on VO2Max
   (ml/kg/min), including `ml_per_kg_min`, `age_group`, `sex`, `category`,
   `category_range`, `next_category`, and `delta_to_next`. Age groups:
   teen_13_19, adult_20_29, master_30_39, master_40_49, grand_master_50_59,
   senior_60_plus. Categories: very_poor, poor, average, good, very_good, excellent.
+  Additional estimate-quality fields:
+  - `p5min_pct_ftp`: `p5min watts / FTP * 100`, rounded to one decimal.
+  - `estimate_representative`: `false` below 100% FTP,
+    `"likely_understated"` from 100% to below 105%, and `true` at or above
+    105%. Thresholds use the unrounded ratio. Null when p5min or FTP is
+    missing (also for non-finite inputs or non-positive FTP); the percentage
+    is null in those cases too.
+  - `power_profile_period_days`: copied from `power_profile.period_days`,
+    null when unavailable.
+  When `estimate_representative` is not exactly `true` (including null or
+  absent), do not use the VO2Max value or category as evidence of a VO2max
+  limiter or a performance trend. Say once that a maximal 5-minute effort
+  is missing. See interpretation rules, *Power profile validity*.
 - `sleep_secs`: SECONDS (÷3600 for hours).
 - `sleep_quality`: one of `GREAT`, `GOOD`, `AVG`, `POOR` (mapped from intervals.icu scale 1–4; GREAT = best).
 - `lthr`: lactate threshold heart rate (bpm).

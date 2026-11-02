@@ -3014,6 +3014,46 @@
           "default": null,
           "title": "Ml Per Kg Min"
         },
+        "p5min_pct_ftp": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P5Min Pct Ftp"
+        },
+        "estimate_representative": {
+          "anyOf": [
+            {
+              "enum": [
+                true,
+                false,
+                "likely_understated"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimate Representative"
+        },
+        "power_profile_period_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Power Profile Period Days"
+        },
         "age_group": {
           "anyOf": [
             {

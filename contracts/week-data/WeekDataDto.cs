@@ -838,6 +838,15 @@ public class Vo2MaxClassificationDto
     [JsonPropertyName("ml_per_kg_min")]
     public double? MlPerKgMin { get; set; }
 
+    [JsonPropertyName("p5min_pct_ftp")]
+    public double? P5minPctFtp { get; set; }
+
+    [JsonPropertyName("estimate_representative")]
+    public JsonElement? EstimateRepresentative { get; set; }
+
+    [JsonPropertyName("power_profile_period_days")]
+    public int? PowerProfilePeriodDays { get; set; }
+
     [JsonPropertyName("age_group")]
     public string? AgeGroup { get; set; }
 

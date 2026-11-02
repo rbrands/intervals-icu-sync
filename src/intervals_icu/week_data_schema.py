@@ -64,6 +64,9 @@ class FtpClassification(_SchemaModel):
 
 class Vo2MaxClassification(_SchemaModel):
     ml_per_kg_min: float | int | None = None
+    p5min_pct_ftp: float | None = None
+    estimate_representative: Literal[True, False, "likely_understated"] | None = None
+    power_profile_period_days: int | None = None
     age_group: str | None = None
     sex: str | None = None
     category: str | None = None

@@ -6,6 +6,7 @@ import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -866,10 +867,14 @@ def _build_vo2max_classification(
     vo2max: float | int | None,
     age: int | None,
     sex: str | None,
+    *,
+    p5min_watts: float | int | None = None,
+    ftp: float | int | None = None,
+    power_profile_period_days: int | None = None,
 ) -> dict | None:
     """Classify VO2max based on age, sex, and ml/kg/min value.
     
-    Returns category, category_range, next_category, and delta_to_next.
+    Includes category progression and power-profile representativeness.
     """
     vo2_val = _to_float(vo2max)
     sex_slug = _normalize_sex_label(sex)
@@ -924,8 +929,31 @@ def _build_vo2max_classification(
         next_min = thresholds[current_idx + 1][1]
         delta_to_next = round(max(0.0, next_min - vo2_val), 1)
 
+    p5min_value = _to_float(p5min_watts)
+    ftp_value = _to_float(ftp)
+    p5min_pct_ftp = None
+    estimate_representative: Literal[True, False, "likely_understated"] | None = None
+    if (
+        p5min_value is not None
+        and ftp_value is not None
+        and math.isfinite(p5min_value)
+        and math.isfinite(ftp_value)
+        and ftp_value > 0
+    ):
+        percentage = p5min_value / ftp_value * 100
+        p5min_pct_ftp = round(percentage, 1)
+        if percentage < 100:
+            estimate_representative = False
+        elif percentage < 105:
+            estimate_representative = "likely_understated"
+        else:
+            estimate_representative = True
+
     return {
         "ml_per_kg_min": round(vo2_val, 1),
+        "p5min_pct_ftp": p5min_pct_ftp,
+        "estimate_representative": estimate_representative,
+        "power_profile_period_days": power_profile_period_days,
         "age_group": age_group,
         "sex": sex_slug,
         "category": category,
@@ -988,6 +1016,9 @@ def main() -> None:
         vo2max,
         metrics.get("age"),
         metrics.get("sex"),
+        p5min_watts=p5min,
+        ftp=metrics.get("ftp"),
+        power_profile_period_days=power_profile.get("period_days"),
     )
     metrics = _order_metrics(metrics)
 

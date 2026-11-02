@@ -520,6 +520,16 @@ Weight values are normalized to kilograms (kg). If the athlete account stores we
 **Power Profile Type**: Adds a heuristic rider type estimate to `metrics.power_profile` using the 42-day power curve (`p15s`, `p1min`, `p5min`, `p20min`, `curve_slope`). Exposed fields are `type`, `type_key`, `heuristic_score`, `type_scores`, and `type_method` (currently `heuristic_v1`).
 
 **VO2Max Classification**: Classification by age group (13–19, 20–29, 30–39, 40–49, 50–59, 60+) and sex (male/female). Categories: *very poor*, *poor*, *average*, *good*, *very good*, *excellent*. Includes delta to next category and thresholds for range.
+The estimate uses `16.6 + 8.87 * p5min W/kg`. Classification also includes
+`p5min_pct_ftp` (one decimal), `estimate_representative` (`false` below
+100% FTP, `"likely_understated"` from 100% to below 105%, `true` at or above
+105%; thresholds use the unrounded ratio), and `power_profile_period_days`
+(copied from `power_profile.period_days`). Missing p5min or usable FTP
+leaves the percentage and flag null. Unless the flag is boolean `true`,
+the coach must not use the VO2Max value/category as limiter or performance
+trend evidence and states once that a maximal 5-minute effort is missing.
+Week-data schema version is `1.10.0`; the generated C# contract uses
+`JsonElement?` for the boolean/string/null flag.
 
 ```bash
 python scripts/get_metrics.py

@@ -9,6 +9,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added `p5min_pct_ftp`, `estimate_representative`, and `power_profile_period_days` to `metrics.vo2max_classification`. The flag is `false` below 100% FTP, `"likely_understated"` from 100% to below 105%, `true` at or above 105%, and null without p5min or usable FTP. Coaching excludes non-representative estimates/categories from VO2max limiter and performance-trend evidence and mentions the missing maximal 5-minute effort once. Week-data schema is 1.10.0 with regenerated JSON Schema/C# contracts and threshold, missing-input, and export tests.
 - Added anchored strength-phase inference: sessions without activity/planned tags inherit the latest earlier activity-/plan-resolved phase within 21 days (`phase_source: "inferred"`), count toward the current run, and do not anchor further inference. Sessions before the first resolved phase or at gaps of at least 21 days remain `none`.
 - Added `inferred_sessions_last_16_weeks` and `phase_overdue` to the compact strength summary. Overdue means a count above 6 adaptation, 3 transition, or 12 maximum sessions, without an automatic phase switch.
 - Added `strength_phase`, `strength_phase_source`, and per-session `strength_tagging_reminder_needed` to exported WeightTraining activities in local consolidation and both MCP pipelines, preserving original tags and keeping the full history internal. Week-data schema is 1.9.0 with regenerated JSON Schema/C# contracts.

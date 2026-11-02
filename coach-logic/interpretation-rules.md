@@ -272,9 +272,19 @@ capacity when it is plausibly maximal:
   instead that no 5-minute benchmark is available and base the VO2max
   limiter on recent high-intensity work and the discipline priority; a
   5-minute test may be suggested if the discipline block schedules one.
-- The same applies to `vo2max_classification`, which is derived from
-  `p5min`: a sub-maximal `p5min` understates it. Do not read a category
-  from an implausible `p5min` as a limiter.
+- `metrics.vo2max_classification` is derived from the window's best
+  `p5min` using `16.6 + 8.87 * p5min W/kg`; a sub-maximal effort understates
+  both the estimate and its category. Check `estimate_representative`:
+  `false` means below 100% FTP; `"likely_understated"` means 100% to below
+  105%; `true` means at least 105%; null means p5min or usable FTP is
+  unavailable. `p5min_pct_ftp` reports the ratio rounded to one decimal;
+  bands use the unrounded ratio. `power_profile_period_days` identifies
+  the source window.
+  When `estimate_representative` is anything other than boolean `true`
+  (including null or absent), do NOT use the VO2max value or category as
+  evidence for a VO2max limiter or a performance trend. Say once that a
+  maximal 5-minute effort is missing, without repeating the caveat for
+  the power, value, and category separately.
 - `p20min` handling is defined in the consistency check (`prompts/library/06_consistency.md`).
 
 (Limiter-based session prescription is defined in decision-process.md.)
