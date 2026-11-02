@@ -49,6 +49,9 @@ knowledge. All workout dates are calculated relative to `week_starting`.
 
 - Focus on the CURRENT week; from Thursday onward, begin the NEXT week.
 - Do not plan multiple weeks ahead unless explicitly requested.
+- For next-best-training, return at most one ride plus optionally one
+  `WeightTraining` session on the same day when the strength opt-in rule is
+  met. The easier alternative stays in prose only; do not add it to upload JSON.
 - Never duplicate a key session (VO2max / threshold / long ride) that is
   already completed or already in planned workouts.
 - `week_summary.training_readiness` is a same-day signal: apply fully to
@@ -65,6 +68,13 @@ knowledge. All workout dates are calculated relative to `week_starting`.
   only, yellow readiness excludes a `strength-maximum` session on that date
   and red excludes strength on that date. This does not reduce weekly
   frequency; ignore readiness for next-week strength planning.
+- Plan or discuss strength only when the athlete asks for it in chat or the
+  strength summary shows activity: the sum of
+  `week_summary.strength.sessions_per_week_last_4` is greater than zero, or
+  `phase_session_count > 0`, or `untagged_sessions_last_16_weeks > 0`.
+  Without either signal, do not plan or mention strength; omit the Strength
+  block in analysis. With activity but `current_phase: null`, use adaptation
+  only as a working assumption.
 
 ## Knowledge Files
 

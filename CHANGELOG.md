@@ -19,6 +19,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Next-best-training may include one main session plus an optional same-day `WeightTraining` entry when strength opt-in applies; the easier alternative remains prose-only.
+- Made strength planning opt-in: plan strength only with recent WeightTraining activity in the compact strength summary or an explicit athlete request; otherwise omit strength from plans and analysis. When activity exists but the phase is unknown, adaptation is only a working assumption.
 - Ranked strength placement by rest day, easy/recovery ride, then threshold day, with explicit exclusions and spacing; athlete day preferences override ranking only. Localized the full strength description and phase counter, added phase-completion text, and require the prose day list to mirror final upload JSON.
 - Scoped same-day training readiness by planning horizon: fully applicable to next-best training, limited to today/tomorrow in current-week plans, and ignored for next-week plans. Strength weekly frequency now reduces for recovery/high-risk form or consistently low completion; yellow/red readiness only limits today's same-day strength session.
 - Extended strength phase fallback to the nearest planned WeightTraining event in the same ISO week (`planned_week`), preserving activity/same-date priority and preferring the earlier date on ties. Planned-event fetches cover full ISO weeks. Added compact `tagging_reminder_needed` for unresolved current/previous-week sessions without a planned strength event; analysis uses adaptation only as a working assumption when the phase is unknown. Week-data schema is 1.8.0 with regenerated JSON/C# contracts.

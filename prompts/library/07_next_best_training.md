@@ -34,12 +34,17 @@ Do not treat today's readiness as tomorrow's measured readiness.
 
 **Recommendation and upload**
 Use the same workout-generation output contract and upload workflow as the weekly
-plan, but for exactly one workout:
+plan. Return exactly one workout recommendation for the main session, with at
+most one ride plus optionally one same-day `WeightTraining` session when the
+strength opt-in rule applies. The alternative stays in prose only; the easier
+alternative must not be added to upload JSON:
 - At most 100 words of prose: date, session type, duration, target zone, TSS and
   carbs/h, one short reason, and an easier alternative with a downgrade/stop criterion.
   No separate analysis or metrics table.
 - Then generate upload JSON for the main recommendation using the system prompt's
-  existing schema, markers, and TSS rules. The alternative stays in prose only.
+  existing schema, markers, and TSS rules. Optionally add one same-day strength
+  entry when the strength opt-in rule in decision-process.md is met. The easier
+  alternative stays in prose only.
 - Let the user review the recommendation. Upload only after the user explicitly
   requests it, using the existing weekly-plan workflow:
   local MCP: save_week_plan(plan_json=...), then validate_week_plan(), then

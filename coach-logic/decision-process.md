@@ -132,8 +132,14 @@ race classification from those tags.
 
 ### Phase selection (in priority order)
 
-1. An explicit athlete statement in the chat ("start max strength", "skip gym
-   this week") wins for the target week, subject to safety and recovery.
+1. Opt in only when the athlete explicitly asks for strength in chat or shows
+   strength activity. Activity is indicated by any of:
+   `sum(week_summary.strength.sessions_per_week_last_4) > 0`,
+   `week_summary.strength.phase_session_count > 0`, or
+   `week_summary.strength.untagged_sessions_last_16_weeks > 0`.
+   An explicit request to skip strength means do not plan it for the requested
+   period. Without an opt-in, do not plan or mention strength; in analysis,
+   skip the Strength block entirely.
 2. Read `week_summary.strength.current_phase` and `phase_session_count`:
    - `adaptation` and count >= 4: may advance to `transition`; must at 6.
    - `transition` and count >= 2: may advance to `maximum`; must at 3.
@@ -147,9 +153,10 @@ race classification from those tags.
      and explain this in the plan text.
    - Transition: no strength, or restart with adaptation if the athlete asks.
    - No cycling phase supplied: treat as Base.
-4. No history (`current_phase: null`) and Base: start with adaptation.
-   A gap of at least 21 days since the last strength session resets phase
-   state; use the supplied summary, not a reconstructed raw history.
+4. With strength activity but `current_phase: null`, use adaptation as a
+   working assumption, not a finding. A gap of at least 21 days since the
+   last strength session resets phase state; use the supplied summary, not a
+   reconstructed raw history.
 
 ### Frequency
 

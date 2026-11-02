@@ -1037,10 +1037,12 @@ Covers seven use cases:
 | **Fueling Analysis** | Dedicated fueling strategy review with pattern detection and recommendations |
 | **Metrics & Wellness Summary** | Compact overview of current performance metrics, HRV, sleep, and form state with load recommendation |
 | **Data Consistency Check** | Completeness and consistency report of the athlete data without coaching interpretation |
-| **Next Best Training** | At most 100 words plus upload JSON for one session today (preliminary tomorrow if already trained); easier alternative in prose only, no automatic upload |
+| **Next Best Training** | At most 100 words plus exactly one main workout recommendation: at most one ride and optionally one same-day strength session (preliminary tomorrow if already trained); easier alternative in prose only, no automatic upload |
 
 `coach_prompt_next_best_training` returns the same `{"workouts": [...]}` upload
-format as a weekly plan, between `BEGIN_UPLOAD_JSON` / `END_UPLOAD_JSON` markers.
+format as a weekly plan, between `BEGIN_UPLOAD_JSON` / `END_UPLOAD_JSON` markers:
+at most one ride and optionally one same-day `WeightTraining` session when the
+strength opt-in rule is met. The easier alternative remains prose-only.
 Upload options (only after an explicit user request):
 - **Local scripts:** save the JSON block as a plan file, run
   `python scripts/validate_plan.py --plan <file>`, then
