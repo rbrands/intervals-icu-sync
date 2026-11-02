@@ -55,6 +55,15 @@ public class ActivityDto
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
+    [JsonPropertyName("strength_phase")]
+    public JsonElement? StrengthPhase { get; set; }
+
+    [JsonPropertyName("strength_phase_source")]
+    public JsonElement? StrengthPhaseSource { get; set; }
+
+    [JsonPropertyName("strength_tagging_reminder_needed")]
+    public bool? StrengthTaggingReminderNeeded { get; set; }
+
     [JsonPropertyName("duration_hours")]
     public double? DurationHours { get; set; }
 
@@ -688,6 +697,9 @@ public class StrengthSummaryDto
     [JsonPropertyName("phase_target_sessions")]
     public JsonElement? PhaseTargetSessions { get; set; }
 
+    [JsonPropertyName("phase_overdue")]
+    public bool PhaseOverdue { get; set; }
+
     [JsonPropertyName("sessions_this_week")]
     public int SessionsThisWeek { get; set; }
 
@@ -705,6 +717,9 @@ public class StrengthSummaryDto
 
     [JsonPropertyName("untagged_sessions_last_16_weeks")]
     public int UntaggedSessionsLast16Weeks { get; set; }
+
+    [JsonPropertyName("inferred_sessions_last_16_weeks")]
+    public int InferredSessionsLast16Weeks { get; set; }
 
     [JsonPropertyName("tagging_reminder_needed")]
     public bool TaggingReminderNeeded { get; set; }

@@ -28,7 +28,9 @@ sys.path.insert(0, str(SCRIPTS_DIR))  # allow direct import of scripts
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import TransportSecuritySettings
 import upload_plan as _upload_plan  # direct import – no subprocess overhead
-from prepare_week_for_coach import build_strength_week_summary, fetch_strength_history
+from prepare_week_for_coach import (
+    annotate_strength_phases, build_strength_week_summary, fetch_strength_history,
+)
 from check_plan_tss import evaluate_plan, _normalize_plan, planned_hours
 from validate_plan import validate_plan_semantics
 from intervals_icu.client import (
@@ -474,11 +476,8 @@ def prepare_week_data(lookback_days: int = 7) -> str:
         week_data["ctl"] = ctl
     if week_data.get("atl") is None and atl is not None:
         week_data["atl"] = atl
-    week_data["strength"] = build_strength_week_summary(
-        fetch_strength_history(today, api_key=API_KEY, athlete_id=ATHLETE_ID),
-        today,
-        week_data,
-    )
+    strength_history = fetch_strength_history(today, api_key=API_KEY, athlete_id=ATHLETE_ID)
+    week_data["strength"] = build_strength_week_summary(strength_history, today, week_data)
     week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
 
     def _copy_target_fields(entry: dict, target: dict) -> None:
@@ -536,6 +535,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
         lookback_days=lookback_days,
     )
     activities, fueling_data = _merge_fueling_into_activities(activities, fueling_data)
+    activities = annotate_strength_phases(activities, strength_history)
     activities = annotate_hard_sessions(activities, current_ctl=week_data.get("ctl"))
 
     coach_input = {

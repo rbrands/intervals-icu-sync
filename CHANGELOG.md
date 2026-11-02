@@ -9,6 +9,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added anchored strength-phase inference: sessions without activity/planned tags inherit the latest earlier activity-/plan-resolved phase within 21 days (`phase_source: "inferred"`), count toward the current run, and do not anchor further inference. Sessions before the first resolved phase or at gaps of at least 21 days remain `none`.
+- Added `inferred_sessions_last_16_weeks` and `phase_overdue` to the compact strength summary. Overdue means a count above 6 adaptation, 3 transition, or 12 maximum sessions, without an automatic phase switch.
+- Added `strength_phase`, `strength_phase_source`, and per-session `strength_tagging_reminder_needed` to exported WeightTraining activities in local consolidation and both MCP pipelines, preserving original tags and keeping the full history internal. Week-data schema is 1.9.0 with regenerated JSON Schema/C# contracts.
 - Added a `strength_untagged` area to the deterministic data quality check (`check_athlete_data` in both MCP servers, `scripts/check_athlete_data.py`, notebook): a `Warning` when `week_summary.strength.tagging_reminder_needed` is true, listing the untagged `WeightTraining` activities of the current and previous ISO week (date, name, id) and suggesting `strength-<current_phase>` (`strength-adaptation` when the phase is null); `OK` otherwise. The report now has eight areas.
 - Added pull-request deployment of the Foundry staging agent for same-repository PRs targeting `main`; production deployment remains limited to pushes on `main` and manual runs.
 - Added `WeightTraining` activities to the raw and coach activity exports when intervals.icu supplies training load. The coach export contains only the reduced strength field set and excludes ride/run power, heart-rate, zone, interval, decoupling, W'bal, power-curve, DFA, fueling, and weather analyses.
@@ -20,6 +23,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Extended `tagging_reminder_needed` to inferred sessions in unplanned current/previous ISO weeks. Data quality now reports inferred sessions as "counted as <phase> - tag the session if it was a different phase"; unresolved sessions retain the suggested-tag wording. Listings remain limited to exported activities and exclude plan-resolved/suppressed sessions.
+- Strength phase runs now stop at gaps of at least 21 days between sessions, preventing a recent unresolved or newly tagged session from reviving an old phase count. `untagged_sessions_last_16_weeks` still counts only `none`.
 - Excluded `WeightTraining` activities from the data quality `activity_feedback` RPE check as well as the carbohydrate check (decision D6); rides and runs are unchanged. Evidence fields are now `applicable_activities` and `strength_activities_excluded` (replacing `carbs_applicable_activities`).
 - Moved the strength tagging reminder out of the coach texts: `coach-logic/decision-process.md`, `coach-logic/input-schema.md`, the Foundry skill, the weekly-analysis prompt and `docs/strength_training.md` now state that `tagging_reminder_needed` is surfaced by the data quality check and the coach never mentions tagging in plans or analyses.
 - Added a *Power profile validity* rule to `coach-logic/interpretation-rules.md` and a matching note in `coach-logic/input-schema.md`: `power_profile` values are 42-day training bests, not tests. A `p5min` below FTP (or clearly below `p3min`) means no maximal 5-minute effort exists in the window and must not be cited as evidence of a low 5-minute capacity or VO2max limiter, nor compared to FTP.

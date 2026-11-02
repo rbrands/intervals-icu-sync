@@ -161,12 +161,14 @@ class StrengthSummary(_SchemaModel):
     phase_started: str | None = None
     phase_session_count: int
     phase_target_sessions: Literal["4-6", "2-3", "8-12", "ongoing"] | None = None
+    phase_overdue: bool
     sessions_this_week: int
     days_since_last_strength: int | None = None
     last_session_tags: list[str]
     weekly_strength_load: float | int
     sessions_per_week_last_4: list[int] = Field(min_length=4, max_length=4)
     untagged_sessions_last_16_weeks: int
+    inferred_sessions_last_16_weeks: int
     tagging_reminder_needed: bool
 
 
@@ -261,6 +263,9 @@ class Activity(_SchemaModel):
     type: str | None = None
     date: str | None = None
     name: str | None = None
+    strength_phase: Literal["adaptation", "transition", "maximum", "maintenance"] | None = None
+    strength_phase_source: Literal["activity", "planned", "planned_week", "inferred", "none"] | None = None
+    strength_tagging_reminder_needed: bool | None = None
     duration_hours: float | int | None = None
     activity_ftp: float | int | None = None
     activity_eftp: float | int | None = None

@@ -54,6 +54,55 @@
           "default": null,
           "title": "Name"
         },
+        "strength_phase": {
+          "anyOf": [
+            {
+              "enum": [
+                "adaptation",
+                "transition",
+                "maximum",
+                "maintenance"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strength Phase"
+        },
+        "strength_phase_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "activity",
+                "planned",
+                "planned_week",
+                "inferred",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strength Phase Source"
+        },
+        "strength_tagging_reminder_needed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strength Tagging Reminder Needed"
+        },
         "duration_hours": {
           "anyOf": [
             {
@@ -2487,6 +2536,10 @@
           "default": null,
           "title": "Phase Target Sessions"
         },
+        "phase_overdue": {
+          "title": "Phase Overdue",
+          "type": "boolean"
+        },
         "sessions_this_week": {
           "title": "Sessions This Week",
           "type": "integer"
@@ -2534,6 +2587,10 @@
           "title": "Untagged Sessions Last 16 Weeks",
           "type": "integer"
         },
+        "inferred_sessions_last_16_weeks": {
+          "title": "Inferred Sessions Last 16 Weeks",
+          "type": "integer"
+        },
         "tagging_reminder_needed": {
           "title": "Tagging Reminder Needed",
           "type": "boolean"
@@ -2541,11 +2598,13 @@
       },
       "required": [
         "phase_session_count",
+        "phase_overdue",
         "sessions_this_week",
         "last_session_tags",
         "weekly_strength_load",
         "sessions_per_week_last_4",
         "untagged_sessions_last_16_weeks",
+        "inferred_sessions_last_16_weeks",
         "tagging_reminder_needed"
       ],
       "title": "StrengthSummary",

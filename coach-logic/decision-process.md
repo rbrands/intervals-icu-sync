@@ -243,10 +243,12 @@ race classification from those tags.
 ### Untagged sessions
 
 - `week_summary.strength.tagging_reminder_needed` (true when the current or
-  previous ISO week has completed strength sessions with `phase_source: "none"`
+  previous ISO week has completed strength sessions with phase source `none` or `inferred`
   and no planned WeightTraining event existed in that same week) is surfaced by
   the data quality check (`check_athlete_data`, area `strength_untagged`), which
-  lists the affected activities and suggests a tag. The coach does not read it
+  lists the affected exported activities. For unresolved sessions it suggests
+  a tag; for inferred sessions it reports the counted phase and asks for a tag
+  only if that phase was different. The coach does not read it
   for coaching and never mentions tagging in plans or analyses.
 - Same-date planned tags take precedence over the nearest same-ISO-week
   planned tags; both resolve the phase. Do not infer tagging gaps from the

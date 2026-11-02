@@ -145,14 +145,18 @@ value is missing or no previous exported activity exists.
 - `strength`: compact summary derived from internal completed strength history
   and the per-sport totals in this object. The raw history is not exported.
   - `current_phase`: phase (`adaptation`, `transition`, `maximum`, or
-    `maintenance`) of the most recent tagged strength session; null when no
-    recent tagged session is available.
+    `maintenance`) of the most recent resolved strength session, including
+    inference; null when no recent resolved session is available.
   - `phase_started`: date of the oldest session in the current consecutive
     phase run; null when the phase is unset or reset.
-  - `phase_session_count`: number of tagged sessions in the current phase run.
-    Untagged rows are skipped; a different tagged phase ends the run.
+  - `phase_session_count`: number of resolved sessions in the current phase
+    run, including `inferred` sessions. Only `none` rows are skipped; a
+    different phase or a gap of at least 21 days between sessions ends the run.
   - `phase_target_sessions`: phase target from the strength taxonomy: `4-6`,
     `2-3`, `8-12`, or `ongoing`; null when there is no current phase.
+  - `phase_overdue`: true only when the count exceeds the phase maximum
+    (6 adaptation, 3 transition, 12 maximum). False for maintenance or an
+    unset phase. This flag does not automatically change the phase.
   - `sessions_this_week`: current-week count copied from `strength_sessions`.
   - `days_since_last_strength`: calendar days since the most recent completed
     strength session; null when history is empty or no date is available.
@@ -162,12 +166,14 @@ value is missing or no previous exported activity exists.
   - `sessions_per_week_last_4`: four integer counts of all completed
     WeightTraining sessions, tagged or not, in the last four completed ISO
     weeks, oldest first and aligned with `training_load_history` weeks.
-  - `untagged_sessions_last_16_weeks`: number of sessions with no canonical
-    phase tag resolved from the activity or a planned WeightTraining event
-    on the same date or in the same ISO week in the internal history
-    (16 weeks by default). Only `phase_source: "none"` counts.
+  - `untagged_sessions_last_16_weeks`: number of unresolved sessions in the
+    internal history (16 weeks by default). Only `phase_source: "none"` counts,
+    not inferred sessions.
+  - `inferred_sessions_last_16_weeks`: number of sessions whose phase was
+    inferred from a recent earlier activity- or plan-resolved session.
   - `tagging_reminder_needed`: true only when the current or previous ISO
-    week contains unresolved completed strength sessions and no planned
+    week contains completed strength sessions with source `none` or `inferred`
+    and no planned
     WeightTraining event existed in that same week (even an untagged planned
     event suppresses it). False otherwise. This flag is surfaced by the data
     quality check (`check_athlete_data`, area `strength_untagged`), not by
@@ -178,8 +184,12 @@ value is missing or no previous exported activity exists.
     win, then same-date planned WORKOUT tags (`planned`), then nearest-date
     planned WeightTraining tags in the same ISO year/week (`planned_week`).
     Equal-distance ties prefer the earlier date; never cross a Monday/Sunday
-    boundary. Otherwise tags are empty and source is `none`. Legacy `strength`
-    tags are ignored; the raw rows and source are not exported.
+    boundary for planned-event matching. Next, inherit the phase of the most
+    recent earlier session resolved by `activity`, `planned`, or `planned_week`
+    if the gap is less than 21 days (`inferred`). Inferred sessions do not
+    become new inference anchors. Before the first resolved session or after
+    a gap of at least 21 days, tags are empty and source is `none`. Legacy
+    `strength` tags are ignored; the raw history is not exported.
   - The coach never mentions tagging in plans or analyses; tagging gaps are
     reported by the data quality check. For analysis with `current_phase`
     null and `strength_sessions > 0`, describe adaptation as a working
@@ -250,7 +260,18 @@ value is missing or no previous exported activity exists.
   activity type (for example `Ride`, `Run`, or `VirtualRide`).
 - `WeightTraining` entries carry only `id`, `type`, `date`, `name`,
   `duration_hours`, `training_load`, CTL/ATL/form and their deltas, `rpe`,
-  `tags`, and `notes`; tags are their only classifier.
+  `tags`, and `notes`, plus strength metadata added during consolidation:
+  - `strength_phase`: the resolved phase, including inference, or null.
+  - `strength_phase_source`: `activity`, `planned`, `planned_week`, `inferred`,
+    or `none`. Original activity `tags` remain unchanged.
+  - `strength_tagging_reminder_needed`: true for `none` or `inferred` sessions
+    with no planned WeightTraining event in their ISO week. The data quality
+    check additionally restricts reminders to the current/previous ISO week
+    and requires the summary's `tagging_reminder_needed` flag. For `inferred`,
+    it says "counted as <phase> - tag the session if it was a different phase";
+    for `none`, it suggests `strength-<current_phase>` or `strength-adaptation`
+    when the current phase is null. Only exported activities can be listed;
+    no extra history rows are exported to extend the activity window.
 - `notes`: free-text athlete description; qualitative context (effort,
   conditions, how legs felt); null if unset.
 - `weather`: null for indoor rides (no GPS). `max_rain` > 0 = wet.

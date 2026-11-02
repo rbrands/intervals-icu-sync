@@ -58,6 +58,7 @@ Exercise selection per session (3–4 exercises):
   WeightTraining activities are always kept (only the STRAVA-duplicate exclusion applies); `icu_training_load` is optional and may be null when no HR watch was worn and no RPE was logged. RPE is optional for strength and never triggers a reminder.
 - `scripts/prepare_activities_for_coach.py`: for `WeightTraining` omit all power-, zone-, decoupling-, W'bal-, power-curve-, DFA- and fueling fields.
   Export `id`, `type`, `date`, `name`, `tags`, `duration_hours`, `rpe`, `notes`, `training_load`, `ctl`, `atl`, `form_absolute` and the deltas.
+- Consolidation in `scripts/prepare_week_for_coach.py` and both MCP pipelines adds `strength_phase`, `strength_phase_source`, and `strength_tagging_reminder_needed` to exported WeightTraining activities by activity ID. These describe resolved/inferred phases without changing the original `tags` or exporting the history. Reminder listings stay limited to the exported activity window.
 - `is_hard_session`: `true` for `strength-maximum`, `false` for the other three strength tags. (The generic "TSS ≥ 150 % of CTL" rule stays.)
   Rationale: MS sessions produce DOMS and reduce next-day ride quality; the readiness model and the "never two hard days in a row" rule must see them.
 
@@ -76,9 +77,10 @@ Tag resolution per completed `WeightTraining` activity:
 1. A canonical `strength-*` tag on the activity itself wins.
 2. Otherwise fall back to canonical tags of a planned WeightTraining WORKOUT on the same calendar date, with `phase_source: "planned"`.
 3. Otherwise use canonical tags of the closest planned WeightTraining WORKOUT in the same ISO year/week (Monday–Sunday), with `phase_source: "planned_week"`. For a mid-week phase change, the closest date wins; equal-distance ties prefer the earlier date. Never use an event in the following or previous ISO week.
-4. No resolved tag → `tags: []` and `phase_source: "none"`; the session does not advance any phase counter.
+4. Without an activity or planned match, inherit the phase of the most recent earlier session resolved by `activity`, `planned`, or `planned_week`, provided the gap is **less than 21 days**. Use `phase_source: "inferred"` and the inherited canonical phase tag internally. Inferred rows count toward `phase_session_count` and continue the run, but do not become inference anchors themselves. This inference may cross ISO-week boundaries.
+5. Before the first resolved session, or when the gap to that anchor is at least 21 days, use `tags: []` and `phase_source: "none"`; the session does not advance any phase counter. No automatic phase switch occurs.
 
-Each internal history row carries `phase_source` (`activity` | `planned` | `planned_week` | `none`) and whether any planned WeightTraining event existed in its week. Only `none` contributes to `untagged_sessions_last_16_weeks`. The coach receives only the derived compact summary, including `tagging_reminder_needed`.
+Each internal history row carries the activity `id`, `phase_source` (`activity` | `planned` | `planned_week` | `inferred` | `none`) and whether any planned WeightTraining event existed in its week. Only `none` contributes to `untagged_sessions_last_16_weeks`; `inferred` contributes to `inferred_sessions_last_16_weeks`. The coach receives the derived compact summary and phase/source/reminder metadata on the already-exported activities, never the raw history.
 
 ### 3.3 `week_summary.strength`
 
@@ -90,23 +92,27 @@ Derived from `strength_history` (and the current week's activities):
   "phase_started": "2026-10-13",
   "phase_session_count": 5,
   "phase_target_sessions": "8-12",
+  "phase_overdue": false,
   "sessions_this_week": 1,
   "days_since_last_strength": 3,
   "last_session_tags": ["strength-maximum"],
   "weekly_strength_load": 38,
   "sessions_per_week_last_4": [2, 2, 2, 2],
   "untagged_sessions_last_16_weeks": 0,
+  "inferred_sessions_last_16_weeks": 0,
   "tagging_reminder_needed": false
 }
 ```
 
-- `current_phase`: phase of the most recent tagged session; `null` when the history is empty.
-- `phase_session_count`: number of consecutive most-recent sessions carrying the same phase tag (a different phase tag resets the count).
+- `current_phase`: phase of the most recent resolved session, including inference; `null` when there is no recent resolved phase.
+- `phase_session_count`: number of consecutive most-recent resolved sessions carrying the same phase, including `inferred` rows. Only `none` rows are skipped; a different phase or a gap of at least 21 days between sessions ends the run.
+- `phase_overdue`: true when `phase_session_count` **exceeds** the phase maximum (6 adaptation, 3 transition, 12 maximum); false for maintenance or an unset phase. The data pipeline never switches phase automatically.
 - `phase_started`: date of the first session in that run.
 - A gap of ≥ 21 days since the last session resets `current_phase` to `null` (the coach then restarts with AA, see 4.2).
 - `sessions_per_week_last_4`: all completed sessions per last four completed ISO weeks, oldest first and aligned with `training_load_history`.
 - `untagged_sessions_last_16_weeks`: only sessions whose internal `phase_source` is `none`.
-- `tagging_reminder_needed`: true when the current or previous ISO week contains unresolved strength sessions and no planned WeightTraining event existed in that same week. An untagged planned event also suppresses it. The flag is surfaced by the data quality check (`src/intervals_icu/data_quality.py`, MCP `check_athlete_data`, `scripts/check_athlete_data.py`) as the `strength_untagged` area: a `Warning` (never `Missing`) listing the untagged WeightTraining activities of the current and previous ISO week (date, name, id) and suggesting `strength-<current_phase>` (`strength-adaptation` when `current_phase` is null). The coach does not mention tagging in plans or analyses.
+- `inferred_sessions_last_16_weeks`: only sessions whose internal `phase_source` is `inferred`.
+- `tagging_reminder_needed`: true when the current or previous ISO week contains strength sessions with source `none` **or** `inferred` and no planned WeightTraining event existed in that same week. An untagged planned event also suppresses it. The flag is surfaced by the data quality check (`src/intervals_icu/data_quality.py`, MCP `check_athlete_data`, `scripts/check_athlete_data.py`) as the `strength_untagged` area: a `Warning` (never `Missing`) listing eligible exported WeightTraining activities of the current and previous ISO week (date, name, id, plus phase/source metadata). For `none`, keep the unresolved-phase wording and suggest `strength-<current_phase>` (`strength-adaptation` when `current_phase` is null). For `inferred`, say "counted as <phase> - tag the session if it was a different phase", using that session's phase, not necessarily the latest summary phase. Planned sessions and inferred sessions in planned weeks are not listed. Sessions outside the exported activity window cannot be listed; the flag can still trigger a warning. The coach does not mention tagging in plans or analyses.
 - The data quality `activity_feedback` area excludes WeightTraining from both the RPE and the carbohydrate completeness checks (decision D6); rides and runs are unchanged.
 - For analysis with `current_phase: null` and `strength_sessions > 0`, describe adaptation as a working assumption, not a finding. Never issue a tagging sentence, a separate warning or a missing-RPE reminder.
 
@@ -278,11 +284,11 @@ coach-logic docs → prompts → frontend. Each step is independently testable.
 
 ## 7. Decisions
 
-- **D1 — Phase source**: 16-week strength history built internally by `prepare_week_data` and exported only as the derived `week_summary.strength`; a canonical tag on the completed activity always wins, so athletes can override the phase by tagging; a chat statement overrides for the target week; no calendar-based fallback.
+- **D1 — Phase source**: 16-week strength history built internally by `prepare_week_data` and exported only as the derived `week_summary.strength` plus metadata on activities already in the export window; a canonical tag on the completed activity always wins, so athletes can override the phase by tagging; a chat statement overrides for the target week; no calendar-based fallback.
 - **D2 — Frequency and readiness scope**: AA/MT/MS target 2 sessions/week, reduced to 1 only for high-risk form/clearly negative starting TSB or a consistent one-session completion pattern; RECOVERY weeks do not reduce strength frequency or phase dose. SM remains 1/week. Same-day readiness limits sessions only for next-best-training today and current-week plan dates today/tomorrow (yellow: no maximum; red: no strength). Next-week plans ignore readiness. In RECOVERY weeks, schedule strength only from day 4 onward.
 - **D3 — Frontend**: `WorkoutType.Strength` with phase, own card, excluded from the Ride TSS indicator.
 - **D4 — Legacy tag `strength`**: ignored.
-- **D5 — Tag fallback**: canonical completed tags win; otherwise inherit canonical tags from a same-date planned WeightTraining event (`planned`), then the closest planned WeightTraining event in the same ISO year/week (`planned_week`). Equal-distance ties prefer the earlier date; no cross-week fallback. Without a match use `none`. The coach tags planned events; manual tagging of completed sessions is optional.
+- **D5 — Tag fallback**: canonical completed tags win; otherwise inherit canonical tags from a same-date planned WeightTraining event (`planned`), then the closest planned WeightTraining event in the same ISO year/week (`planned_week`). Equal-distance ties prefer the earlier date; planned-event matching never crosses weeks. Without a planned match, inherit the phase of the latest earlier `activity`/`planned`/`planned_week` session if the gap is < 21 days (`inferred`, including across weeks). Inferred sessions count toward the run but never anchor further inference. Before the first resolved session or at a gap ≥ 21 days use `none`. `phase_overdue` flags counts above 6/3/12 without changing phase. The coach tags planned events; manual tagging of completed sessions is optional.
 - **D6 — RPE for strength**: optional; no reminder when missing. The data quality check excludes WeightTraining from the RPE and carbohydrate completeness checks.
 - **D7 — Strength opt-in**: strength is planned only when the athlete shows WeightTraining activity in the last 16 weeks or asks for it (4.2 rule 4).
 

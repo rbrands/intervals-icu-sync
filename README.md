@@ -115,7 +115,7 @@ are in English and can be translated by the caller without changing statuses.
 | Activity density | Count activities dated from `current_date - lookback_days` through `current_date`, both inclusive, matching the preparation pipeline's lower boundary while excluding future entries. At least 3: `OK`; 1–2: `Warning`; 0: `Missing`. |
 | Activity feedback | In that same window, consider only non-`WeightTraining` activities (RPE and carbohydrate intake are optional for strength, decision D6). `OK` if every applicable activity has non-null `rpe` and non-null `carbs_ingested_g` (zero counts as recorded), or if only strength activities are present. `Missing` if there are no activities at all, or if RPE or carbohydrate data is absent for every applicable activity; otherwise incomplete feedback is `Warning`. Evidence reports `applicable_activities` and `strength_activities_excluded`. |
 | Historical targets | `OK` if any `training_load_history` entry has a non-null `weekly_load_target` (including zero); otherwise `Missing`. |
-| Strength tagging | `Warning` (never `Missing`) when `week_summary.strength.tagging_reminder_needed` is true: lists the `WeightTraining` activities dated from the Monday of the previous ISO week through `current_date` that carry no canonical `strength-*` tag (date, name, id) and suggests `strength-<current_phase>`, or `strength-adaptation` when `current_phase` is null. `OK` when the flag is false or the strength summary is absent. Evidence: `tagging_reminder_needed`, `untagged_activities`, `suggested_tag`, `current_phase`, window dates. The coach itself never mentions tagging. |
+| Strength tagging | `Warning` (never `Missing`) when `week_summary.strength.tagging_reminder_needed` is true. Lists eligible exported `WeightTraining` activities from the previous ISO Monday through `current_date` (date, name, id, and phase/source when available), excluding activity-/plan-resolved sessions and sessions with `strength_tagging_reminder_needed: false`. For source `none`, suggests `strength-<current_phase>` or `strength-adaptation` when the current phase is null. For `inferred`, says "counted as <phase> - tag the session if it was a different phase", using the session's `strength_phase`. `OK` when the flag is false or the strength summary is absent. Evidence: `tagging_reminder_needed`, `untagged_activities`, `suggested_tag`, `current_phase`, window dates. The listing cannot extend beyond the exported activity window; the coach itself never mentions tagging. |
 
 If `0.95 * metrics.power_profile.p20min.watts` is more than 20% below FTP,
 the FTP check adds context about the power-profile window and potentially
@@ -637,21 +637,36 @@ contains `status`, `score`, `confidence`, `recommendation`, reasons, safety
 vetoes, and the contribution of every available input signal. Missing optional
 wellness values lower confidence instead of counting as negative readiness.
 Strength activities are retained in the activity list without an attached
-fueling object. Consolidation fetches a projected 16-week history of completed
-WeightTraining sessions plus planned WeightTraining WORKOUT events, resolves
-canonical phase tags, and exports only `week_summary.strength`; the raw history
+fueling object. Consolidation adds `strength_phase`, `strength_phase_source`
+(`activity`, `planned`, `planned_week`, `inferred`, `none`), and
+`strength_tagging_reminder_needed` (source `none`/`inferred` and no planned
+WeightTraining event in that ISO week) to exported strength activities by ID.
+The original activity tags remain unchanged. Consolidation fetches a projected
+16-week history of completed WeightTraining sessions plus planned WeightTraining
+WORKOUT events, resolves canonical phase tags, and exports the compact
+`week_summary.strength` plus metadata on already-exported activities; the raw history
 stays internal and is not included in coach or MCP payloads. The compact summary
 includes `sessions_per_week_last_4` (all sessions per completed ISO week, oldest
-first, aligned with `training_load_history`) and
-`untagged_sessions_last_16_weeks` (only sessions with phase_source `none`) and
-`tagging_reminder_needed` (unresolved sessions in the current/previous ISO week
+first, aligned with `training_load_history`),
+`untagged_sessions_last_16_weeks` (only sessions with phase_source `none`),
+`inferred_sessions_last_16_weeks` (only source `inferred`), and
+`tagging_reminder_needed` (`none` or `inferred` sessions in the current/previous ISO week
 with no planned strength event in that same week; surfaced as the `strength_untagged`
 warning of `check_athlete_data`, never by the coach). Activity phase tags win,
 then same-date planned tags, then tags from the nearest planned WeightTraining
 event in the same ISO year/week; equal-distance ties prefer the earlier date.
+As a final fallback, an untagged session inherits the phase of the most recent
+earlier activity-/plan-resolved session when the gap is less than 21 days
+(`inferred`). Inferred sessions count toward `phase_session_count` and continue
+the run but do not anchor further inference. Before the first resolved session,
+or at a gap of 21 days or more, the source remains `none`. Phase runs stop at
+gaps of at least 21 days between sessions; 21 days without a session also resets
+the current phase. `phase_overdue` is true only above 6 adaptation, 3 transition,
+or 12 maximum sessions (false for maintenance/unset phase), with no automatic
+phase switch.
 Planned events are fetched through Sunday of the current week, including the
 full ISO week containing the history start. The raw history remains internal.
-Week-data schema version is 1.8.0.
+Week-data schema version is 1.9.0.
 The local and hosted MCP `prepare_week_data` tools use the same derivation.
 Set `STRENGTH_HISTORY_WEEKS` to change the default history window, including
 the window used for the untagged count. In the coach activity payload, `is_hard_session` is true for
@@ -796,7 +811,10 @@ python scripts/check_athlete_data.py --json
 
 Default output: eight compact status lines plus overall completeness and a
 single data-quality fix. `--json` prints the full report with evidence and
-context. No file is written. Exit code `0` means the check ran successfully,
+context. Inferred strength sessions use their exported `strength_phase_source`
+and `strength_phase` to report the counted phase, with tagging needed only if
+it differed; unresolved sessions retain the suggested-tag wording. No file is
+written. Exit code `0` means the check ran successfully,
 including `Partial` or `Limited` results; `1` means the file could not be read
 or the input was invalid. Use the consolidated export, not a raw activity
 list. To refresh input first, run `prepare_week_for_coach.py`.

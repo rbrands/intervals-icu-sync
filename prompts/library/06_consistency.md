@@ -80,13 +80,19 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or
 
 **Strength tagging**
 - `Warning` (never `Missing`) if `week_summary.strength.tagging_reminder_needed`
-  is true: list the `WeightTraining` activities from the Monday of the previous
-  ISO week through `current_date` without a canonical `strength-*` tag (date,
-  name, id) and suggest `strength-<current_phase>`, or `strength-adaptation`
-  when `current_phase` is null.
+  is true: list eligible exported `WeightTraining` activities from the Monday
+  of the previous ISO week through `current_date` (date, name, id).
+  Exclude activity-/plan-resolved sessions and activities with
+  `strength_tagging_reminder_needed: false`. For `strength_phase_source: "none"`
+  (or legacy payloads without metadata), suggest `strength-<current_phase>`,
+  or `strength-adaptation` when `current_phase` is null.
+  For `strength_phase_source: "inferred"`, say "counted as <strength_phase> -
+  tag the session if it was a different phase", using the session's phase.
+  The activity listing cannot extend beyond the exported activity window.
 - `OK` if the flag is false or the strength summary is absent.
-- Impact when `Warning`: the strength phase cannot be tracked until the
-  sessions are tagged. This is the only place tagging is mentioned.
+- Impact for unresolved sessions: the strength phase cannot be tracked until
+  they are tagged. Inferred sessions already count toward the phase.
+  This is the only place tagging is mentioned.
 
 **Summary**
 End with one line: overall data completeness as `Good` (all areas `OK`),

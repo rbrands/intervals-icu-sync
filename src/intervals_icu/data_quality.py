@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Literal, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator
 
 from .strength import CANONICAL_STRENGTH_TAGS, STRENGTH_ADAPTATION_TAG
 
@@ -78,6 +78,9 @@ class _Activity(_InputModel):
     name: str | None = None
     type: str | None = None
     tags: list[str] | None = None
+    strength_phase: Literal["adaptation", "transition", "maximum", "maintenance"] | None = None
+    strength_phase_source: Literal["activity", "planned", "planned_week", "inferred", "none"] | None = None
+    strength_tagging_reminder_needed: bool | None = None
     rpe: Number | None = None
     carbs_ingested_g: Number | None = None
 
@@ -85,6 +88,13 @@ class _Activity(_InputModel):
     @classmethod
     def validate_date(cls, value: str) -> str:
         return _iso_date(value)
+
+    @field_validator("strength_phase_source")
+    @classmethod
+    def validate_phase_source(cls, value: str | None, info: ValidationInfo) -> str | None:
+        if value == "inferred" and info.data.get("strength_phase") is None:
+            raise ValueError("An inferred strength session must have a strength_phase")
+        return value
 
 
 class _HistoryEntry(_InputModel):
@@ -193,7 +203,7 @@ _FIXES = {
     "activity_feedback": "Record RPE and carbohydrate intake for recent ride and run activities.",
     "recent_activity_density": "Check that recent activities are synced and included in the export.",
     "load_target_history": "Add weekly load targets to the season plan for historical comparisons.",
-    "strength_untagged": "Tag the listed WeightTraining activities with the suggested strength phase tag in intervals.icu.",
+    "strength_untagged": "Tag the listed WeightTraining activities with the suggested phase when unresolved, or only if the counted phase was different.",
 }
 
 
@@ -208,30 +218,50 @@ def _strength_untagged(
     needed = bool(strength and strength.tagging_reminder_needed)
     phase = strength.current_phase if strength and strength.current_phase else None
     suggested_tag = f"strength-{phase}" if phase else STRENGTH_ADAPTATION_TAG
-    untagged = [
-        {"date": activity.date, "name": activity.name, "id": activity.id}
+    candidates = [
+        activity
         for activity in sorted(activities, key=lambda activity: activity.date)
         if window_start <= date.fromisoformat(activity.date) <= today
         and _is_untagged_strength(activity)
+        and activity.strength_phase_source not in ("activity", "planned", "planned_week")
+        and activity.strength_tagging_reminder_needed is not False
     ]
+    untagged = []
+    unresolved = []
+    inferred = []
+    for activity in candidates:
+        entry = {"date": activity.date, "name": activity.name, "id": activity.id}
+        label = f"{activity.date} {activity.name or 'unnamed'} (id {activity.id})"
+        if activity.strength_phase_source is not None:
+            entry["phase_source"] = activity.strength_phase_source
+            entry["phase"] = activity.strength_phase
+        if activity.strength_phase_source == "inferred":
+            inferred.append(
+                f"{label}: counted as {activity.strength_phase} - "
+                "tag the session if it was a different phase."
+            )
+        else:
+            unresolved.append(label)
+        untagged.append(entry)
     if not needed:
         explanation = (
             "No completed strength session in the current or previous ISO week needs a "
             "phase tag."
         )
     else:
-        listed = "; ".join(
-            f"{entry['date']} {entry['name'] or 'unnamed'} (id {entry['id']})"
-            for entry in untagged
-        )
-        explanation = (
-            "Completed WeightTraining activities in the current or previous ISO week have "
-            "no canonical strength phase tag and no planned strength event in that week"
-            + (f": {listed}." if listed else
-               "; the affected activities are outside the exported activity list.")
-            + f" Suggested tag: {suggested_tag}. The strength phase cannot be tracked "
-            "until these sessions are tagged."
-        )
+        explanations = []
+        if unresolved or not candidates:
+            listed = "; ".join(unresolved)
+            explanations.append(
+                "Completed WeightTraining activities in the current or previous ISO week have "
+                "no canonical strength phase tag and no planned strength event in that week"
+                + (f": {listed}." if listed else
+                   "; the affected activities are outside the exported activity list.")
+                + f" Suggested tag: {suggested_tag}. The strength phase cannot be tracked "
+                "until these sessions are tagged."
+            )
+        explanations.extend(inferred)
+        explanation = " ".join(explanations)
     return _check(
         "strength_untagged", "Warning" if needed else "OK", explanation,
         tagging_reminder_needed=needed, untagged_activities=untagged if needed else [],

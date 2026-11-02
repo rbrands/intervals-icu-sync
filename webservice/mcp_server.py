@@ -124,7 +124,9 @@ from intervals_icu.client import (
     get_library_workouts,
 )
 from intervals_icu.training_readiness import annotate_hard_sessions, compute_training_readiness
-from prepare_week_for_coach import build_strength_week_summary, fetch_strength_history
+from prepare_week_for_coach import (
+    annotate_strength_phases, build_strength_week_summary, fetch_strength_history,
+)
 
 from context import api_key_var, athlete_id_var
 from intervals_icu.prompt_templates import render_coach_prompt
@@ -1323,11 +1325,10 @@ def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) 
                 week_data["ctl"] = ctl
             if week_data.get("atl") is None and atl is not None:
                 week_data["atl"] = atl
-            week_data["strength"] = build_strength_week_summary(
-                fetch_strength_history(today, api_key=api_key, athlete_id=athlete_id),
-                today,
-                week_data,
+            strength_history = fetch_strength_history(
+                today, api_key=api_key, athlete_id=athlete_id,
             )
+            week_data["strength"] = build_strength_week_summary(strength_history, today, week_data)
             week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
 
             ride_plan = _extract_ride_plan_summary(plan_data, monday)
@@ -1350,6 +1351,7 @@ def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) 
                 lookback_days=lookback_days,
             )
             activities, fueling_data = _merge_fueling_into_activities(activities, fueling_data)
+            activities = annotate_strength_phases(activities, strength_history)
             activities = annotate_hard_sessions(
                 activities,
                 current_ctl=week_data.get("ctl"),

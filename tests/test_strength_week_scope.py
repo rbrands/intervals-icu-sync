@@ -413,6 +413,7 @@ class StrengthHistoryTests(unittest.TestCase):
             history,
             [
                 {
+                    "id": 4,
                     "date": "2026-10-12",
                     "tags": ["strength-maintenance"],
                     "phase_source": "planned",
@@ -422,6 +423,7 @@ class StrengthHistoryTests(unittest.TestCase):
                     "rpe": None,
                 },
                 {
+                    "id": 2,
                     "date": "2026-10-11",
                     "tags": ["strength-transition"],
                     "phase_source": "planned",
@@ -431,6 +433,7 @@ class StrengthHistoryTests(unittest.TestCase):
                     "rpe": 6,
                 },
                 {
+                    "id": 1,
                     "date": "2026-10-10",
                     "tags": ["strength-transition"],
                     "phase_source": "activity",
@@ -440,6 +443,7 @@ class StrengthHistoryTests(unittest.TestCase):
                     "rpe": 8,
                 },
                 {
+                    "id": 3,
                     "date": "2026-10-09",
                     "tags": ["strength-transition"],
                     "phase_source": "planned_week",
@@ -472,6 +476,175 @@ class StrengthHistoryTests(unittest.TestCase):
 
         self.assertEqual(history[0]["tags"], ["strength-maximum"])
         self.assertEqual(history[0]["phase_source"], "activity")
+
+    def test_inferred_session_continues_adaptation_run(self):
+        completed = [
+            _raw_activity(
+                "WeightTraining", None, 1800, id=day,
+                start_date_local=day + "T09:00:00",
+                tags=["strength-adaptation"] if day != "2026-11-02" else [],
+            )
+            for day in ("2026-10-24", "2026-10-27", "2026-10-30", "2026-11-02")
+        ]
+        history = prepare_week.build_strength_history(list(reversed(completed)), [])
+        self.assertEqual(history[0]["phase_source"], "inferred")
+        self.assertEqual(history[0]["tags"], ["strength-adaptation"])
+        summary = prepare_week.build_strength_week_summary(history, date(2026, 11, 2), {})
+        self.assertEqual(summary["current_phase"], "adaptation")
+        self.assertEqual(summary["phase_session_count"], 4)
+        self.assertEqual(summary["phase_started"], "2026-10-24")
+        self.assertEqual(summary["untagged_sessions_last_16_weeks"], 0)
+        self.assertEqual(summary["inferred_sessions_last_16_weeks"], 1)
+        self.assertTrue(summary["tagging_reminder_needed"])
+        self.assertFalse(summary["phase_overdue"])
+
+    def test_untagged_sessions_before_first_resolved_phase_remain_none(self):
+        history = prepare_week.build_strength_history([
+            _raw_activity("WeightTraining", None, 1800, id=day,
+                          start_date_local=day + "T09:00:00",
+                          tags=["strength-adaptation"] if day == "2026-10-30" else [])
+            for day in ("2026-10-24", "2026-10-27", "2026-10-30")
+        ], [])
+        self.assertEqual([row["phase_source"] for row in history], ["activity", "none", "none"])
+        summary = prepare_week.build_strength_week_summary(history, date(2026, 11, 2), {})
+        self.assertEqual(summary["phase_session_count"], 1)
+        self.assertEqual(summary["untagged_sessions_last_16_weeks"], 2)
+        self.assertEqual(summary["inferred_sessions_last_16_weeks"], 0)
+
+    def test_inference_gap_boundary_and_no_chained_inference(self):
+        for gap in (20, 21, 22):
+            with self.subTest(gap=gap):
+                anchor = date(2026, 10, 1)
+                latest = anchor + timedelta(days=gap)
+                history = prepare_week.build_strength_history([
+                    _raw_activity("WeightTraining", None, 1800, id=day.isoformat(),
+                                  start_date_local=day.isoformat() + "T09:00:00",
+                                  tags=["strength-adaptation"] if day == anchor else [])
+                    for day in (anchor, latest)
+                ], [])
+                inferred = gap < 21
+                self.assertEqual(history[0]["phase_source"], "inferred" if inferred else "none")
+                summary = prepare_week.build_strength_week_summary(history, latest, {})
+                self.assertEqual(summary["current_phase"], "adaptation" if inferred else None)
+                self.assertEqual(summary["phase_session_count"], 2 if inferred else 0)
+                self.assertEqual(summary["phase_started"], anchor.isoformat() if inferred else None)
+        history = prepare_week.build_strength_history([
+            _raw_activity("WeightTraining", None, 1800, id=day,
+                          start_date_local=day + "T09:00:00",
+                          tags=["strength-adaptation"] if day == "2026-10-01" else [])
+            for day in ("2026-10-01", "2026-10-20", "2026-10-22")
+        ], [])
+        self.assertEqual([row["phase_source"] for row in history], ["none", "inferred", "activity"])
+
+    def test_inference_uses_latest_resolved_source_and_never_overrides_plan(self):
+        for source in ("activity", "planned", "planned_week"):
+            with self.subTest(source=source):
+                plans = [] if source == "activity" else [{
+                    "date": "2026-10-30" if source == "planned" else "2026-10-29",
+                    "tags": ["strength-transition"],
+                }]
+                completed = [
+                    _raw_activity("WeightTraining", None, 1800, id="older",
+                                  start_date_local="2026-10-20T09:00:00",
+                                  tags=["strength-adaptation"]),
+                    _raw_activity("WeightTraining", None, 1800, id="anchor",
+                                  start_date_local="2026-10-30T09:00:00",
+                                  tags=["strength-transition"] if source == "activity" else []),
+                    _raw_activity("WeightTraining", None, 1800, id="new",
+                                  start_date_local="2026-11-02T09:00:00"),
+                ]
+                history = prepare_week.build_strength_history(completed, plans)
+                self.assertEqual(history[1]["phase_source"], source)
+                self.assertEqual(history[0]["phase_source"], "inferred")
+                self.assertEqual(history[0]["tags"], ["strength-transition"])
+                planned = prepare_week.build_strength_history(
+                    completed, plans + [{"date": "2026-11-03", "tags": ["strength-maximum"]}],
+                )
+                self.assertEqual(planned[0]["phase_source"], "planned_week")
+                self.assertEqual(planned[0]["tags"], ["strength-maximum"])
+
+    def test_inference_and_phase_run_follow_session_time_within_same_date(self):
+        sessions = [
+            ("early", "2026-10-30T08:00:00", []),
+            ("first", "2026-10-30T09:00:00", ["strength-adaptation"]),
+            ("second", "2026-10-30T10:00:00", ["strength-maximum"]),
+            ("last", "2026-10-30T11:00:00", []),
+        ]
+        history = prepare_week.build_strength_history([
+            _raw_activity("WeightTraining", None, 1800, id=activity_id,
+                          start_date_local=timestamp, tags=tags)
+            for activity_id, timestamp, tags in sessions
+        ], [])
+        self.assertEqual([row["id"] for row in history], ["last", "second", "first", "early"])
+        self.assertEqual(history[-1]["phase_source"], "none")
+        self.assertEqual(history[0]["phase_source"], "inferred")
+        self.assertEqual(history[0]["tags"], ["strength-maximum"])
+        summary = prepare_week.build_strength_week_summary(history, date(2026, 11, 2), {})
+        self.assertEqual(summary["current_phase"], "maximum")
+        self.assertEqual(summary["phase_session_count"], 2)
+
+    def test_phase_overdue_exceeds_maximum_without_switching_phase(self):
+        maxima = {"adaptation": 6, "transition": 3, "maximum": 12, "maintenance": None}
+        for phase, maximum in maxima.items():
+            for count in (maximum or 12, (maximum or 12) + 1):
+                with self.subTest(phase=phase, count=count):
+                    today = date(2026, 11, 2)
+                    history = [
+                        {"date": (today - timedelta(days=offset)).isoformat(),
+                         "tags": [f"strength-{phase}"], "phase_source": "activity"}
+                        for offset in range(count)
+                    ]
+                    summary = prepare_week.build_strength_week_summary(history, today, {})
+                    self.assertEqual(summary["current_phase"], phase)
+                    self.assertEqual(summary["phase_session_count"], count)
+                    self.assertEqual(summary["phase_overdue"], maximum is not None and count > maximum)
+
+    def test_inferred_reminder_is_suppressed_by_untagged_plan_in_same_week(self):
+        completed = [
+            _raw_activity("WeightTraining", None, 1800, id=day,
+                          start_date_local=day + "T09:00:00",
+                          tags=["strength-adaptation"] if day == "2026-10-30" else [])
+            for day in ("2026-10-30", "2026-11-02")
+        ]
+        history = prepare_week.build_strength_history(
+            completed, [{"date": "2026-11-03", "tags": []}],
+        )
+        self.assertEqual(history[0]["phase_source"], "inferred")
+        summary = prepare_week.build_strength_week_summary(history, date(2026, 11, 2), {})
+        self.assertFalse(summary["tagging_reminder_needed"])
+        self.assertEqual(summary["inferred_sessions_last_16_weeks"], 1)
+
+    def test_new_tagged_session_after_long_gap_starts_new_run(self):
+        history = [
+            {"date": "2026-11-02", "tags": ["strength-adaptation"], "phase_source": "activity"},
+            {"date": "2026-10-12", "tags": ["strength-adaptation"], "phase_source": "activity"},
+        ]
+        summary = prepare_week.build_strength_week_summary(history, date(2026, 11, 2), {})
+        self.assertEqual(summary["current_phase"], "adaptation")
+        self.assertEqual(summary["phase_session_count"], 1)
+        self.assertFalse(summary["phase_overdue"])
+
+    def test_annotation_preserves_tags_and_matches_by_id_not_date(self):
+        activities = [
+            {"id": 1, "date": "2026-11-02", "type": "WeightTraining", "tags": []},
+            {"id": 2, "date": "2026-11-02", "type": "WeightTraining", "tags": []},
+            {"id": 3, "date": "2026-11-02", "type": "Ride", "tags": []},
+        ]
+        history = [
+            {"id": "1", "date": "2026-11-02", "tags": ["strength-adaptation"],
+             "phase_source": "inferred", "planned_week_exists": False},
+            {"id": "2", "date": "2026-11-02", "tags": ["strength-maximum"],
+             "phase_source": "planned", "planned_week_exists": True},
+        ]
+        annotated = prepare_week.annotate_strength_phases(activities, history)
+        self.assertEqual(annotated[0]["strength_phase"], "adaptation")
+        self.assertEqual(annotated[0]["strength_phase_source"], "inferred")
+        self.assertTrue(annotated[0]["strength_tagging_reminder_needed"])
+        self.assertEqual(annotated[1]["strength_phase"], "maximum")
+        self.assertFalse(annotated[1]["strength_tagging_reminder_needed"])
+        self.assertEqual(annotated[2], activities[2])
+        self.assertEqual(annotated[0]["tags"], [])
+        self.assertNotIn("strength_phase", activities[0])
 
     def test_week_fallback_uses_nearest_plan_without_crossing_iso_weeks(self):
         cases = [
@@ -679,6 +852,8 @@ class StrengthHistoryTests(unittest.TestCase):
         self.assertEqual(fields["sessions_per_week_last_4"]["minItems"], 4)
         self.assertEqual(fields["sessions_per_week_last_4"]["maxItems"], 4)
         self.assertIn("untagged_sessions_last_16_weeks", fields)
+        self.assertEqual(fields["inferred_sessions_last_16_weeks"]["type"], "integer")
+        self.assertEqual(fields["phase_overdue"]["type"], "boolean")
         self.assertEqual(fields["tagging_reminder_needed"]["type"], "boolean")
 
     def test_compact_counts_include_untagged_sessions_and_completed_iso_weeks(self):
@@ -748,6 +923,7 @@ class StrengthHistoryTests(unittest.TestCase):
         }
         history = [
             {
+                "id": 10,
                 "date": today.isoformat(),
                 "tags": ["strength-maximum"],
                 "phase_source": "activity",
@@ -781,6 +957,8 @@ class StrengthHistoryTests(unittest.TestCase):
         self.assertEqual(payload["week_summary"]["strength"]["sessions_this_week"], 1)
         self.assertEqual(payload["week_summary"]["strength"]["sessions_per_week_last_4"], [0, 0, 0, 0])
         self.assertEqual(payload["week_summary"]["strength"]["untagged_sessions_last_16_weeks"], 0)
+        self.assertEqual(payload["activities"][0]["strength_phase"], "maximum")
+        self.assertEqual(payload["activities"][0]["strength_phase_source"], "activity")
         self.assertTrue(payload["activities"][0]["is_hard_session"])
 
 
@@ -793,21 +971,29 @@ class StrengthMcpPayloadTests(unittest.TestCase):
 
         cls.hosted = mcp_server
 
-    def test_local_and_hosted_mcp_export_only_compact_strength_summary(self):
+    def test_local_and_hosted_mcp_export_compact_summary_and_activity_phase(self):
         today = date.today()
         monday = today - timedelta(days=today.weekday())
         history = [{
+            "id": "gym",
             "date": today.isoformat(),
-            "tags": [],
-            "phase_source": "none",
+            "tags": ["strength-adaptation"],
+            "phase_source": "inferred",
         }]
+        activity = {
+            "id": "gym", "date": today.isoformat(), "name": "Gym",
+            "type": "WeightTraining", "tags": [],
+        }
         expected = prepare_week.build_strength_week_summary(history, today, {})
         for server in (self.local, self.hosted):
             with self.subTest(server=server.__name__), tempfile.TemporaryDirectory() as tmpdir:
                 processed = Path(tmpdir)
                 with (
                     patch.object(server, "PROCESSED_DIR", processed),
-                    patch.object(server, "_load_json_file", return_value=None),
+                    patch.object(
+                        server, "_load_json_file",
+                        side_effect=lambda path: [activity] if path.name.startswith("coach_input_") else None,
+                    ),
                     patch.object(server, "fetch_strength_history", return_value=history) as fetch,
                     patch.object(
                         server,
@@ -830,6 +1016,13 @@ class StrengthMcpPayloadTests(unittest.TestCase):
                 self.assertNotIn("strength_history", payload)
                 self.assertNotIn("planned_week_exists", json.dumps(payload))
                 self.assertEqual(payload["week_summary"]["strength"], expected)
+                self.assertEqual(payload["activities"][0]["strength_phase"], "adaptation")
+                self.assertEqual(payload["activities"][0]["strength_phase_source"], "inferred")
+                self.assertTrue(payload["activities"][0]["strength_tagging_reminder_needed"])
+                report = server.check_athlete_data(json.dumps(payload))
+                warning = next(check for check in report["checks"] if check["area"] == "strength_untagged")
+                self.assertEqual(warning["status"], "Warning")
+                self.assertIn("counted as adaptation", warning["explanation"])
 
 
 if __name__ == "__main__":
