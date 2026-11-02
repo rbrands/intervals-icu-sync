@@ -107,6 +107,8 @@ form (CTL − ATL). (Form interpretation thresholds: interpretation-rules.md.)
 
 Adaptation occurs during recovery, not during training.
 Recovery indicators: HRV, resting heart rate, subjective fatigue.
+- Recovery weeks use a two-part design: short, low-intensity sessions and rest
+  in the first half, followed by short, higher-intensity sessions in the second.
 - include regular recovery weeks
 - reduce load when fatigue is high
 - prioritize sleep and nutrition

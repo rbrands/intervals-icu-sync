@@ -54,6 +54,17 @@ knowledge. All workout dates are calculated relative to `week_starting`.
   met. The easier alternative stays in prose only; do not add it to upload JSON.
 - Never duplicate a key session (VO2max / threshold / long ride) that is
   already completed or already in planned workouts.
+- For a `RECOVERY` week, follow the two-part structure in
+  decision-process.md, Recovery week structure: days 1–3 have at most two
+  short, low-intensity sessions and at least one full rest day, with no key
+  sessions; days 4–6 have two or three short moderate- to high-intensity
+  sessions, including the 50+ low-dose `vo2max-low` session or a due benchmark
+  test instead of an interval session; day 7 is rest or a short easy spin.
+  Scale short duration to weekly volume (about 20–30 minutes at 6 hours/week).
+  Use the reduced intervals.icu `weekly_load_target` as the TSS reference and
+  do not add volume to reach it. Keep strength frequency and phase unchanged,
+  scheduling strength only from day 4 onward. Name the week as recovery and
+  explain the two halves in one sentence.
 - `week_summary.training_readiness` is a same-day signal: apply fully to
   next-best-training today; for a current-week plan apply only to today and
   tomorrow; for a next-week plan ignore it entirely and never cite it as a
@@ -61,9 +72,11 @@ knowledge. All workout dates are calculated relative to `week_starting`.
   next-week training, use form zone, ramp, `week_type`, and
   `training_load_history`; preserve same-day safety vetoes.
 - Strength frequency follows decision-process.md, Strength: AA/MT/MS target
-  two weekly sessions, reduced to one for RECOVERY, high-risk form (or clearly
-  negative TSB at plan start), or a consistent one-session completion pattern
-  in `week_summary.strength.sessions_per_week_last_4`; SM remains one. For
+  two weekly sessions, reduced to one only for high-risk form (or clearly
+  negative TSB at plan start) or a consistent one-session completion pattern
+  in `week_summary.strength.sessions_per_week_last_4`; SM remains one.
+  RECOVERY weeks do not change strength frequency, phase, or dose; schedule
+  strength only from day 4 onward. For
   next-best-training today and dates today/tomorrow of a current-week plan
   only, yellow readiness excludes a `strength-maximum` session on that date
   and red excludes strength on that date. This does not reduce weekly
@@ -116,8 +129,9 @@ Never guess or estimate Ride TSS. Determine it per ride as follows:
   target week. Never use combined Ride+Run totals or add strength to fill a
   Ride target. `weekly_time_target_hours` is an upper budget; Ride TSS is
   within +/-10% of `weekly_load_target` unless persistent form/ramp/week-type
-  signals or an applicable same-day safety veto require reduction; never use
-  today's readiness to reduce a next-week plan.
+  signals or an applicable same-day safety veto require reduction. In a
+  `RECOVERY` week, use the reduced target as a reference but never add volume
+  to reach it. Never use today's readiness to reduce a next-week plan.
 
 ---
 

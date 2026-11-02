@@ -68,6 +68,27 @@ Resolve conflicts in this order:
   Low-confidence readiness is never definitive clearance. Neither unknown nor
   low confidence should extend readiness influence beyond its planning window.
 
+### Recovery week structure
+When `week_type` is `RECOVERY`, use this two-part structure, based on
+[Joe Friel's recovery-week design](https://joefrieltraining.com/recovery-week-design/):
+
+- **Days 1–3 (Monday–Wednesday):** Schedule at most two short, low-intensity
+  sessions (Z1, `recovery-low`, or `aerobic-threshold-low`) and at least one
+  full rest day. Scale "short" to the athlete's weekly volume; at 6 hours per
+  week, use about 20–30 minutes. No key sessions.
+- **Days 4–6 (Thursday–Saturday):** Schedule two or three short, moderate- to
+  high-intensity sessions at or slightly above race intensity, such as short
+  intervals, speed skills, or a field test. For athletes 50+, place the
+  weekly VO2max session here at low dose (`vo2max-low`). If a benchmark test
+  is due per the discipline block (for example FTP or a 5-minute test every
+  8–12 weeks), schedule it here instead of an interval session.
+- **Day 7:** Rest or a short easy spin before the next load block.
+- Use the reduced `weekly_load_target` from intervals.icu as the weekly TSS
+  reference; never add volume to reach it. Strength frequency and phase stay
+  unchanged, but strength sessions are scheduled only from day 4 onward.
+- Name the week as a recovery week in the plan text and explain the two halves
+  in one sentence.
+
 ### VO2max (CRITICAL — age rule)
 - Athletes 50+: exactly 1 VO2max session per week, in ALL phases, unless
   replaced by an equivalent high-intensity stimulus (race/event), or
@@ -160,17 +181,21 @@ race classification from those tags.
 
 ### Frequency
 
-- AA / MT / MS: target 2 sessions per week. Reduce to 1 when `week_type` is
-  RECOVERY, form zone is `high_risk` (or TSB is clearly negative at plan
-  start), or `sessions_per_week_last_4` shows the athlete consistently
-  completes only one. Maintain the MS counter across a reduced week: it counts
-  sessions, not weeks.
+- AA / MT / MS: target 2 sessions per week. Reduce to 1 only when form zone is
+  `high_risk` (or TSB is clearly negative at plan start), or
+  `sessions_per_week_last_4` shows the athlete consistently completes only
+  one. Maintain the MS counter across a reduced week: it counts sessions, not
+  weeks.
 - SM: 1 session per week, unchanged.
 - Only for next-best-training today and dates today/tomorrow in a current-week
   plan, yellow readiness excludes a `maximum` strength session on that date
   and red excludes strength on that date. This same-day limit does not reduce
   weekly frequency. For next-week plans, ignore readiness entirely.
-- RECOVERY week: at most 1 strength session, never maximum.
+- RECOVERY weeks reduce endurance load only. Keep the normal strength
+  frequency and current phase dose/tag: 2 sessions in adaptation, transition,
+  or maximum; 1 in maintenance. Sessions count toward phase progression and
+  phase advancement follows the usual thresholds. Do not schedule strength in
+  the first three days of a RECOVERY week; schedule it only from day 4 onward.
 - RACE week: maintenance only, not within 3 days before the race.
 - Apply the most restrictive weekly phase/week/form rule. Assess unknown or
   low-confidence readiness only for decisions within its applicable

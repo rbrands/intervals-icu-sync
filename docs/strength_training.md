@@ -27,7 +27,7 @@ New canonical domain `strength`. Unlike the other domains it does not use the `l
 | `strength-maximum`     | Max Strength (MS)          | Base (early)              | 8–12           | 2 (max)         | 85–95               | 3–4 × 3–6                | 3–4 min    |
 | `strength-maintenance` | Strength Maintenance (SM)  | late Base, Build, Peak    | indefinite     | 1               | set 1: 60, set 2: 85 | 2 sets: 12 reps / 6 reps | 1–2 min    |
 
-Friel prescribes 2–3 sessions per week in AA/MT/MS; this project caps at 2 (decision D2). Weekly frequency may reduce to 1 for a RECOVERY week, high-risk form (or clearly negative TSB at plan start), or a consistent one-session completion pattern. Same-day yellow/red readiness limits today's session only, within the applicable planning-mode window.
+Friel prescribes 2–3 sessions per week in AA/MT/MS; this project caps at 2 (decision D2). Weekly frequency may reduce to 1 only for high-risk form (or clearly negative TSB at plan start) or a consistent one-session completion pattern, not for a RECOVERY week. RECOVERY reduces endurance load only: keep normal strength frequency, phase, and dose; schedule strength only from day 4 onward. Same-day yellow/red readiness limits today's session only, within the applicable planning-mode window.
 
 Exercise selection per session (3–4 exercises):
 
@@ -186,10 +186,10 @@ Frequency (decision D2):
 Next training: one main session, optionally plus one strength session on the
 same day; readiness applies fully.
 
-- AA / MT / MS: target 2 sessions per week. Reduce to 1 when the week is RECOVERY, form zone is high-risk (or TSB is clearly negative at plan start), or `sessions_per_week_last_4` shows the athlete consistently completes only one. Maintain the MS counter across a reduced week (it counts sessions, not weeks).
+- AA / MT / MS: target 2 sessions per week. Reduce to 1 only when form zone is high-risk (or TSB is clearly negative at plan start), or `sessions_per_week_last_4` shows the athlete consistently completes only one. Maintain the MS counter across a reduced week (it counts sessions, not weeks).
 - SM: 1 session per week.
 - For next-best-training today and dates today/tomorrow in a current-week plan only, yellow readiness means no `maximum` strength session on that date and red means no strength on that date. This same-day limit does not reduce weekly frequency. Next-week plans ignore readiness entirely.
-- RECOVERY week type: at most 1 session, never `maximum`.
+- RECOVERY weeks reduce endurance load only; maintain normal strength frequency and current phase dose/tag (2 sessions in adaptation/transition/maximum; 1 in maintenance). Sessions count toward phase progression and phase advance follows the usual thresholds. Schedule strength only from day 4 onward.
 - RACE week: SM only, not within 3 days before the race.
 
 Placement:
@@ -275,7 +275,7 @@ coach-logic docs → prompts → frontend. Each step is independently testable.
 ## 7. Decisions
 
 - **D1 — Phase source**: 16-week strength history built internally by `prepare_week_data` and exported only as the derived `week_summary.strength`; a canonical tag on the completed activity always wins, so athletes can override the phase by tagging; a chat statement overrides for the target week; no calendar-based fallback.
-- **D2 — Frequency and readiness scope**: AA/MT/MS target 2 sessions/week, reduced to 1 for RECOVERY, high-risk form/clearly negative starting TSB, or a consistent one-session completion pattern; SM remains 1/week. Same-day readiness limits sessions only for next-best-training today and current-week plan dates today/tomorrow (yellow: no maximum; red: no strength). Next-week plans ignore readiness.
+- **D2 — Frequency and readiness scope**: AA/MT/MS target 2 sessions/week, reduced to 1 only for high-risk form/clearly negative starting TSB or a consistent one-session completion pattern; RECOVERY weeks do not reduce strength frequency or phase dose. SM remains 1/week. Same-day readiness limits sessions only for next-best-training today and current-week plan dates today/tomorrow (yellow: no maximum; red: no strength). Next-week plans ignore readiness. In RECOVERY weeks, schedule strength only from day 4 onward.
 - **D3 — Frontend**: `WorkoutType.Strength` with phase, own card, excluded from the Ride TSS indicator.
 - **D4 — Legacy tag `strength`**: ignored.
 - **D5 — Tag fallback**: canonical completed tags win; otherwise inherit canonical tags from a same-date planned WeightTraining event (`planned`), then the closest planned WeightTraining event in the same ISO year/week (`planned_week`). Equal-distance ties prefer the earlier date; no cross-week fallback. Without a match use `none`. The coach tags planned events; manual tagging of completed sessions is optional.

@@ -19,6 +19,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Added a two-part RECOVERY-week structure: short low-intensity sessions and rest in days 1–3, short moderate/high-intensity sessions or due benchmark tests in days 4–6, and rest/easy spin on day 7; weekly TSS stays anchored to the reduced target, and strength starts on day 4.
+- Updated RECOVERY-week strength guidance: preserve normal phase, dose, and frequency; count sessions toward phase progression, but schedule strength only from day 4 onward.
 - Next-best-training may include one main session plus an optional same-day `WeightTraining` entry when strength opt-in applies; the easier alternative remains prose-only.
 - Made strength planning opt-in: plan strength only with recent WeightTraining activity in the compact strength summary or an explicit athlete request; otherwise omit strength from plans and analysis. When activity exists but the phase is unknown, adaptation is only a working assumption.
 - Ranked strength placement by rest day, easy/recovery ride, then threshold day, with explicit exclusions and spacing; athlete day preferences override ranking only. Localized the full strength description and phase counter, added phase-completion text, and require the prose day list to mirror final upload JSON.
