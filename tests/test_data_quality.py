@@ -184,6 +184,29 @@ class DataQualityTests(unittest.TestCase):
         data["activities"][1]["carbs_ingested_g"] = None
         self.assertEqual(area(check_athlete_data(data), "activity_feedback")["status"], "Warning")
 
+    def test_strength_activities_do_not_require_carbohydrate_intake(self):
+        data = complete_data()
+        data["activities"] = [
+            {"date": "2026-10-07", "type": "WeightTraining", "rpe": 6},
+            {"date": "2026-10-08", "type": "WeightTraining", "rpe": 7},
+        ]
+        check = area(check_athlete_data(data), "activity_feedback")
+        self.assertEqual(check["status"], "OK")
+        self.assertEqual(check["evidence"]["carbs_applicable_activities"], 0)
+        self.assertEqual(check["evidence"]["carbs_recorded"], 0)
+        self.assertIn("0/0 applicable activities", check["explanation"])
+
+    def test_mixed_strength_and_ride_only_checks_ride_carbohydrate_intake(self):
+        data = complete_data()
+        data["activities"] = [
+            {"date": "2026-10-07", "type": "WeightTraining", "rpe": 6},
+            {"date": "2026-10-08", "type": "Ride", "rpe": 5, "carbs_ingested_g": 50},
+        ]
+        check = area(check_athlete_data(data), "activity_feedback")
+        self.assertEqual(check["status"], "OK")
+        self.assertEqual(check["evidence"]["carbs_applicable_activities"], 1)
+        self.assertEqual(check["evidence"]["carbs_recorded"], 1)
+
     def test_history_any_non_null_target_including_zero(self):
         for history, status in (
             (None, "Missing"), ([], "Missing"), ([{}], "Missing"),

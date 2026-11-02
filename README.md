@@ -113,7 +113,7 @@ are in English and can be translated by the caller without changing statuses.
 | W' consistency | Apply the same thresholds to `metrics.rolling_w_prime`, relative to `metrics.w_prime`. |
 | Wellness | `OK` if any of `metrics.resting_hr`, `metrics.hrv`, or `metrics.sleep_secs` is non-null; otherwise `Missing`. |
 | Activity density | Count activities dated from `current_date - lookback_days` through `current_date`, both inclusive, matching the preparation pipeline's lower boundary while excluding future entries. At least 3: `OK`; 1–2: `Warning`; 0: `Missing`. |
-| Activity feedback | In that same window, `OK` if every activity has non-null `rpe` and `carbs_ingested_g` (zero counts as recorded); `Missing` if there are no activities or either field is absent/null for every activity; otherwise incomplete feedback is `Warning`. |
+| Activity feedback | In that same window, `OK` if every activity has non-null `rpe` and every non-`WeightTraining` activity has non-null `carbs_ingested_g` (zero counts as recorded); strength activities still require RPE but are excluded from the carbohydrate check. `Missing` if there are no activities, no RPE is recorded, or carbohydrate data is absent for all applicable activities (when any exist); otherwise incomplete feedback is `Warning`. |
 | Historical targets | `OK` if any `training_load_history` entry has a non-null `weekly_load_target` (including zero); otherwise `Missing`. |
 
 If `0.95 * metrics.power_profile.p20min.watts` is more than 20% below FTP,

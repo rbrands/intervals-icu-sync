@@ -65,6 +65,7 @@ class _Summary(_InputModel):
 
 class _Activity(_InputModel):
     date: str
+    type: str | None = None
     rpe: Number | None = None
     carbs_ingested_g: Number | None = None
 
@@ -284,19 +285,25 @@ def check_athlete_data(athlete_data: dict[str, Any]) -> QualityReport:
         activity_count=count, window_start=lower.isoformat(), window_end=today.isoformat(),
     ))
     rpe_count = sum(activity.rpe is not None for activity in activities)
-    carbs_count = sum(activity.carbs_ingested_g is not None for activity in activities)
+    fueling_activities = [
+        activity for activity in activities if activity.type != "WeightTraining"
+    ]
+    carbs_count = sum(activity.carbs_ingested_g is not None for activity in fueling_activities)
     feedback_status: Status = (
-        "Missing" if not count or not rpe_count or not carbs_count else
-        "OK" if rpe_count == carbs_count == count else "Warning"
+        "Missing" if not count or not rpe_count or (
+            fueling_activities and not carbs_count
+        ) else
+        "OK" if rpe_count == count and carbs_count == len(fueling_activities) else "Warning"
     )
     checks.append(_check(
         "activity_feedback", feedback_status,
-        f"RPE is recorded for {rpe_count}/{count} and carbohydrate intake for "
-        f"{carbs_count}/{count} activities." + (
+        f"RPE is recorded for {rpe_count}/{count} activities and carbohydrate intake for "
+        f"{carbs_count}/{len(fueling_activities)} applicable activities." + (
             " Subjective exertion and actual fueling cannot be reliably compared with load."
             if feedback_status != "OK" else ""
         ),
         activity_count=count, rpe_recorded=rpe_count, carbs_recorded=carbs_count,
+        carbs_applicable_activities=len(fueling_activities),
     ))
     target_count = sum(
         entry.weekly_load_target is not None for entry in data.training_load_history or []
