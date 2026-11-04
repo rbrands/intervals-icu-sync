@@ -154,15 +154,19 @@ Time accounting follows the same split:
 
 ### 4.1 `coach-logic/workout-library.md` — new section "Strength (off-bike)"
 
-Four entries, one per phase, with the table from section 2 as the "structure" column, the exercise selection rules, and a fixed description template:
+Four entries, one per phase, with the table from section 2 as the "structure" column, the exercise selection rules, and a fixed description template in this line order:
 
 ```
-Phase: <phase name> — Einheit <n> von <target> der Phase
-Übungen: <1–2 Hauptübungen> + Beinbeuger + Rumpf
-Sätze × Wiederholungen @ % 1RM: <aus der Tabelle>
-Pause: <aus der Tabelle>
-Hinweise: <Progression>
+Phase: <phase name> — session <n> of <target> in the phase
+<sets> × <reps> @ <% 1RM>, rest <rest>
+Exercise example: <1–2 primary lifts>, leg curl, core plank – or equivalent exercises from your own program
+Progression: <note>
 ```
+
+The load line is the prescription; the exercises are suggestions only. The
+"Exercise example" label is localized via `response_language` (German:
+"Übungsbeispiel") and always keeps the "or equivalent exercises from your own
+program" clause.
 
 The whole description, labels included, is written in `response_language`;
 translate the phase name and prose, but keep the canonical tag in English.

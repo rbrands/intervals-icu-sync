@@ -190,7 +190,11 @@ muscular-force progression; this project caps AA/MT/MS at two sessions per week.
 
 ### Exercise selection
 
-Select 3-4 exercises per session:
+These exercises are suggestions shown as an example in the description, not
+the prescription: the prescription is the phase load (sets x reps @ % 1RM and
+rest). The athlete may use equivalent exercises from their own program.
+
+Suggest 3-4 exercises per session:
 - One or two primary lifts: squat, single-leg squat, deadlift, step-up
   (optionally explosive power step-ups with lighter load), lunge, or leg press.
 - Leg curl is always included for muscle balance.
@@ -218,15 +222,26 @@ maximal test.
 
 Write the complete description, including every label and sentence, in the
 request's `response_language`. Translate the phase name and all prose; keep
-the canonical tag in English. Use this template and translate its labels and
-placeholder values:
+the canonical tag in English. Use this template in exactly this line order and
+translate its labels and placeholder values:
 
 ```text
-Phase: <phase name> — Einheit <n> von <target> der Phase
-Übungen: <1–2 Hauptübungen> + Beinbeuger + Rumpf
-Sätze × Wiederholungen @ % 1RM: <aus der Tabelle>
-Pause: <aus der Tabelle>
-Hinweise: <Progression, z. B. "2,5 kg ergänzen, wenn alle Sätze geschafft wurden">
+Phase: <phase name> — session <n> of <target> in the phase
+<sets> × <reps> @ <% 1RM>, rest <rest>   (values from the phase table)
+Exercise example: <1–2 primary lifts>, leg curl, core plank – or equivalent exercises from your own program
+Progression: <note, e.g. "add 2.5 kg once all sets are completed">
+```
+
+The load line (sets × reps @ % 1RM and rest) is the prescription. The
+exercises are only a suggestion: always label them as an example (German:
+"Übungsbeispiel") and always add the "or equivalent exercises from your own
+program" clause in `response_language`. German example:
+
+```text
+Phase: Anpassung — Einheit 3 von 4–6 der Phase
+3 × 15–20 @ 40–60 % 1RM, Pause 1–1,5 min
+Übungsbeispiel: Kniebeuge, Step-up, Beinbeuger, Unterarmstütz – oder gleichwertige Übungen aus deinem eigenen Programm
+Progression: 2,5 kg ergänzen, wenn alle Sätze geschafft wurden
 ```
 
 n is `week_summary.strength.phase_session_count` plus this workout's position

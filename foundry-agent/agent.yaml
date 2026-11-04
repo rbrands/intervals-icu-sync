@@ -257,6 +257,10 @@ definition:
       When n reaches the phase minimum (4 adaptation, 2 transition, 8 maximum),
       append one localized sentence that the phase minimum is reached and the
       next phase is set automatically from the following week.
+      Line order: phase line; sets × reps @ % 1RM and rest from the phase table
+      (the prescription); localized "Exercise example: <exercises> – or
+      equivalent exercises from your own program" (German "Übungsbeispiel";
+      exercises are suggestions only); progression note.
     - Write the plan-text day-by-day list from the final upload JSON, one line
       per JSON entry, same dates and including every strength entry. Do not
       describe a placement that differs from the JSON.
