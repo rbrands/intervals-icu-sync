@@ -528,7 +528,7 @@ The estimate uses `16.6 + 8.87 * p5min W/kg`. Classification also includes
 leaves the percentage and flag null. Unless the flag is boolean `true`,
 the coach must not use the VO2Max value/category as limiter or performance
 trend evidence and states once that a maximal 5-minute effort is missing.
-Week-data schema version is `1.12.0`; the generated C# contract uses
+Week-data schema version is `1.6.0`; the generated C# contract uses
 `JsonElement?` for the boolean/string/null flag.
 
 ```bash
@@ -702,7 +702,7 @@ when the request says `Strength phase for this plan: none` or the athlete says
 so in chat.
 Planned events are fetched through Sunday of the current week, including the
 full ISO week containing the history start. The raw history remains internal.
-Week-data schema version is 1.12.0.
+Week-data schema version is 1.6.0.
 The local and hosted MCP `prepare_week_data` tools use the same derivation.
 Set `STRENGTH_HISTORY_WEEKS` to change the default history window, including
 the window used for the untagged count. In the coach activity payload, `is_hard_session` is true for
