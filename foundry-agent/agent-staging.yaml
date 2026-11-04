@@ -8,6 +8,7 @@ definition:
   # "<<INSERT DISCIPLINE PROFILES HERE>>" placeholder is filled at deploy time
   # with all discipline blocks from prompts/discipline_*.md; the agent then
   # applies the one selected by {{discipline}} at runtime. See README.md.
+  # Deploy
   instructions: |
     # System Prompt — Cycling Coach
 
