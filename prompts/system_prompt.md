@@ -88,7 +88,10 @@ knowledge. All workout dates are calculated relative to `week_starting`.
   `week_summary.strength.sessions_per_week_last_4`, or no further valid day
   under the placement rules in the target week; state the reason in one
   sentence. RECOVERY weeks keep the recommended count and phase; schedule
-  strength only from day 4 onward. For next-best-training today and dates
+  strength only from day 4 onward. Only `week_type: RACE` limits strength to
+  the `maintenance` phase (never within 3 days before the race); a planned
+  race event in a `NORMAL` week excludes only the race day itself and never
+  reduces weekly strength frequency. For next-best-training today and dates
   today/tomorrow of a current-week plan only, yellow readiness excludes a
   `strength-maximum` session on that date and red excludes strength on that
   date. Yellow/red readiness never reduces weekly strength frequency or makes

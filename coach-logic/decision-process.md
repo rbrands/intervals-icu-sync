@@ -195,8 +195,11 @@ race classification from those tags.
 - RECOVERY weeks reduce endurance load only. Keep the recommended strength
   count and phase tag. Do not schedule strength in the first three days of a
   RECOVERY week; schedule it only from day 4 onward.
-- RACE week: plan strength only when the phase is `maintenance`, not within
-  3 days before the race.
+- RACE week (`week_type: RACE` for the target week): plan strength only when
+  the phase is `maintenance`, not within 3 days before the race. A planned
+  race event alone (for example a weekly Zwift club race) does not make a
+  `NORMAL` week a RACE week; it excludes only the race day itself via the
+  placement rules and never reduces weekly strength frequency.
 - Assess unknown or low-confidence readiness only for decisions within its
   applicable planning-mode window.
 - Count completed and anchored planned strength sessions toward the

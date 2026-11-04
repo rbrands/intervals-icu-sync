@@ -45,6 +45,7 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Clarified the strength RACE-week rule in coach logic, the system prompt and both Foundry agents: only `week_type: RACE` limits strength to the `maintenance` phase; a planned race event in a `NORMAL` week (for example a weekly Zwift club race) excludes only the race day itself and never reduces weekly strength frequency. Previously the undefined "RACE week" wording could silently drop all strength sessions for athletes with weekly races.
 - Fixed `week_summary.days_since_last_hiit`, `days_since_last_polarized`, and `days_since_last_hard_session` being null early in the week: the recency fields are now computed from all exported activities in the lookback window relative to `current_date`, not only from the current ISO week, so training readiness sees a hard session from the previous weekend again. Weekly totals stay ISO-week based, and the recency fields are now also present when the current week has no qualifying activities yet.
 - Retained WeightTraining activities with null or zero training load in raw/coach exports and weekly analysis. Missing load stays null on activities and contributes zero to strength load totals; tag/date-based phase, session counts, and hard-session classification do not require load. STRAVA duplicate exclusion and ride/run filters are unchanged.
 

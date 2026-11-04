@@ -76,6 +76,22 @@ class StrengthReadinessPromptTests(unittest.TestCase):
                 )
                 self.assertNotIn("reduced to one for RECOVERY", text)
 
+    def test_race_event_in_normal_week_does_not_disable_strength(self):
+        """Only week_type RACE limits strength; a planned race event alone
+        (e.g. a weekly Zwift club race) must not drop weekly strength."""
+        for relative_path in (
+            "coach-logic/decision-process.md",
+            "prompts/system_prompt.md",
+            "foundry-agent/agent.yaml",
+            "foundry-agent/agent-staging.yaml",
+        ):
+            with self.subTest(path=relative_path):
+                text = " ".join((REPO_ROOT / relative_path).read_text(encoding="utf-8").split())
+                self.assertIn("`week_type: RACE`", text)
+                self.assertIn("excludes only the race day itself", text)
+                self.assertIn("never reduces weekly strength frequency", text)
+                self.assertNotIn("RACE week: plan strength", text)
+
 
 class StrengthFuelingScopeTests(unittest.TestCase):
     def test_strength_is_excluded_from_fueling_analysis_and_weekly_averages(self):
