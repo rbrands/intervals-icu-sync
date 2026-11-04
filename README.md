@@ -860,7 +860,7 @@ list. To refresh input first, run `prepare_week_for_coach.py`.
 
 ### `check_plan_tss.py`
 
-Checks whether a generated plan's stated Ride TSS values match the deterministic step-based calculation and whether completed plus planned Ride TSS is within the weekly Ride target tolerance. Run and WeightTraining entries are listed but excluded.
+Reports each workout's stated Ride TSS next to the deterministic step-based calculation and checks whether completed plus planned Ride TSS (using the computed values) is within the weekly Ride target tolerance. Run and WeightTraining entries are listed but excluded.
 
 ```bash
 # Check a generated plan file against the target load
@@ -870,9 +870,11 @@ python scripts/check_plan_tss.py --plan /tmp/plan.json --load-target 300 --toler
 python scripts/check_plan_tss.py --plan data/plans/my_plan.json --load-target 300
 ```
 
-The script accepts either a bare workout array or an object shaped like `{ "workouts": [...] }`. Ride types are `Ride`, `VirtualRide`, `MountainBikeRide`, and `GravelRide`; absent or null `activity_type` defaults to Ride. For ride workouts with `library_workout_id`, the `tss` value is kept as-is. For generated rides with `steps`, TSS is recomputed from the step durations and power values and compared against the stated value using a ±5% tolerance floor of 2 TSS points. Non-ride entries keep their stated TSS as computed TSS without a mismatch check.
+The script accepts either a bare workout array or an object shaped like `{ "workouts": [...] }`. Ride types are `Ride`, `VirtualRide`, `MountainBikeRide`, and `GravelRide`; absent or null `activity_type` defaults to Ride. For ride workouts with `library_workout_id`, the `tss` value is kept as-is. For generated rides with `steps` (top-level or `workout.steps`), TSS is recomputed from the step durations and power values; `stated_tss`, `computed_tss`, and `mismatch` are reported per workout, but a mismatch is informational only (listed in `notes`) and does not make the result invalid, because `upload_plan.py` overwrites the stated values on upload. The weekly total uses `computed_tss`. WeightTraining entries have `computed_tss` 0; other non-ride entries keep their stated TSS.
 
-Output: a JSON object with `workouts`, `week`, `valid`, and `issues` keys.
+Output: a JSON object with `workouts`, `week`, `valid`, `issues`, and `notes` keys.
+Only the weekly target deviation (and an exceeded optional Ride time budget) sets
+`valid` to false and adds an entry to `issues`.
 Each workout has `counted` to indicate Ride-target inclusion. `week.planned_tss`
 is retained and equals `planned_ride_tss`; `planned_other_tss` sums excluded
 entries. `total_tss = planned_ride_tss + completed_tss`. Pass completed **Ride**
@@ -907,6 +909,8 @@ Each entry in the JSON file must have:
 Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `activity_type` (intervals.icu activity type; defaults to `Ride`), `steps` (structured workout intervals → uploaded as a ZWO file), and `library_workout_id` (copies the exact stored library workout, including its `type` and `workout_doc`, instead of generated steps).
 
 Use `activity_type` for non-ride planned activities and for indoor rides. Supported upload values are `Ride`, `VirtualRide`, `MountainBikeRide`, `GravelRide`, `Run`, `TrailRun`, `VirtualRun`, and `WeightTraining`. The coach sets `VirtualRide` for workouts it expects to be ridden indoors (derived from the recent `activities[].type` majority or an explicit statement in the chat; see `coach-logic/decision-process.md`, "Training Environment") and omits the field for outdoor rides. `Run` and `WeightTraining` entries can be uploaded without `steps`; in that case the event is created from duration, notes, and tags only.
+
+Before uploading, generated rides with `steps` (no `library_workout_id`) have `tss`, any `TSS: <n>` mention in the `description`, and `duration_minutes` recomputed from the steps (TSS = Σ duration_seconds/3600 × (power_pct_ftp/100)² × 100, rounded); `WeightTraining` entries get `tss` 0. Each correction is printed as an `Adjusted:` line. Library workouts and other entries are uploaded unchanged. This applies to both MCP `upload_week_plan` tools, which call this script.
 
 ```json
 {

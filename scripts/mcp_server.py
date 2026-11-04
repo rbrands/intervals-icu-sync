@@ -801,6 +801,8 @@ def check_plan_tss(
     """Check planned Ride TSS plus completed Ride TSS against a Ride target.
 
     Non-ride entries are listed with counted=false and excluded from the target.
+    Generated rides with steps are reported as stated vs computed TSS; the
+    weekly total uses the computed value and a mismatch does not invalidate.
     When athlete_data is supplied, completed_tss is derived from
     week_summary.ride_load, falling back to total_training_load only when
     ride_load is absent (older payloads).
@@ -958,7 +960,9 @@ def upload_week_plan(dry_run: bool = False, clear: bool = False) -> str:
     the intervals.icu calendar. Entries with library_workout_id copy the stored
     workout structure and type. Entries may set optional activity_type, defaulting
     to Ride when omitted; Run and WeightTraining entries can be uploaded without
-    steps. Existing events with the same name and date are updated (PUT), new
+    steps. Generated rides with steps have tss, the "TSS: <n>" description
+    mention, and duration_minutes recomputed from the steps before upload;
+    WeightTraining gets tss 0. Existing events with the same name and date are updated (PUT), new
     ones are created (POST) — no duplicates.
 
     Typically called after save_week_plan has written the coach's plan.

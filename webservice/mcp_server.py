@@ -1740,7 +1740,10 @@ def upload_week_plan(
 
     Entries with library_workout_id copy the stored workout structure and type.
     Entries may set optional activity_type, defaulting to Ride when omitted; Run
-    and WeightTraining entries can be uploaded without steps. Existing WORKOUT
+    and WeightTraining entries can be uploaded without steps. Generated rides
+    with steps have tss, the "TSS: <n>" description mention, and
+    duration_minutes recomputed from the steps before upload; WeightTraining
+    gets tss 0. Existing WORKOUT
     events with the same name and date are updated (PUT); new ones are created
     (POST) — no duplicates.
 
@@ -1874,8 +1877,12 @@ def check_plan_tss(
     Args:
         plan_json: Training plan as a JSON string. Must be a JSON array of
                    workout objects or an object with a "workouts" array.
-                   Each workout requires "date" and "tss". If it contains
-                   "steps", TSS is recomputed from step durations and power.
+                   Each workout requires "date" and "tss". If a ride contains
+                   "steps", TSS is recomputed from step durations and power;
+                   stated vs computed is reported per workout (mismatch is
+                   informational) and the weekly total uses the computed value.
+                   Only the weekly target deviation (or an exceeded Ride time
+                   budget) makes the result invalid.
                    If "library_workout_id" is set, the stated "tss" is kept as-is.
                    Example:
                    [

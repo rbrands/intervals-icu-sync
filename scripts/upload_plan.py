@@ -12,6 +12,10 @@ Optional per entry:
     description     – free-text notes added to the activity
     tags            – list of tag strings, e.g. ["vo2max-moderate"]
 
+Generated rides with steps (no library_workout_id) have tss, the "TSS: <n>"
+mention in the description, and duration_minutes recomputed from the steps
+before upload; WeightTraining entries get tss 0.
+
 Usage:
     python scripts/upload_plan.py
     python scripts/upload_plan.py --plan data/plans/my_plan.json
@@ -26,6 +30,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # Activate .venv if running outside of it (adds site-packages to sys.path)
 _venv_site = Path(__file__).resolve().parents[1] / ".venv" / "Lib" / "site-packages"
@@ -35,6 +40,7 @@ if _venv_site.exists() and str(_venv_site) not in sys.path:
 import requests
 from intervals_icu.client import _ascii_safe, _steps_to_zwo, create_activity, delete_events_range, get_events, get_library_workout, normalize_activity_type, update_event
 from intervals_icu.config import API_KEY, ATHLETE_ID
+from check_plan_tss import normalize_workout_load
 
 DEFAULT_PLAN = Path(__file__).resolve().parents[1] / "data" / "plans" / "week_plan.json"
 MAX_ACTIVITY_NAME_LENGTH = 127
@@ -73,6 +79,21 @@ def _validate_workout(workout: dict, index: int) -> bool:
     return True
 
 
+def _report_load_adjustment(original: dict, normalized: dict) -> None:
+    changes = []
+    if original.get("tss") != normalized.get("tss"):
+        stated = original.get("tss", "missing")
+        changes.append(f"TSS {stated} -> {normalized.get('tss')}")
+    if original.get("duration_minutes") != normalized.get("duration_minutes"):
+        changes.append(
+            f"duration {original.get('duration_minutes')} -> {normalized.get('duration_minutes')} min"
+        )
+    if changes:
+        label = normalized.get("name") or "workout"
+        date = str(normalized.get("date") or "")[:10]
+        print(f"  Adjusted: {label} on {date} — {', '.join(changes)} (computed from steps)")
+
+
 def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: bool = False) -> None:
     success = 0
     skipped = 0
@@ -106,6 +127,11 @@ def upload_plan(plan: list[dict], week: str = "", dry_run: bool = False, clear: 
             pass  # If fetch fails, fall back to always creating
 
     for i, workout in enumerate(plan):
+        if isinstance(workout, dict):
+            normalized = normalize_workout_load(workout)
+            if normalized is not workout:
+                _report_load_adjustment(workout, normalized)
+                workout = normalized
         if not _validate_workout(workout, i):
             skipped += 1
             continue

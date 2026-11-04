@@ -1,8 +1,10 @@
 """Check a generated weekly plan against a deterministic TSS reference.
 
-Reads a JSON file containing a weekly plan and verifies each workout's TSS value
-against the sum of step-based TSS values, then checks Ride-only weekly load
-against a Ride target. Non-ride entries are listed but excluded from the target.
+Reads a JSON file containing a weekly plan, reports each workout's stated TSS
+next to the step-based computed TSS, then checks Ride-only weekly load (using
+the computed values) against a Ride target. Non-ride entries are listed but
+excluded from the target. Per-workout mismatches are informational; only the
+weekly target deviation and the optional Ride time budget make a plan invalid.
 
 Usage:
     python scripts/check_plan_tss.py --plan /tmp/plan.json --load-target 300 --tolerance-pct 10
@@ -11,6 +13,7 @@ Usage:
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -36,13 +39,75 @@ def planned_hours(plan: list[dict]) -> dict[str, float]:
     }
 
 
+def _step_values(step: dict) -> tuple[float, float]:
+    """Return (duration_seconds, power_pct_ftp), accepting the legacy aliases."""
+    duration_seconds = float(step.get("duration_seconds") or step.get("duration") or 0)
+    power_pct_ftp = float(step.get("power_pct_ftp") or step.get("power") or 0)
+    return max(duration_seconds, 0.0), power_pct_ftp
+
+
 def _compute_tss_from_steps(steps: list[dict]) -> int:
     total = 0.0
     for step in steps:
-        duration_seconds = float(step.get("duration_seconds") or 0)
-        power_pct_ftp = float(step.get("power_pct_ftp") or 0)
+        if not isinstance(step, dict):
+            continue
+        duration_seconds, power_pct_ftp = _step_values(step)
         total += (duration_seconds / 3600) * (power_pct_ftp / 100) ** 2 * 100
     return round(total)
+
+
+def _compute_duration_minutes_from_steps(steps: list[dict]) -> float | int:
+    total_seconds = sum(_step_values(step)[0] for step in steps if isinstance(step, dict))
+    minutes = total_seconds / 60
+    return int(minutes) if minutes.is_integer() else round(minutes, 2)
+
+
+def _workout_steps(workout: dict) -> list[dict]:
+    steps = workout.get("steps")
+    if not steps and isinstance(workout.get("workout"), dict):
+        steps = workout["workout"].get("steps")
+    return steps if isinstance(steps, list) else []
+
+
+def _is_ride(workout: dict) -> bool:
+    activity_type = workout.get("activity_type")
+    return activity_type is None or activity_type in RIDE_ACTIVITY_TYPES
+
+
+_TSS_MENTION = re.compile(r"\bTSS:\s*~?\d+(?:\.\d+)?")
+
+
+def _replace_tss_mention(description, tss: int):
+    if not isinstance(description, str):
+        return description
+    return _TSS_MENTION.sub(f"TSS: {tss}", description)
+
+
+def normalize_workout_load(workout: dict) -> dict:
+    """Return a copy with step-derived tss/duration for generated rides.
+
+    Generated rides with steps get tss, the "TSS: <n>" description mention,
+    and duration_minutes recomputed from the steps. WeightTraining gets tss 0.
+    Library workouts and other entries are returned unchanged.
+    """
+    if not isinstance(workout, dict) or workout.get("library_workout_id") is not None:
+        return workout
+    if workout.get("activity_type") == "WeightTraining":
+        normalized = dict(workout)
+        normalized["tss"] = 0
+        if "description" in normalized:
+            normalized["description"] = _replace_tss_mention(normalized["description"], 0)
+        return normalized
+    steps = _workout_steps(workout)
+    if not _is_ride(workout) or not steps:
+        return workout
+    tss = _compute_tss_from_steps(steps)
+    normalized = dict(workout)
+    normalized["tss"] = tss
+    normalized["duration_minutes"] = _compute_duration_minutes_from_steps(steps)
+    if "description" in normalized:
+        normalized["description"] = _replace_tss_mention(normalized["description"], tss)
+    return normalized
 
 
 def _normalize_plan(data):
@@ -60,11 +125,17 @@ def evaluate_plan(
     completed_tss: float = 0.0,
     weekly_time_target_hours: float | None = None,
 ) -> dict:
-    """Compare planned and completed Ride TSS with a Ride target."""
+    """Compare planned and completed Ride TSS with a Ride target.
+
+    Per-workout stated vs step-based TSS is reported, but only the weekly
+    target deviation (and the optional Ride time budget) affects validity.
+    """
     warnings: list[str] = []
+    notes: list[str] = []
     workout_results: list[dict] = []
     planned_tss = 0
     planned_other_tss = 0
+    normalized_plan: list[dict] = []
 
     for workout in plan:
         if not isinstance(workout, dict):
@@ -76,27 +147,16 @@ def evaluate_plan(
             stated_tss = 0
         stated_tss = int(stated_tss)
 
-        library_workout_id = workout.get("library_workout_id")
-        steps = workout.get("steps") or []
-        activity_type = workout.get("activity_type")
-        counted = activity_type is None or activity_type in RIDE_ACTIVITY_TYPES
-
-        if not counted or library_workout_id is not None:
-            computed_tss = stated_tss
-            mismatch = False
-            tolerance = 0
-        elif isinstance(steps, list) and steps:
-            computed_tss = _compute_tss_from_steps(steps)
-            tolerance = max(2, round(0.05 * computed_tss))
-            mismatch = abs(computed_tss - stated_tss) > tolerance
-            if mismatch:
-                warnings.append(
-                    f"Workout on {date} (stated_tss {stated_tss}) does not match steps-based computed_tss {computed_tss} (diff {abs(computed_tss - stated_tss)}, tolerance ±{tolerance}). Recompute TSS from steps and correct the tss field and description."
-                )
-        else:
-            computed_tss = stated_tss
-            mismatch = False
-            tolerance = 0
+        normalized = normalize_workout_load(workout)
+        normalized_plan.append(normalized)
+        counted = _is_ride(workout)
+        computed_tss = int(normalized.get("tss") or 0) if normalized is not workout else stated_tss
+        mismatch = computed_tss != stated_tss
+        if mismatch:
+            notes.append(
+                f"Workout on {date}: stated_tss {stated_tss} differs from computed_tss {computed_tss}; "
+                "the computed value is used for the weekly total and overwritten on upload."
+            )
 
         workout_results.append(
             {
@@ -132,7 +192,7 @@ def evaluate_plan(
                 f"Weekly total {total_tss:g} TSS is {abs(deviation_pct):.1f}% {direction} the target of {int(load_target)} TSS (tolerance ±{tolerance_pct}%). {guidance}; do not modify anchored planned_workouts."
             )
 
-    hours = planned_hours(plan)
+    hours = planned_hours(normalized_plan)
     time_within_budget = (
         weekly_time_target_hours is None
         or hours["planned_ride_hours"] <= float(weekly_time_target_hours)
@@ -141,7 +201,7 @@ def evaluate_plan(
         warnings.append(
             f"Planned Ride duration {hours['planned_ride_hours']:g} hours exceeds the weekly Ride time budget of {weekly_time_target_hours:g} hours."
         )
-    valid = not any(workout["mismatch"] for workout in workout_results) and within_tolerance and time_within_budget
+    valid = within_tolerance and time_within_budget
     return {
         "workouts": workout_results,
         "week": {
@@ -159,6 +219,7 @@ def evaluate_plan(
         },
         "valid": valid,
         "issues": warnings,
+        "notes": notes,
     }
 
 
@@ -207,6 +268,7 @@ def main() -> None:
             },
             "valid": False,
             "issues": [str(exc)],
+            "notes": [],
         }
 
     print(json.dumps(result, ensure_ascii=False))
