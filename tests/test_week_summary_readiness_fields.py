@@ -88,6 +88,46 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
         self.assertEqual(readiness["status"], "red")
         self.assertIn("today", readiness["safety_vetoes"][0])
 
+    def test_resolved_maximum_strength_phase_updates_recency_before_readiness(self):
+        today = date(2026, 11, 4)
+        activities = [
+            {
+                "type": "WeightTraining",
+                "start_date_local": "2026-11-04T10:00:00Z",
+                "tags": [],
+                "strength_phase": "maximum",
+            }
+        ]
+        summary = {
+            "ctl": 60,
+            "atl": 55,
+            "form_zone": "fresh",
+            "days_since_last_hard_session": None,
+        }
+
+        self.assertTrue(
+            prepare_week_for_coach.annotate_hard_sessions(activities)[0]["is_hard_session"]
+        )
+        prepare_week_for_coach._update_hard_session_recency(summary, activities, today)
+        readiness = prepare_week_for_coach.compute_training_readiness({}, summary)
+
+        self.assertEqual(summary["days_since_last_hard_session"], 0)
+        self.assertEqual(readiness["status"], "red")
+        self.assertIn("today", readiness["safety_vetoes"][0])
+
+    def test_resolved_nonmaximum_strength_phase_overrides_maximum_tag(self):
+        annotated = prepare_week_for_coach.annotate_hard_sessions(
+            [
+                {
+                    "type": "WeightTraining",
+                    "tags": ["strength-maximum"],
+                    "strength_phase": "maintenance",
+                }
+            ]
+        )
+
+        self.assertFalse(annotated[0]["is_hard_session"])
+
     def test_training_readiness_uses_safety_veto_for_two_adverse_recovery_signals(self):
         metrics = {
             "sleep_secs": 5 * 3600,

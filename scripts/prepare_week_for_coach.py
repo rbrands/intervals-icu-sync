@@ -8,7 +8,9 @@ from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from analyze_week import _HARD_SESSION_ACTIVITY_TYPES, compute_days_since_last_hard_session
 from intervals_icu.training_readiness import annotate_hard_sessions, compute_training_readiness
 from intervals_icu.strength import (
     CANONICAL_STRENGTH_TAGS, STRENGTH_PHASE_BY_TAG, STRENGTH_PHASE_MAX_SESSIONS,
@@ -241,6 +243,18 @@ def annotate_strength_phases(activities: list[dict], strength_history: list[dict
                 )
         annotated.append(entry)
     return annotated
+
+
+def _update_hard_session_recency(week_summary: dict, activities: list[dict], as_of: date) -> None:
+    week_summary["days_since_last_hard_session"] = compute_days_since_last_hard_session(
+        [
+            activity
+            for activity in activities
+            if activity.get("type") in _HARD_SESSION_ACTIVITY_TYPES
+        ],
+        as_of,
+        week_summary.get("ctl"),
+    )
 
 
 def build_strength_week_summary(
@@ -613,8 +627,6 @@ def consolidate() -> None:
         week_data,
         training_plan=ride_plan,
     )
-    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
-
     # Embed Ride training plan info into week_summary
     if ride_plan:
         week_data["training_plan"] = ride_plan
@@ -626,6 +638,8 @@ def consolidate() -> None:
         fueling_data if isinstance(fueling_data, dict) else None,
     )
     activities = annotate_strength_phases(activities, strength_history)
+    _update_hard_session_recency(week_data, activities, date.today())
+    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
     activities = annotate_hard_sessions(activities, current_ctl=week_data.get("ctl"))
 
     coach_input = {

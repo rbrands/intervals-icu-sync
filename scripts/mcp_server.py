@@ -29,7 +29,8 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import TransportSecuritySettings
 import upload_plan as _upload_plan  # direct import – no subprocess overhead
 from prepare_week_for_coach import (
-    annotate_strength_phases, build_strength_week_summary, fetch_strength_history,
+    _update_hard_session_recency, annotate_strength_phases, build_strength_week_summary,
+    fetch_strength_history,
 )
 from check_plan_tss import evaluate_plan, _normalize_plan, planned_hours
 from validate_plan import validate_plan_semantics
@@ -526,7 +527,6 @@ def prepare_week_data(lookback_days: int = 7) -> str:
     week_data["strength"] = build_strength_week_summary(
         strength_history, today, week_data, training_plan=ride_plan_summary,
     )
-    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
     if ride_plan_summary:
         week_data["training_plan"] = ride_plan_summary
 
@@ -543,6 +543,8 @@ def prepare_week_data(lookback_days: int = 7) -> str:
     )
     activities, fueling_data = _merge_fueling_into_activities(activities, fueling_data)
     activities = annotate_strength_phases(activities, strength_history)
+    _update_hard_session_recency(week_data, activities, today)
+    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
     activities = annotate_hard_sessions(activities, current_ctl=week_data.get("ctl"))
 
     coach_input = {

@@ -17,6 +17,9 @@ def is_hard_session(
 ) -> bool:
     """Return whether an activity creates meaningful recovery demand."""
     if activity.get("type") == "WeightTraining":
+        strength_phase = activity.get("strength_phase")
+        if strength_phase is not None:
+            return strength_phase == "maximum"
         tags = activity.get("tags") or []
         return STRENGTH_MAXIMUM_TAG in tags
 
