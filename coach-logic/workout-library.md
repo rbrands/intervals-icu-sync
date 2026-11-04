@@ -232,9 +232,9 @@ Hinweise: <Progression, z. B. "2,5 kg ergänzen, wenn alle Sätze geschafft wurd
 n is `week_summary.strength.phase_session_count` plus this workout's position
 in the target week, counting strength sessions in planned order. `<target>` is
 the phase's total target (4–6, 2–3, 8–12, or ongoing), not a weekly target. When
-n reaches the phase maximum (6 for adaptation, 3 for transition, 12 for maximum),
-append one sentence in `response_language` that the phase is complete and the
-next phase begins with the following session.
+n reaches the phase minimum (4 for adaptation, 2 for transition, 8 for maximum),
+append one sentence in `response_language` that the phase minimum is reached and
+the next phase is set automatically at the start of the following week.
 
 No `steps` (including nested steps), no `library_workout_id`;
 `activity_type: WeightTraining`, exactly one canonical `strength-<phase>` tag,

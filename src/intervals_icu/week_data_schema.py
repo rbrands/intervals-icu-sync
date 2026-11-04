@@ -159,11 +159,19 @@ class AerobicThresholdEstimate(_SchemaModel):
     delta_pct: float | int | None = None
 
 
+StrengthPhase = Literal["adaptation", "transition", "maximum", "maintenance"]
+StrengthPhaseReason = Literal[
+    "continue", "advance_min_reached", "no_history", "gap_reset", "build_guard", "beginner_build",
+]
+
+
 class StrengthSummary(_SchemaModel):
     current_phase: Literal["adaptation", "transition", "maximum", "maintenance"] | None = None
     phase_started: str | None = None
     phase_session_count: int
     phase_target_sessions: Literal["4-6", "2-3", "8-12", "ongoing"] | None = None
+    phase_min_sessions: int | None = None
+    phase_max_sessions: int | None = None
     phase_overdue: bool
     sessions_this_week: int
     days_since_last_strength: int | None = None
@@ -173,6 +181,12 @@ class StrengthSummary(_SchemaModel):
     untagged_sessions_last_16_weeks: int
     inferred_sessions_last_16_weeks: int
     tagging_reminder_needed: bool
+    phase_current_week: StrengthPhase | None = None
+    phase_next_week: StrengthPhase | None = None
+    recommended_sessions_current_week: Literal[1, 2] | None = None
+    recommended_sessions_next_week: Literal[1, 2] | None = None
+    phase_reason_current_week: StrengthPhaseReason | None = None
+    phase_reason_next_week: StrengthPhaseReason | None = None
 
 
 class WeekSummary(_SchemaModel):

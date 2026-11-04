@@ -2536,6 +2536,30 @@
           "default": null,
           "title": "Phase Target Sessions"
         },
+        "phase_min_sessions": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Min Sessions"
+        },
+        "phase_max_sessions": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Max Sessions"
+        },
         "phase_overdue": {
           "title": "Phase Overdue",
           "type": "boolean"
@@ -2594,6 +2618,114 @@
         "tagging_reminder_needed": {
           "title": "Tagging Reminder Needed",
           "type": "boolean"
+        },
+        "phase_current_week": {
+          "anyOf": [
+            {
+              "enum": [
+                "adaptation",
+                "transition",
+                "maximum",
+                "maintenance"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Current Week"
+        },
+        "phase_next_week": {
+          "anyOf": [
+            {
+              "enum": [
+                "adaptation",
+                "transition",
+                "maximum",
+                "maintenance"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Next Week"
+        },
+        "recommended_sessions_current_week": {
+          "anyOf": [
+            {
+              "enum": [
+                1,
+                2
+              ],
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommended Sessions Current Week"
+        },
+        "recommended_sessions_next_week": {
+          "anyOf": [
+            {
+              "enum": [
+                1,
+                2
+              ],
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommended Sessions Next Week"
+        },
+        "phase_reason_current_week": {
+          "anyOf": [
+            {
+              "enum": [
+                "continue",
+                "advance_min_reached",
+                "no_history",
+                "gap_reset",
+                "build_guard",
+                "beginner_build"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Reason Current Week"
+        },
+        "phase_reason_next_week": {
+          "anyOf": [
+            {
+              "enum": [
+                "continue",
+                "advance_min_reached",
+                "no_history",
+                "gap_reset",
+                "build_guard",
+                "beginner_build"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase Reason Next Week"
         }
       },
       "required": [

@@ -151,60 +151,58 @@ race classification from those tags.
 
 ## Strength
 
-### Phase selection (in priority order)
+### Phase source (deterministic)
 
-1. Opt in only when the athlete explicitly asks for strength in chat or shows
-   strength activity. Activity is indicated by any of:
-   `sum(week_summary.strength.sessions_per_week_last_4) > 0`,
-   `week_summary.strength.phase_session_count > 0`, or
-   `week_summary.strength.untagged_sessions_last_16_weeks > 0`.
-   An explicit request to skip strength means do not plan it for the requested
-   period. Without an opt-in, do not plan or mention strength; in analysis,
-   skip the Strength block entirely.
-2. Read `week_summary.strength.current_phase` and `phase_session_count`:
-   - `adaptation` and count >= 4: may advance to `transition`; must at 6.
-   - `transition` and count >= 2: may advance to `maximum`; must at 3.
-   - `maximum` and count >= 8: may advance to `maintenance`; must at 12.
-   - `maintenance`: stays.
-3. Apply the cycling-phase guard from the target-week entry in
-   `week_summary.training_plan[].phase`:
-   - Prep / early Base: adaptation or transition; maximum only in Base.
-   - Base: any strength phase allowed; maximum only here.
-   - Build / Peak: maintenance only. Cut short an unfinished maximum run
-     and explain this in the plan text.
-   - Transition: no strength, or restart with adaptation if the athlete asks.
-   - No cycling phase supplied: treat as Base.
-4. With strength activity but `current_phase: null`, use adaptation as a
-   working assumption, not a finding. A gap of at least 21 days since the
-   last strength session resets phase state; use the supplied summary, not a
-   reconstructed raw history.
+1. The phase is given in the input data, not chosen by the coach. Use the
+   phase
+   given in the request line `Strength phase for this plan: <phase>|none`
+   when present. Otherwise use `week_summary.strength.phase_current_week`
+   for next-best-training and current-week plans, and
+   `week_summary.strength.phase_next_week` for next-week plans. Never emit a
+   different `strength-<phase>` tag.
+2. `none` in the request line means: plan no strength sessions and do not
+   mention strength in the plan.
+3. Strength planning is on by default, also without strength history (the
+   fields then start with `adaptation`). It is off only with `none` or an
+   explicit athlete statement in chat to skip strength for the requested
+   period. A chat statement cannot select another phase.
+4. Phase advancement (at the phase minimum), the 21-day gap reset, and the
+   Build/Peak guard are already applied in the supplied fields. Explain the
+   phase with
+   `phase_reason_current_week` / `phase_reason_next_week` (`continue`,
+   `advance_min_reached`, `no_history`, `gap_reset`, `build_guard`,
+   `beginner_build`) instead of re-deriving it. In analysis with
+   `current_phase: null`, describe adaptation as a working assumption, not a
+   finding; use the supplied summary, not a reconstructed raw history.
 
 ### Frequency
 
-- AA / MT / MS: target 2 sessions per week. Reduce to 1 only when form zone is
-  `high_risk` (or TSB is clearly negative at plan start), or
-  `sessions_per_week_last_4` shows the athlete consistently completes only
-  one. Maintain the MS counter across a reduced week: it counts sessions, not
-  weeks.
-- SM: 1 session per week, unchanged.
+- `recommended_sessions_current_week` / `recommended_sessions_next_week` is
+  the default number of strength sessions for the target week (2 in
+  adaptation, transition, maximum; 1 in maintenance and `beginner_build`).
+  Never plan more than recommended.
+- Plan fewer only when form zone is `high_risk` (or TSB is clearly negative at
+  plan start), when `sessions_per_week_last_4` shows a consistent
+  one-session pattern, or when the placement rules leave no further valid
+  day in the target week. State the reason in one sentence. Counters count
+  sessions, not weeks.
 - Only for next-best-training today and dates today/tomorrow in a current-week
   plan, yellow readiness excludes a `strength-maximum` session on that date
   and red excludes strength on that date. This same-day limit does not reduce
   weekly frequency. Yellow/red readiness never reduces weekly strength
-  frequency or makes "one session is enough".
-  For next-week plans, ignore readiness entirely.
-- RECOVERY weeks reduce endurance load only. Keep the normal strength
-  frequency and current phase dose/tag: 2 sessions in adaptation, transition,
-  or maximum; 1 in maintenance. Sessions count toward phase progression and
-  phase advancement follows the usual thresholds. Do not schedule strength in
-  the first three days of a RECOVERY week; schedule it only from day 4 onward.
-- RACE week: maintenance only, not within 3 days before the race.
-- Apply the most restrictive weekly phase/week/form rule. Assess unknown or
-  low-confidence readiness only for decisions within its applicable
-  planning-mode window.
-- Count completed and anchored planned strength sessions toward the frequency;
-  do not duplicate them. Use `sessions_this_week` for the current week and
-  `sessions_per_week_last_4` as context, not as missed sessions to make up.
+  frequency or makes "one session is enough". Never swap the phase tag to
+  work around it. For next-week plans, ignore readiness entirely.
+- RECOVERY weeks reduce endurance load only. Keep the recommended strength
+  count and phase tag. Do not schedule strength in the first three days of a
+  RECOVERY week; schedule it only from day 4 onward.
+- RACE week: plan strength only when the phase is `maintenance`, not within
+  3 days before the race.
+- Assess unknown or low-confidence readiness only for decisions within its
+  applicable planning-mode window.
+- Count completed and anchored planned strength sessions toward the
+  recommended count; do not duplicate them. Use `sessions_this_week` for the
+  current week and `sessions_per_week_last_4` as context, not as missed
+  sessions to make up.
 
 ### Placement
 

@@ -63,8 +63,14 @@ class StrengthReadinessPromptTests(unittest.TestCase):
                     'or makes "one session is enough".',
                     text,
                 )
+                # Production agent.yaml must not mention the staging-only phase tag.
+                maximum = (
+                    "maximum-phase session"
+                    if relative_path == "foundry-agent/agent.yaml"
+                    else "`strength-maximum` session"
+                )
                 self.assertIn(
-                    "yellow readiness excludes a `strength-maximum` session on that date "
+                    f"yellow readiness excludes a {maximum} on that date "
                     "and red excludes strength on that date.",
                     text,
                 )
@@ -342,6 +348,215 @@ class StrengthWeekSummaryTests(unittest.TestCase):
         summary = analyze_week.compute_metrics([adaptation_today], current_ctl=10)
 
         self.assertIsNone(summary["days_since_last_hard_session"])
+
+
+from intervals_icu.strength import resolve_strength_week_phase
+
+
+def _sessions(start: date, phase: str | None, count: int, step_days: int = 3):
+    return [(start + timedelta(days=i * step_days), phase) for i in range(count)]
+
+
+def _row(day: date, phase: str | None, **extra) -> dict:
+    row = {
+        "date": day.isoformat(),
+        "tags": [f"strength-{phase}"] if phase else [],
+        "phase_source": "activity" if phase else "none",
+    }
+    row.update(extra)
+    return row
+
+
+class StrengthWeekPhaseResolverTests(unittest.TestCase):
+    MONDAY = date(2026, 11, 2)
+
+    def _recent(self, phase, count):
+        return _sessions(self.MONDAY - timedelta(days=3 * count), phase, count)
+
+    def _resolve(self, sessions, cycling_phase=None):
+        return resolve_strength_week_phase(sessions, self.MONDAY, cycling_phase)
+
+    def test_no_history_starts_adaptation(self):
+        self.assertEqual(self._resolve([]), ("adaptation", 2, "no_history"))
+        self.assertEqual(
+            self._resolve([(date(2026, 10, 30), None)]), ("adaptation", 2, "no_history")
+        )
+
+    def test_gap_of_21_days_resets_to_adaptation(self):
+        sessions = _sessions(date(2026, 9, 1), "maximum", 5)
+        sessions.append((self.MONDAY - timedelta(days=21), "maximum"))
+        self.assertEqual(self._resolve(sessions), ("adaptation", 2, "gap_reset"))
+        sessions[-1] = (self.MONDAY - timedelta(days=20), "maximum")
+        self.assertEqual(self._resolve(sessions)[2], "continue")
+
+    def test_continue_below_phase_minimum(self):
+        for phase, minimum in (("adaptation", 4), ("transition", 2), ("maximum", 8)):
+            with self.subTest(phase=phase):
+                sessions = self._recent(phase, minimum - 1)
+                self.assertEqual(self._resolve(sessions), (phase, 2, "continue"))
+
+    def test_advance_when_phase_minimum_is_reached(self):
+        for phase, minimum, next_phase, recommended in (
+            ("adaptation", 4, "transition", 2),
+            ("transition", 2, "maximum", 2),
+            ("maximum", 8, "maintenance", 1),
+        ):
+            with self.subTest(phase=phase):
+                sessions = self._recent(phase, minimum)
+                self.assertEqual(
+                    self._resolve(sessions), (next_phase, recommended, "advance_min_reached")
+                )
+
+    def test_maintenance_stays_with_one_session(self):
+        sessions = self._recent("maintenance", 6)
+        self.assertEqual(self._resolve(sessions), ("maintenance", 1, "continue"))
+
+    def test_run_count_stops_at_phase_change_and_skips_untagged(self):
+        sessions = _sessions(date(2026, 10, 1), "adaptation", 6)
+        sessions += [(date(2026, 10, 20), "transition"), (date(2026, 10, 25), None)]
+        self.assertEqual(self._resolve(sessions), ("transition", 2, "continue"))
+
+    def test_base_and_transition_cycling_phase_use_run_rules(self):
+        sessions = self._recent("adaptation", 4)
+        for cycling_phase in (None, "Base", "Transition", "unknown"):
+            with self.subTest(cycling_phase=cycling_phase):
+                self.assertEqual(
+                    self._resolve(sessions, cycling_phase),
+                    ("transition", 2, "advance_min_reached"),
+                )
+
+    def test_build_with_prior_adaptation_run_switches_to_maintenance(self):
+        sessions = _sessions(date(2026, 9, 1), "adaptation", 4)
+        self.assertEqual(self._resolve(sessions, "Build"), ("maintenance", 1, "build_guard"))
+
+    def test_build_without_prior_adaptation_run_is_beginner_build(self):
+        self.assertEqual(self._resolve([], "Build"), ("adaptation", 1, "beginner_build"))
+        sessions = _sessions(date(2026, 10, 10), "adaptation", 3)
+        self.assertEqual(self._resolve(sessions, "build"), ("adaptation", 1, "beginner_build"))
+
+    def test_later_phase_history_counts_as_prior_adaptation(self):
+        sessions = [(date(2026, 10, 20), "transition")]
+        self.assertEqual(self._resolve(sessions, "Build"), ("maintenance", 1, "build_guard"))
+
+    def test_build_cuts_running_maximum_run(self):
+        sessions = _sessions(date(2026, 10, 1), "maximum", 5)
+        self.assertEqual(self._resolve(sessions), ("maximum", 2, "continue"))
+        self.assertEqual(self._resolve(sessions, "Build"), ("maintenance", 1, "build_guard"))
+
+    def test_peak_behaves_like_build(self):
+        self.assertEqual(self._resolve([], "Peak"), ("adaptation", 1, "beginner_build"))
+        sessions = _sessions(date(2026, 10, 1), "maximum", 5)
+        self.assertEqual(self._resolve(sessions, "PEAK"), ("maintenance", 1, "build_guard"))
+
+    def test_sessions_on_or_after_week_monday_are_ignored(self):
+        sessions = _sessions(self.MONDAY, "adaptation", 4, step_days=1)
+        self.assertEqual(self._resolve(sessions), ("adaptation", 2, "no_history"))
+
+
+class StrengthWeekPhaseSummaryTests(unittest.TestCase):
+    TODAY = date(2026, 11, 4)  # Wednesday; current Monday 2026-11-02
+
+    def _summary(self, history, training_plan=None):
+        return prepare_week.build_strength_week_summary(
+            history,
+            self.TODAY,
+            {"strength_sessions": 0, "strength_load": 0},
+            training_plan=training_plan,
+        )
+
+    def test_summary_contains_week_phase_fields(self):
+        summary = self._summary([])
+        self.assertEqual(summary["phase_current_week"], "adaptation")
+        self.assertEqual(summary["phase_next_week"], "adaptation")
+        self.assertEqual(summary["recommended_sessions_current_week"], 2)
+        self.assertEqual(summary["recommended_sessions_next_week"], 2)
+        self.assertEqual(summary["phase_reason_current_week"], "no_history")
+        self.assertEqual(summary["phase_reason_next_week"], "no_history")
+        self.assertIsNone(summary["current_phase"])
+        self.assertIsNone(summary["phase_min_sessions"])
+        self.assertIsNone(summary["phase_max_sessions"])
+
+    def test_phase_min_max_sessions_follow_current_phase(self):
+        for phase, minimum, maximum, target in (
+            ("adaptation", 4, 6, "4-6"),
+            ("transition", 2, 3, "2-3"),
+            ("maximum", 8, 12, "8-12"),
+            ("maintenance", None, None, "ongoing"),
+        ):
+            with self.subTest(phase=phase):
+                summary = self._summary([_row(date(2026, 11, 2), phase)])
+                self.assertEqual(summary["current_phase"], phase)
+                self.assertEqual(summary["phase_target_sessions"], target)
+                self.assertEqual(summary["phase_min_sessions"], minimum)
+                self.assertEqual(summary["phase_max_sessions"], maximum)
+
+    def test_current_week_uses_state_before_monday_and_next_week_counts_this_week(self):
+        history = [
+            _row(date(2026, 10, 27), "adaptation"),
+            _row(date(2026, 10, 29), "adaptation"),
+            _row(date(2026, 11, 2), "adaptation"),
+        ]
+        summary = self._summary(history)
+        self.assertEqual(summary["phase_current_week"], "adaptation")
+        self.assertEqual(summary["phase_reason_current_week"], "continue")
+        self.assertEqual(summary["phase_next_week"], "adaptation")
+        self.assertEqual(summary["phase_reason_next_week"], "continue")
+
+    def test_planned_events_later_this_week_count_for_next_week(self):
+        history = [
+            _row(date(2026, 10, 27), "adaptation"),
+            _row(date(2026, 10, 29), "adaptation"),
+            _row(date(2026, 11, 2), "adaptation"),
+            {
+                "id": None,
+                "date": "2026-11-06",
+                "tags": ["strength-adaptation"],
+                "phase_source": "planned_event",
+                "planned": True,
+            },
+        ]
+        summary = self._summary(history)
+        self.assertEqual(summary["phase_current_week"], "adaptation")
+        self.assertEqual(summary["phase_next_week"], "transition")
+        self.assertEqual(summary["phase_reason_next_week"], "advance_min_reached")
+        # Planned rows never count as completed sessions.
+        self.assertEqual(summary["phase_session_count"], 3)
+
+    def test_untagged_rows_this_week_default_to_current_week_phase(self):
+        history = [
+            _row(date(2026, 10, 27), "transition"),
+            _row(date(2026, 11, 3), None),
+            {
+                "id": None,
+                "date": "2026-11-07",
+                "tags": [],
+                "phase_source": "planned_event",
+                "planned": True,
+            },
+        ]
+        summary = self._summary(history)
+        self.assertEqual(summary["phase_current_week"], "transition")
+        self.assertEqual(summary["phase_next_week"], "maximum")
+        self.assertEqual(summary["phase_reason_next_week"], "advance_min_reached")
+
+    def test_training_plan_phase_applies_per_week(self):
+        history = [_row(date(2026, 10, 1) + timedelta(days=3 * i), "adaptation") for i in range(4)]
+        history.append(_row(date(2026, 10, 27), "transition"))
+        training_plan = [
+            {"week": "2026-11-02", "phase": "Base"},
+            {"week": "2026-11-09", "phase": "Build"},
+        ]
+        summary = self._summary(history, training_plan)
+        self.assertEqual(summary["phase_current_week"], "transition")
+        self.assertEqual(summary["recommended_sessions_current_week"], 2)
+        self.assertEqual(summary["phase_next_week"], "maintenance")
+        self.assertEqual(summary["recommended_sessions_next_week"], 1)
+        self.assertEqual(summary["phase_reason_next_week"], "build_guard")
+
+    def test_gap_reset_in_summary(self):
+        summary = self._summary([_row(date(2026, 10, 1), "maximum")])
+        self.assertEqual(summary["phase_current_week"], "adaptation")
+        self.assertEqual(summary["phase_reason_current_week"], "gap_reset")
 
 
 class StrengthHistoryTests(unittest.TestCase):

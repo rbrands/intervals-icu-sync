@@ -50,8 +50,9 @@ knowledge. All workout dates are calculated relative to `week_starting`.
 - Focus on the CURRENT week; from Thursday onward, begin the NEXT week.
 - Do not plan multiple weeks ahead unless explicitly requested.
 - For next-best-training, return at most one ride plus optionally one
-  `WeightTraining` session on the same day when the strength opt-in rule is
-  met. The easier alternative stays in prose only; do not add it to upload JSON.
+  `WeightTraining` session on the same day when the strength rule
+  (decision-process.md, Strength) yields a phase other than `none`. The easier
+  alternative stays in prose only; do not add it to upload JSON.
 - Never duplicate a key session (VO2max / threshold / long ride) that is
   already completed or already in planned workouts.
 - For a `RECOVERY` week, follow the two-part structure in
@@ -71,25 +72,27 @@ knowledge. All workout dates are calculated relative to `week_starting`.
   reason for session choice or reduced dose. For later current-week days and
   next-week training, use form zone, ramp, `week_type`, and
   `training_load_history`; preserve same-day safety vetoes.
-- Strength frequency follows decision-process.md, Strength: AA/MT/MS target
-  two weekly sessions, reduced to one only for high-risk form (or clearly
-  negative TSB at plan start) or a consistent one-session completion pattern
-  in `week_summary.strength.sessions_per_week_last_4`; SM remains one.
-  RECOVERY weeks do not change strength frequency, phase, or dose; schedule
-  strength only from day 4 onward. For
-  next-best-training today and dates today/tomorrow of a current-week plan
-  only, yellow readiness excludes a `strength-maximum` session on that date
-  and red excludes strength on that date. This does not reduce weekly
-  frequency. Yellow/red readiness never reduces weekly strength frequency
-  or makes "one session is enough". Ignore readiness for next-week strength
-  planning.
-- Plan or discuss strength only when the athlete asks for it in chat or the
-  strength summary shows activity: the sum of
-  `week_summary.strength.sessions_per_week_last_4` is greater than zero, or
-  `phase_session_count > 0`, or `untagged_sessions_last_16_weeks > 0`.
-  Without either signal, do not plan or mention strength; omit the Strength
-  block in analysis. With activity but `current_phase: null`, use adaptation
-  only as a working assumption.
+- Strength phase and frequency are given in the input data
+  (decision-process.md, Strength); never choose or change the phase yourself. Use the phase from the
+  request line "Strength phase for this plan: <phase>|none" when present;
+  otherwise `week_summary.strength.phase_current_week` for current-week dates
+  and `phase_next_week` for next-week dates. Never use a different phase tag.
+  `none` means no strength sessions and no mention of strength in the plan.
+  Strength planning is on by default; it is off only with `none` or an
+  athlete chat statement. Explain the phase with `phase_reason_current_week` /
+  `phase_reason_next_week` when useful.
+- Frequency: `recommended_sessions_current_week` /
+  `recommended_sessions_next_week` is the default; never plan more. Plan fewer
+  only for high-risk form (or clearly negative TSB at plan start), a
+  consistent one-session pattern in
+  `week_summary.strength.sessions_per_week_last_4`, or no further valid day
+  under the placement rules in the target week; state the reason in one
+  sentence. RECOVERY weeks keep the recommended count and phase; schedule
+  strength only from day 4 onward. For next-best-training today and dates
+  today/tomorrow of a current-week plan only, yellow readiness excludes a
+  `strength-maximum` session on that date and red excludes strength on that
+  date. Yellow/red readiness never reduces weekly strength frequency or makes
+  "one session is enough". Ignore readiness for next-week strength planning.
 
 ## Knowledge Files
 
@@ -210,11 +213,12 @@ Rules:
   preserve the tag in English. Its first line is the phase counter:
   `Phase: <localized phase name> — Einheit <n> von <target> der Phase`, where
   n is `phase_session_count + position in the target week`, and target is the
-  total phase target rather than the weekly frequency. When n reaches the
-  phase maximum (6 adaptation, 3 transition, 12 maximum), append one
-  `response_language` sentence that the phase is complete and the next phase
-  starts with the following session. Include the translated Exercises,
-  Sets × reps @ % 1RM, Rest, and Notes labels from workout-library.md.
+  total phase target rather than the weekly frequency. If the target-week
+  phase differs from `current_phase`, n restarts at the workout's position in
+  that phase. When n reaches the phase minimum (4 adaptation, 2 transition,
+  8 maximum), append one `response_language` sentence that the phase minimum
+  is reached and the next phase is set automatically from the following week.
+  Include the translated Exercises, Sets × reps @ % 1RM, Rest, and Notes labels from workout-library.md.
 - Place each strength session on the first feasible slot in this ranked order:
   no-ride rest day; easy aerobic/recovery ride day after the ride; threshold
   day after the ride. Never on long-ride, VO2max, or race days; never on

@@ -155,7 +155,9 @@ value is missing or no previous exported activity exists.
   last session with TSS at least 50% above current CTL, the last `HIIT` or
   `Polarized` ride, the last `Threshold` ride with at least 50 TSS or RPE 7+,
   or a `WeightTraining` session tagged `strength-maximum`. The generic TSS
-  threshold does not make a strength activity hard.
+  threshold does not make a strength activity hard. All three recency fields
+  are computed from the whole exported lookback window relative to
+  `current_date`, not only from the current ISO week.
 - `strength`: compact summary derived from internal completed strength history
   and the per-sport totals in this object. The raw history is not exported.
   - `current_phase`: phase (`adaptation`, `transition`, `maximum`, or
@@ -168,9 +170,28 @@ value is missing or no previous exported activity exists.
     different phase or a gap of at least 21 days between sessions ends the run.
   - `phase_target_sessions`: phase target from the strength taxonomy: `4-6`,
     `2-3`, `8-12`, or `ongoing`; null when there is no current phase.
+  - `phase_min_sessions` / `phase_max_sessions`: integer bounds of
+    `phase_target_sessions` for `current_phase` (adaptation 4/6, transition
+    2/3, maximum 8/12); both null for `maintenance` or an unset phase.
   - `phase_overdue`: true only when the count exceeds the phase maximum
     (6 adaptation, 3 transition, 12 maximum). False for maintenance or an
-    unset phase. This flag does not automatically change the phase.
+    unset phase.
+  - `phase_current_week`: deterministic strength phase for all strength
+    sessions of the current ISO week, computed from the session run before
+    this Monday and the cycling phase in `training_plan[].phase` of this week.
+  - `phase_next_week`: deterministic phase for next week, computed from the
+    run including this week's completed sessions plus planned WeightTraining
+    events later this week, and next week's cycling phase.
+  - `recommended_sessions_current_week` / `recommended_sessions_next_week`:
+    default strength session count for that week: 1 for `maintenance` and
+    `beginner_build`, otherwise 2.
+  - `phase_reason_current_week` / `phase_reason_next_week`: short code for the
+    phase decision: `continue`, `advance_min_reached` (minimum reached:
+    adaptation 4, transition 2, maximum 8), `no_history`, `gap_reset` (last
+    session at least 21 days before the week start), `build_guard`
+    (Build/Peak after a completed adaptation run: maintenance), or
+    `beginner_build` (Build/Peak without a completed adaptation run:
+    adaptation, 1 session).
   - `sessions_this_week`: current-week count copied from `strength_sessions`.
   - `days_since_last_strength`: calendar days since the most recent completed
     strength session; null when history is empty or no date is available.

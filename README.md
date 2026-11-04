@@ -304,7 +304,7 @@ intervals-icu-sync/
 │   ├── test_data_quality.py        # Data-quality thresholds and MCP tool regression tests
 │   ├── test_dfa_a1_analysis.py     # DFA a1 computation, activity gate and weekly aerobic-threshold aggregate
 │   ├── test_next_best_training_prompt.py  # Compact recommendation and upload prompt contract
-│   ├── test_strength_week_scope.py  # WeightTraining fueling and weekly-summary scope
+│   ├── test_strength_week_scope.py  # WeightTraining scope, summary and week phase resolver
 │   └── test_upload_plan_regressions.py  # Regression tests for upload_plan.py and ZWO generation
 ├── .env.example
 ├── .pre-commit-config.yaml       # Git hook config (strips Jupyter outputs before commit)
@@ -528,7 +528,7 @@ The estimate uses `16.6 + 8.87 * p5min W/kg`. Classification also includes
 leaves the percentage and flag null. Unless the flag is boolean `true`,
 the coach must not use the VO2Max value/category as limiter or performance
 trend evidence and states once that a maximal 5-minute effort is missing.
-Week-data schema version is `1.10.0`; the generated C# contract uses
+Week-data schema version is `1.12.0`; the generated C# contract uses
 `JsonElement?` for the boolean/string/null flag.
 
 ```bash
@@ -560,6 +560,10 @@ Session distribution semantics in `week_summary`:
 - `days_since_last_hiit`: calendar days since the last activity classified as `HIIT`.
 - `days_since_last_polarized`: calendar days since the last activity classified as `HIIT` or `Polarized`.
 - `days_since_last_hard_session`: calendar days since the last activity classified as `HIIT`, `Polarized`, or `Threshold`.
+
+The three recency fields are computed from all exported activities in the lookback window
+relative to the current date, not only from the current ISO week, so a hard session on the
+previous weekend stays visible early in the new week.
 
 Long-ride counting for fueling is tracked separately in
 `fueling_analysis.weekly_summary.number_of_long_rides`.
@@ -681,10 +685,24 @@ or at a gap of 21 days or more, the source remains `none`. Phase runs stop at
 gaps of at least 21 days between sessions; 21 days without a session also resets
 the current phase. `phase_overdue` is true only above 6 adaptation, 3 transition,
 or 12 maximum sessions (false for maintenance/unset phase), with no automatic
-phase switch.
+phase switch inside a run.
+Python also resolves the strength phase deterministically at the start of each
+week: `phase_current_week` uses the history before this Monday, while
+`phase_next_week` also counts this week's completed sessions and planned
+WeightTraining events through Sunday. No history, or a gap of 21 days or more,
+starts adaptation. A run advances once it reaches its minimum (adaptation 4 →
+transition 2 → maximum 8 → maintenance). In Build/Peak weeks
+(`training_plan[].phase`), athletes with at least one full adaptation run switch
+to maintenance; otherwise the week uses one beginner adaptation session.
+`recommended_sessions_current_week` / `recommended_sessions_next_week` is 1 for
+maintenance and beginner build, otherwise 2. `phase_reason_*` is one of
+`continue`, `advance_min_reached`, `no_history`, `gap_reset`, `build_guard`, or
+`beginner_build`. Strength planning is on by default; the coach skips it only
+when the request says `Strength phase for this plan: none` or the athlete says
+so in chat.
 Planned events are fetched through Sunday of the current week, including the
 full ISO week containing the history start. The raw history remains internal.
-Week-data schema version is 1.9.0.
+Week-data schema version is 1.12.0.
 The local and hosted MCP `prepare_week_data` tools use the same derivation.
 Set `STRENGTH_HISTORY_WEEKS` to change the default history window, including
 the window used for the untagged count. In the coach activity payload, `is_hard_session` is true for
@@ -1081,7 +1099,7 @@ Covers seven use cases:
 `coach_prompt_next_best_training` returns the same `{"workouts": [...]}` upload
 format as a weekly plan, between `BEGIN_UPLOAD_JSON` / `END_UPLOAD_JSON` markers:
 at most one ride and optionally one same-day `WeightTraining` session when the
-strength opt-in rule is met. The easier alternative remains prose-only.
+strength rule yields a phase other than `none`. The easier alternative remains prose-only.
 Upload options (only after an explicit user request):
 - **Local scripts:** save the JSON block as a plan file, run
   `python scripts/validate_plan.py --plan <file>`, then

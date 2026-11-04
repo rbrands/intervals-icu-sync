@@ -477,8 +477,6 @@ def prepare_week_data(lookback_days: int = 7) -> str:
     if week_data.get("atl") is None and atl is not None:
         week_data["atl"] = atl
     strength_history = fetch_strength_history(today, api_key=API_KEY, athlete_id=ATHLETE_ID)
-    week_data["strength"] = build_strength_week_summary(strength_history, today, week_data)
-    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
 
     def _copy_target_fields(entry: dict, target: dict) -> None:
         load_target = target.get("load_target")
@@ -522,6 +520,15 @@ def prepare_week_data(lookback_days: int = 7) -> str:
             ride_plan.append(entry)
         if ride_plan:
             week_data["training_plan"] = ride_plan
+
+    # Keep the established key order: strength, training_readiness, training_plan.
+    ride_plan_summary = week_data.pop("training_plan", None)
+    week_data["strength"] = build_strength_week_summary(
+        strength_history, today, week_data, training_plan=ride_plan_summary,
+    )
+    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
+    if ride_plan_summary:
+        week_data["training_plan"] = ride_plan_summary
 
     activities = activities_data if isinstance(activities_data, list) else (activities_data or {}).get("activities")
     activities = _filter_activities_by_lookback(

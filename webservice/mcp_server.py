@@ -1325,13 +1325,15 @@ def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) 
                 week_data["ctl"] = ctl
             if week_data.get("atl") is None and atl is not None:
                 week_data["atl"] = atl
+            ride_plan = _extract_ride_plan_summary(plan_data, monday)
             strength_history = fetch_strength_history(
                 today, api_key=api_key, athlete_id=athlete_id,
             )
-            week_data["strength"] = build_strength_week_summary(strength_history, today, week_data)
+            week_data["strength"] = build_strength_week_summary(
+                strength_history, today, week_data, training_plan=ride_plan,
+            )
             week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
 
-            ride_plan = _extract_ride_plan_summary(plan_data, monday)
             if ride_plan:
                 week_data["training_plan"] = ride_plan
 

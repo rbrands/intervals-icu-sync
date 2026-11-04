@@ -697,6 +697,12 @@ public class StrengthSummaryDto
     [JsonPropertyName("phase_target_sessions")]
     public JsonElement? PhaseTargetSessions { get; set; }
 
+    [JsonPropertyName("phase_min_sessions")]
+    public int? PhaseMinSessions { get; set; }
+
+    [JsonPropertyName("phase_max_sessions")]
+    public int? PhaseMaxSessions { get; set; }
+
     [JsonPropertyName("phase_overdue")]
     public bool PhaseOverdue { get; set; }
 
@@ -723,6 +729,24 @@ public class StrengthSummaryDto
 
     [JsonPropertyName("tagging_reminder_needed")]
     public bool TaggingReminderNeeded { get; set; }
+
+    [JsonPropertyName("phase_current_week")]
+    public JsonElement? PhaseCurrentWeek { get; set; }
+
+    [JsonPropertyName("phase_next_week")]
+    public JsonElement? PhaseNextWeek { get; set; }
+
+    [JsonPropertyName("recommended_sessions_current_week")]
+    public JsonElement? RecommendedSessionsCurrentWeek { get; set; }
+
+    [JsonPropertyName("recommended_sessions_next_week")]
+    public JsonElement? RecommendedSessionsNextWeek { get; set; }
+
+    [JsonPropertyName("phase_reason_current_week")]
+    public JsonElement? PhaseReasonCurrentWeek { get; set; }
+
+    [JsonPropertyName("phase_reason_next_week")]
+    public JsonElement? PhaseReasonNextWeek { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

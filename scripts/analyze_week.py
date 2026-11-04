@@ -212,23 +212,34 @@ def _activity_zone_times(activity: dict) -> list:
     ]
 
 
+def _activity_date(activity: dict) -> date | None:
+    """Parse the local start date of an activity; None when unavailable."""
+    start = (activity.get("start_date_local") or "")[:10]
+    try:
+        return date.fromisoformat(start)
+    except ValueError:
+        return None
+
+
+def filter_lookback_activities(activities: list) -> list:
+    """Qualifying activities from the whole export window, for recency fields."""
+    return [
+        a
+        for a in activities
+        if a.get("type") in _SUPPORTED_ACTIVITY_TYPES
+        and a.get("source") != "STRAVA"
+        and _passes_load_filter(a)
+        and _activity_date(a) is not None
+    ]
+
+
 def filter_activities(activities: list) -> list:
     monday, sunday = _current_week_range()
-    result = []
-    for a in activities:
-        if (
-            a.get("type") in _SUPPORTED_ACTIVITY_TYPES
-            and a.get("source") != "STRAVA"
-            and _passes_load_filter(a)
-        ):
-            start = (a.get("start_date_local") or "")[:10]
-            try:
-                activity_date = date.fromisoformat(start)
-            except ValueError:
-                continue
-            if monday <= activity_date <= sunday:
-                result.append(a)
-    return result
+    return [
+        a
+        for a in filter_lookback_activities(activities)
+        if monday <= _activity_date(a) <= sunday
+    ]
 
 
 def _z5_plus_pct(activity: dict) -> float:
@@ -526,8 +537,49 @@ def compute_days_since_last_hard_session(
     return None
 
 
-def compute_metrics(activities: list, current_ctl: float | None = None) -> dict:
-    """Build Ride+Run combined totals and separate per-sport weekly metrics."""
+def compute_recency_fields(
+    activities: list,
+    as_of: date,
+    current_ctl: float | None = None,
+) -> dict:
+    """Day-based recency fields from all exported lookback activities.
+
+    Unlike the weekly totals, these are not limited to the current ISO week:
+    a hard session late last week must stay visible early this week.
+    """
+    ride_activities = [
+        activity for activity in activities
+        if activity.get("type") in _RIDE_ACTIVITY_TYPES
+    ]
+    return {
+        "days_since_last_hiit": compute_days_since_last_distribution(
+            ride_activities, ["HIIT"], as_of
+        ),
+        "days_since_last_polarized": compute_days_since_last_distribution(
+            ride_activities, ["HIIT", "Polarized"], as_of
+        ),
+        "days_since_last_hard_session": compute_days_since_last_hard_session(
+            [
+                activity for activity in activities
+                if activity.get("type") in _HARD_SESSION_ACTIVITY_TYPES
+            ],
+            as_of,
+            current_ctl,
+        ),
+    }
+
+
+def compute_metrics(
+    activities: list,
+    current_ctl: float | None = None,
+    recency_activities: list | None = None,
+) -> dict:
+    """Build Ride+Run combined totals and separate per-sport weekly metrics.
+
+    ``recency_activities`` widens the pool for the day-based recency fields
+    to the whole lookback window; the weekly totals always come from
+    ``activities`` (the current ISO week). Defaults to ``activities``.
+    """
     ride_run_activities = [
         activity for activity in activities
         if activity.get("type") in _RIDE_RUN_ACTIVITY_TYPES
@@ -600,13 +652,8 @@ def compute_metrics(activities: list, current_ctl: float | None = None) -> dict:
         "avg_decoupling": avg_decoupling,
         "avg_decoupling_label": avg_decoupling_label,
         "high_decoupling_rides": high_decoupling,
-        "days_since_last_hiit": compute_days_since_last_distribution(ride_activities, ["HIIT"], date.today()),
-        "days_since_last_polarized": compute_days_since_last_distribution(ride_activities, ["HIIT", "Polarized"], date.today()),
-        "days_since_last_hard_session": compute_days_since_last_hard_session(
-            [
-                activity for activity in activities
-                if activity.get("type") in _HARD_SESSION_ACTIVITY_TYPES
-            ],
+        **compute_recency_fields(
+            recency_activities if recency_activities is not None else activities,
             date.today(),
             current_ctl,
         ),
@@ -827,6 +874,7 @@ def main() -> None:
     monday, sunday = _current_week_range()
     print(f"Calendar week: {monday.isoformat()} – {sunday.isoformat()}")
     activities = load_data()
+    lookback_activities = filter_lookback_activities(activities)
     week_activities = filter_activities(activities)
     ride_run_activities = [
         activity for activity in week_activities
@@ -842,6 +890,11 @@ def main() -> None:
     if not week_activities:
         print("No qualifying rides found.")
         form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
+        form.update(
+            compute_recency_fields(
+                lookback_activities, date.today(), athlete_metrics.get("ctl")
+            )
+        )
         if aerobic_threshold:
             form["aerobic_threshold_estimate"] = aerobic_threshold
         if training_plan:
@@ -850,7 +903,11 @@ def main() -> None:
             save_json(form, None, monday)
         sys.exit(0)
     fueling_data = load_fueling(monday) if ride_run_activities else {}
-    metrics = compute_metrics(week_activities, athlete_metrics.get("ctl"))
+    metrics = compute_metrics(
+        week_activities,
+        athlete_metrics.get("ctl"),
+        recency_activities=lookback_activities,
+    )
     if aerobic_threshold:
         metrics["aerobic_threshold_estimate"] = aerobic_threshold
     form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
