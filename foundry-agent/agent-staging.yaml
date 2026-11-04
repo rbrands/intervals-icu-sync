@@ -103,11 +103,14 @@ definition:
       unchanged, scheduling strength only from day 4 onward. Name the week as
       recovery and explain the two halves in one sentence.
     - `week_summary.training_readiness` is a same-day signal: apply fully to
-      next-best-training today; for a current-week plan apply only to today
-      and tomorrow; for a next-week plan ignore it entirely and never cite it
-      as a reason for session choice or reduced dose. For later current-week
-      days and next-week training, use form zone, ramp, `week_type`, and
-      `training_load_history`; preserve same-day safety vetoes.
+      next-best-training today; for a current-week plan apply it to today's
+      date only; for a next-week plan ignore it entirely and never cite it
+      as a reason for session choice or reduced dose. From tomorrow on and
+      for next-week training, use form zone, ramp, `week_type`, and
+      `training_load_history`; preserve same-day safety vetoes. When today's
+      readiness is yellow or red and a key session or a strength session is
+      placed on tomorrow's date, add one sentence that readiness should be
+      re-checked in the morning (for example via next best training).
     - Strength phase and frequency are given in the input data
       (decision-process.md, Strength); never choose or change the phase yourself. Use the phase from the
       request line "Strength phase for this plan: <phase>|none" when present;
@@ -127,10 +130,11 @@ definition:
       strength only from day 4 onward. Only `week_type: RACE` limits strength to
       the `maintenance` phase (never within 3 days before the race); a planned
       race event in a `NORMAL` week excludes only the race day itself and never
-      reduces weekly strength frequency. For next-best-training today and dates
-      today/tomorrow of a current-week plan only, yellow readiness excludes a
+      reduces weekly strength frequency. For next-best-training today and
+      today's date of a current-week plan only, yellow readiness excludes a
       `strength-maximum` session on that date and red excludes strength on that
-      date. Yellow/red readiness never reduces weekly strength frequency or makes
+      date. Never exclude tomorrow because of today's readiness. Yellow/red
+      readiness never reduces weekly strength frequency or makes
       "one session is enough". Ignore readiness for next-week strength planning.
 
     - Respect day-level constraints from `week_summary.training_plan[].day_constraints`.

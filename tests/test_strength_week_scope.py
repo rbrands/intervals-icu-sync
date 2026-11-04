@@ -75,6 +75,10 @@ class StrengthReadinessPromptTests(unittest.TestCase):
                     text,
                 )
                 self.assertNotIn("reduced to one for RECOVERY", text)
+                # Current-week readiness applies to today's date only.
+                self.assertNotIn("today and tomorrow", text)
+                self.assertNotIn("today/tomorrow", text)
+                self.assertIn("Never exclude tomorrow because of today's readiness.", text)
 
     def test_race_event_in_normal_week_does_not_disable_strength(self):
         """Only week_type RACE limits strength; a planned race event alone

@@ -54,8 +54,11 @@ Resolve conflicts in this order:
 - Readiness (`week_summary.training_readiness`) is a same-day signal, not a
   multi-day forecast. Scope it by planning mode:
   - **Next best training:** apply it fully to today's session.
-  - **Current-week plan:** apply it only to today and tomorrow. For later days,
+  - **Current-week plan:** apply it to today's date only. From tomorrow on,
     use form zone, CTL/ATL trend, `week_type`, and `training_load_history`.
+    When today's readiness is yellow or red and a key session or a strength
+    session is placed on tomorrow's date, add one sentence that readiness
+    should be re-checked in the morning (for example via next best training).
   - **Next-week plan:** ignore readiness entirely and never cite today's
     readiness as a reason to choose or reduce a session.
 - Within its applicable window, green permits the planned hard session when
@@ -186,9 +189,10 @@ race classification from those tags.
   one-session pattern, or when the placement rules leave no further valid
   day in the target week. State the reason in one sentence. Counters count
   sessions, not weeks.
-- Only for next-best-training today and dates today/tomorrow in a current-week
-  plan, yellow readiness excludes a `strength-maximum` session on that date
-  and red excludes strength on that date. This same-day limit does not reduce
+- Only for next-best-training today and today's date in a current-week plan,
+  yellow readiness excludes a `strength-maximum` session on that date
+  and red excludes strength on that date. Never exclude tomorrow because of
+  today's readiness. This same-day limit does not reduce
   weekly frequency. Yellow/red readiness never reduces weekly strength
   frequency or makes "one session is enough". Never swap the phase tag to
   work around it. For next-week plans, ignore readiness entirely.
