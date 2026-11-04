@@ -63,9 +63,8 @@ def _compute_duration_minutes_from_steps(steps: list[dict]) -> float | int:
 
 
 def _workout_steps(workout: dict) -> list[dict]:
-    steps = workout.get("steps")
-    if not steps and isinstance(workout.get("workout"), dict):
-        steps = workout["workout"].get("steps")
+    document = workout.get("workout")
+    steps = document.get("steps") if isinstance(document, dict) else workout.get("steps")
     return steps if isinstance(steps, list) else []
 
 
