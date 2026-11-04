@@ -46,6 +46,11 @@ class DeployAgentTests(unittest.TestCase):
 
     def test_staging_config_inherits_agent_and_uses_isolated_resources(self):
         production = deploy_agent._load_agent_definition()
+        staging_source = yaml.safe_load(
+            (_REPO_ROOT / "foundry-agent" / "agent-staging.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
         staging = deploy_agent._load_agent_definition(
             _REPO_ROOT / "foundry-agent" / "agent-staging.yaml"
         )
@@ -54,12 +59,13 @@ class DeployAgentTests(unittest.TestCase):
         self.assertEqual(staging["name"], "training-architect-agent-staging")
         self.assertEqual(staging["definition"]["model"], "gpt-6-luna")
         self.assertEqual(staging["definition"]["tools"], production["definition"]["tools"])
-        self.assertNotEqual(
+        self.assertNotIn("instructions", staging_source["definition"])
+        self.assertEqual(
             staging["definition"]["instructions"],
             production["definition"]["instructions"],
         )
         self.assertIn("strength-maximum", staging["definition"]["instructions"])
-        self.assertNotIn("strength-maximum", production["definition"]["instructions"])
+        self.assertIn("strength-maximum", production["definition"]["instructions"])
         self.assertEqual(
             staging["definition"]["structured_inputs"],
             production["definition"]["structured_inputs"],

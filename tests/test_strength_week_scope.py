@@ -54,31 +54,33 @@ class StrengthReadinessPromptTests(unittest.TestCase):
             "coach-logic/decision-process.md",
             "prompts/system_prompt.md",
             "foundry-agent/agent.yaml",
-            "foundry-agent/agent-staging.yaml",
         ):
             with self.subTest(path=relative_path):
                 text = " ".join((REPO_ROOT / relative_path).read_text(encoding="utf-8").split())
-                self.assertIn(
-                    "Yellow/red readiness never reduces weekly strength frequency "
-                    'or makes "one session is enough".',
-                    text,
-                )
-                # Production agent.yaml must not mention the staging-only phase tag.
-                maximum = (
-                    "maximum-phase session"
-                    if relative_path == "foundry-agent/agent.yaml"
-                    else "`strength-maximum` session"
-                )
-                self.assertIn(
-                    f"yellow readiness excludes a {maximum} on that date "
-                    "and red excludes strength on that date.",
-                    text,
-                )
+                if relative_path == "foundry-agent/agent.yaml":
+                    self.assertIn("readiness never reduces weekly strength frequency", text)
+                    self.assertIn(
+                        "Same-day readiness: yellow → no `strength-maximum` today, "
+                        "red → no strength today",
+                        text,
+                    )
+                else:
+                    self.assertIn(
+                        "Yellow/red readiness never reduces weekly strength frequency "
+                        'or makes "one session is enough".',
+                        text,
+                    )
+                    self.assertIn(
+                        "yellow readiness excludes a `strength-maximum` session on that date "
+                        "and red excludes strength on that date.",
+                        text,
+                    )
                 self.assertNotIn("reduced to one for RECOVERY", text)
                 # Current-week readiness applies to today's date only.
                 self.assertNotIn("today and tomorrow", text)
                 self.assertNotIn("today/tomorrow", text)
-                self.assertIn("Never exclude tomorrow because of today's readiness.", text)
+                if relative_path != "foundry-agent/agent.yaml":
+                    self.assertIn("Never exclude tomorrow because of today's readiness.", text)
 
     def test_race_event_in_normal_week_does_not_disable_strength(self):
         """Only week_type RACE limits strength; a planned race event alone
@@ -87,12 +89,17 @@ class StrengthReadinessPromptTests(unittest.TestCase):
             "coach-logic/decision-process.md",
             "prompts/system_prompt.md",
             "foundry-agent/agent.yaml",
-            "foundry-agent/agent-staging.yaml",
         ):
             with self.subTest(path=relative_path):
                 text = " ".join((REPO_ROOT / relative_path).read_text(encoding="utf-8").split())
                 self.assertIn("`week_type: RACE`", text)
-                self.assertIn("excludes only the race day itself", text)
+                if relative_path == "foundry-agent/agent.yaml":
+                    self.assertIn(
+                        "a race event in a NORMAL week only blocks the race day",
+                        text,
+                    )
+                else:
+                    self.assertIn("excludes only the race day itself", text)
                 self.assertIn("never reduces weekly strength frequency", text)
                 self.assertNotIn("RACE week: plan strength", text)
 

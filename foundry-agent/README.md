@@ -291,10 +291,12 @@ The GitHub Actions workflow deploys both `agent.yaml` and `agent-staging.yaml`.
 Staging inherits the production definition and overrides its agent name plus
 its vector store, skill, and toolbox names. Any nested agent field can be
 overridden in `agent-staging.yaml` for experiments without changing production.
-Staging currently overrides `definition.instructions` with the experimental
-strength-planning rules; production retains its previous instructions.
-Knowledge files and discipline prompts remain shared deployment sources, so
-deploy staging explicitly when testing these changes without updating production.
+Instructions are defined only in `agent.yaml`; staging inherits them during
+deployment unless it explicitly defines its own `definition.instructions`.
+Update `agent.yaml` to promote staging-tested instructions to production.
+Pull requests deploy that shared definition to staging only, while pushes to
+`main` deploy it to both production and staging. Knowledge files and discipline
+prompts remain shared deployment sources.
 Production and staging use the `gpt-6-luna` model deployment. Staging keeps
 separate vector store, skill, and toolbox resources for isolated testing.
 When invoking staging, set `AGENT_NAME=training-architect-agent-staging`; the
