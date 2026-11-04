@@ -905,8 +905,11 @@ def validate_week_plan(plan_json: str = "", max_errors: int = 10, athlete_data: 
                 if data is not None and not isinstance(data, dict):
                     raise ValueError("athlete_data must be a JSON object")
                 plan = json.loads(plan_path.read_text(encoding="utf-8"))
-                semantic_errors = validate_plan_semantics(plan, data)
-                hours = planned_hours(_normalize_plan(plan))
+                from check_plan_tss import normalize_workout_load
+                workouts = [normalize_workout_load(workout) for workout in _normalize_plan(plan)]
+                normalized_plan = workouts if isinstance(plan, list) else {**plan, "workouts": workouts}
+                semantic_errors = validate_plan_semantics(normalized_plan, data)
+                hours = planned_hours(workouts)
             except (ValueError, TypeError) as exc:
                 return json.dumps({"error": str(exc)}, ensure_ascii=False)
             if semantic_errors:
