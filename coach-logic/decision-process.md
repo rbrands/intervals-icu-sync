@@ -34,10 +34,12 @@ Resolve conflicts in this order:
 4. **Determine weekly requirements** — from goal/discipline emphasis and
    the primary limiter, decide which key sessions are still missing.
    Schedule only those.
+   Determine strength requirements alongside ride key sessions per "Strength" below.
 5. **Combine limiter + fatigue → stimulus**
    - fresh + clear limiter → add stimulus in the limiter domain
    - optimal fatigue + limiter → continue structured progression
-   - high fatigue → reduce intensity, prioritize recovery, keep frequency if possible
+   - persistent high fatigue from form / CTL-ATL / history → reduce intensity,
+     prioritize recovery, keep frequency if possible
 6. **Apply phase** (if no phase is provided, apply Base)
    - Base → volume, limit high intensity
    - Build → VO2max + threshold, moderate–high intensity
@@ -49,13 +51,46 @@ Resolve conflicts in this order:
 ## Session Decision Rules
 
 ### Training readiness
-- Green permits the planned hard session when subjective readiness is also good;
-   it does not by itself justify adding another hard session.
-- Yellow requires checking subjective recovery and reducing, moving, or replacing
-   intensity when concerns remain.
-- Red excludes hard training; prioritize recovery or an easy session.
-- Unknown requires a manual assessment before prescribing intensity.
-- Low-confidence readiness must never be presented as a definitive clearance.
+- Readiness (`week_summary.training_readiness`) is a same-day signal, not a
+  multi-day forecast. Scope it by planning mode:
+  - **Next best training:** apply it fully to today's session.
+  - **Current-week plan:** apply it to today's date only. From tomorrow on,
+    use form zone, CTL/ATL trend, `week_type`, and `training_load_history`.
+    When today's readiness is yellow or red and a key session or a strength
+    session is placed on tomorrow's date, add one sentence that readiness
+    should be re-checked in the morning (for example via next best training).
+  - **Next-week plan:** ignore readiness entirely and never cite today's
+    readiness as a reason to choose or reduce a session.
+- Within its applicable window, green permits the planned hard session when
+  subjective readiness is also good; it does not justify adding another hard
+  session. Yellow requires checking subjective recovery and may modify a
+  session on a date within the applicable window. Red excludes hard training
+  on that date; prioritize recovery or an easy session. Preserve applicable
+  same-day safety vetoes.
+- Unknown readiness requires manual assessment before prescribing intensity.
+  Low-confidence readiness is never definitive clearance. Neither unknown nor
+  low confidence should extend readiness influence beyond its planning window.
+
+### Recovery week structure
+When `week_type` is `RECOVERY`, use this two-part structure, based on
+[Joe Friel's recovery-week design](https://joefrieltraining.com/recovery-week-design/):
+
+- **Days 1–3 (Monday–Wednesday):** Schedule at most two short, low-intensity
+  sessions (Z1, `recovery-low`, or `aerobic-threshold-low`) and at least one
+  full rest day. Scale "short" to the athlete's weekly volume; at 6 hours per
+  week, use about 20–30 minutes. No key sessions.
+- **Days 4–6 (Thursday–Saturday):** Schedule two or three short, moderate- to
+  high-intensity sessions at or slightly above race intensity, such as short
+  intervals, speed skills, or a field test. For athletes 50+, place the
+  weekly VO2max session here at low dose (`vo2max-low`). If a benchmark test
+  is due per the discipline block (for example FTP or a 5-minute test every
+  8–12 weeks), schedule it here instead of an interval session.
+- **Day 7:** Rest or a short easy spin before the next load block.
+- Use the reduced `weekly_load_target` from intervals.icu as the weekly TSS
+  reference; never add volume to reach it. Strength frequency and phase stay
+  unchanged, but strength sessions are scheduled only from day 4 onward.
+- Name the week as a recovery week in the plan text and explain the two halves
+  in one sentence.
 
 ### VO2max (CRITICAL — age rule)
 - Athletes 50+: exactly 1 VO2max session per week, in ALL phases, unless
@@ -65,10 +100,16 @@ Resolve conflicts in this order:
   - form_pct < -20%        → vo2max-low      (30/15, 6–8×1 min)
   - -20% ≤ form_pct ≤ -10% → vo2max-moderate (5×2 min)
   - form_pct > -10%        → vo2max-high     (4×4, 5×3 min)
+- A next-week plan follows form zone, ramp, `week_type`, and
+  `training_load_history`; never reduce VO2max dose because of today's
+  `training_readiness`.
 
 ### Threshold
 When FTP is the limiter, in Build phase, or when fatigue allows sustained
 efforts. Typical: 2×12, 3×8, over/unders.
+For next-week plans, use form zone, ramp, `week_type`, and
+`training_load_history`; never reduce threshold dose because of today's
+`training_readiness`.
 
 ### Long ride
 When durability is the limiter or weekly structure needs it. ≥ 2–4 h,
@@ -108,6 +149,122 @@ race classification from those tags.
    block, e.g. a Zwift race recognised from the activity name or load) is
    treated as `RACE_C` after the fact: it has already consumed the week's
    comparable hard session. Remove that session from the remaining week.
+
+---
+
+## Strength
+
+### Phase source (deterministic)
+
+1. The phase is given in the input data, not chosen by the coach. Use the
+   phase
+   given in the request line `Strength phase for this plan: <phase>|none`
+   when present. Otherwise use `week_summary.strength.phase_current_week`
+   for next-best-training and current-week plans, and
+   `week_summary.strength.phase_next_week` for next-week plans. Never emit a
+   different `strength-<phase>` tag.
+2. `none` in the request line means: plan no strength sessions and do not
+   mention strength in the plan.
+3. Strength planning is on by default, also without strength history (the
+   fields then start with `adaptation`). It is off only with `none` or an
+   explicit athlete statement in chat to skip strength for the requested
+   period. A chat statement cannot select another phase.
+4. Phase advancement (at the phase minimum), the 21-day gap reset, and the
+   Build/Peak guard are already applied in the supplied fields. Explain the
+   phase with
+   `phase_reason_current_week` / `phase_reason_next_week` (`continue`,
+   `advance_min_reached`, `no_history`, `gap_reset`, `build_guard`,
+   `beginner_build`) instead of re-deriving it. In analysis with
+   `current_phase: null`, describe adaptation as a working assumption, not a
+   finding; use the supplied summary, not a reconstructed raw history.
+
+### Frequency
+
+- `recommended_sessions_current_week` / `recommended_sessions_next_week` is
+  the default number of strength sessions for the target week (2 in
+  adaptation, transition, maximum; 1 in maintenance and `beginner_build`).
+  Never plan more than recommended.
+- Plan fewer only when form zone is `high_risk` (or TSB is clearly negative at
+  plan start), when `sessions_per_week_last_4` shows a consistent
+  one-session pattern, or when the placement rules leave no further valid
+  day in the target week. State the reason in one sentence. Counters count
+  sessions, not weeks.
+- Only for next-best-training today and today's date in a current-week plan,
+  yellow readiness excludes a `strength-maximum` session on that date
+  and red excludes strength on that date. Never exclude tomorrow because of
+  today's readiness. This same-day limit does not reduce
+  weekly frequency. Yellow/red readiness never reduces weekly strength
+  frequency or makes "one session is enough". Never swap the phase tag to
+  work around it. For next-week plans, ignore readiness entirely.
+- RECOVERY weeks reduce endurance load only. Keep the recommended strength
+  count and phase tag. Do not schedule strength in the first three days of a
+  RECOVERY week; schedule it only from day 4 onward.
+- RACE week (`week_type: RACE` for the target week): plan strength only when
+  the phase is `maintenance`, not within 3 days before the race. A planned
+  race event alone (for example a weekly Zwift club race) does not make a
+  `NORMAL` week a RACE week; it excludes only the race day itself via the
+  placement rules and never reduces weekly strength frequency.
+- Assess unknown or low-confidence readiness only for decisions within its
+  applicable planning-mode window.
+- Count completed and anchored planned strength sessions toward the
+  recommended count; do not duplicate them. Use `sessions_this_week` for the
+  current week and `sessions_per_week_last_4` as context, not as missed
+  sessions to make up.
+
+### Placement
+
+- At most one ride and at most one WeightTraining entry per calendar day.
+  Never two rides; one ride plus one strength session is allowed.
+- Place each strength session on the first feasible slot in this ranked order:
+  1. A day with no ride (rest day).
+  2. A day with an easy aerobic or recovery ride, after the ride.
+  3. A day with a threshold session, after the ride.
+- Never place strength on a long-ride day, VO2max day, or race day. Never
+  schedule strength on consecutive days; leave at least two calendar days
+  between strength sessions.
+- An athlete's explicit preference naming strength days overrides the ranked
+  order, but not the no-long-ride/VO2max/race-day exclusions, spacing rules,
+  safety constraints, or calendar availability.
+- Name the chosen strength days and the reason in one sentence. Ensure the
+  plan-text daily list is generated from the final upload JSON so the dates
+  and strength entries match exactly.
+- Maximum counts as hard for the "never two hard days in a row" rule;
+  adaptation, transition, and maintenance do not. Preserve full rest days,
+  race protection, and `training_allowed: false` constraints.
+
+### Load and time accounting
+
+- Strength load is visible in `week_summary.strength` but is informational
+  only, whether HR- or RPE-derived. Phase and frequency come from tags and dates.
+- Weekly TSS and hours guardrails compare rides only: Ride, VirtualRide,
+  MountainBikeRide, GravelRide; absent or null `activity_type` counts as Ride.
+  Use completed `ride_load` and `ride_time_hours`, never Ride+Run combined
+  totals. Strength and running never fill the weekly Ride target.
+- `weekly_time_target_hours` is a Ride-only upper budget. On LIMITED days,
+  `max_training_time_hours` caps the sum of ALL entries on that date,
+  including WeightTraining; no entry on unavailable days.
+- Emit strength entries using "Strength (off-bike)" in workout-library.md:
+  exactly one phase tag, phase-table duration, fixed description, no steps
+  or library ID, and numeric informational `tss`.
+
+### Untagged sessions
+
+- `week_summary.strength.tagging_reminder_needed` (true when the current or
+  previous ISO week has completed strength sessions with phase source `none` or `inferred`
+  and no planned WeightTraining event existed in that same week) is surfaced by
+  the data quality check (`check_athlete_data`, area `strength_untagged`), which
+  lists the affected exported activities. For unresolved sessions it suggests
+  a tag; for inferred sessions it reports the counted phase and asks for a tag
+  only if that phase was different. The coach does not read it
+  for coaching and never mentions tagging in plans or analyses.
+- Same-date planned tags take precedence over the nearest same-ISO-week
+  planned tags; both resolve the phase. Do not infer tagging gaps from the
+  16-week untagged count or phase age.
+- For analysis requests with `current_phase` null and
+  `week_summary.strength_sessions > 0`, name adaptation as a working assumption,
+  not a finding, inside the Strength bullet. Do not add a tagging sentence or
+  a separate warning.
+- Never mention missing RPE.
 
 ---
 
@@ -156,10 +313,11 @@ Session fueling strategy (write into the workout description):
   recovery, and performance signals take precedence.
 - Never compensate for missed historical load by adding it to the current or
   next week.
-- The weekly time target (hours) is an upper bound: completed plus planned
-  workout durations in that week must not exceed it.
+- The weekly time target (hours) is a Ride-only upper bound: completed plus
+  planned ride durations in that week must not exceed it. LIMITED-day caps
+  sum ALL sessions on the date, including strength and running.
 - The weekly load target (TSS) is the planning reference: completed plus
-  planned load in that week should be within ±10% of it (matching the
+  planned Ride load in that week should be within ±10% of it (matching the
   `check_plan_tss` default tolerance). Go further below
   only when safety rules (readiness, fatigue) or repeated historical
   over-/under-achievement together with current readiness justify a safer
@@ -179,7 +337,7 @@ Decide per workout how it will most likely be ridden. This drives the
    - ≥ 2 rides and the majority are `Ride` or other outdoor ride types
      → outdoor default
    - fewer than 2 rides → outdoor default
-3. The default applies to every planned workout, including long rides and
+3. The default applies to every planned ride, including long rides and
    recovery rides; there are no per-type exceptions.
 
 Set `activity_type` accordingly: `VirtualRide` for indoor; omit the field
@@ -193,6 +351,7 @@ athlete can correct it. Do not ask.
 
 - `activity_type: VirtualRide` → detailed steps (warmup, intervals,
   recovery, cooldown)
+- WeightTraining → no steps; use the Strength (off-bike) description template.
 - outdoor (`Ride`) → simplified, max 3–5 steps (warmup, main, optional key
   effort, cooldown); embedded sprints go into the description, not into steps
 - Event → exactly one key effort; may replace a structured session

@@ -9,6 +9,15 @@ on:
       - 'foundry-agent/**'
       - 'coach-logic/**'
       - 'prompts/discipline_*.md'
+      - '.github/workflows/deploy-agent.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'foundry-agent/**'
+      - 'coach-logic/**'
+      - 'prompts/discipline_*.md'
+      - '.github/workflows/deploy-agent.yml'
 
 permissions:
   id-token: write   # required for OIDC
@@ -21,6 +30,7 @@ concurrency:
 jobs:
   deploy-agent:
     name: Deploy Foundry prompt agent
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
 
     steps:
@@ -43,6 +53,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy production agent
+        if: github.event_name != 'pull_request'
         env:
           FOUNDRY_PROJECT_ENDPOINT: ${{ secrets.FOUNDRY_PROJECT_ENDPOINT }}
         run: python foundry-agent/deploy_agent.py --config foundry-agent/agent.yaml

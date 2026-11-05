@@ -55,6 +55,15 @@ public class ActivityDto
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
+    [JsonPropertyName("strength_phase")]
+    public JsonElement? StrengthPhase { get; set; }
+
+    [JsonPropertyName("strength_phase_source")]
+    public JsonElement? StrengthPhaseSource { get; set; }
+
+    [JsonPropertyName("strength_tagging_reminder_needed")]
+    public bool? StrengthTaggingReminderNeeded { get; set; }
+
     [JsonPropertyName("duration_hours")]
     public double? DurationHours { get; set; }
 
@@ -674,6 +683,75 @@ public class RaceEventDto
     public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
+public class StrengthSummaryDto
+{
+    [JsonPropertyName("current_phase")]
+    public JsonElement? CurrentPhase { get; set; }
+
+    [JsonPropertyName("phase_started")]
+    public string? PhaseStarted { get; set; }
+
+    [JsonPropertyName("phase_session_count")]
+    public int PhaseSessionCount { get; set; }
+
+    [JsonPropertyName("phase_target_sessions")]
+    public JsonElement? PhaseTargetSessions { get; set; }
+
+    [JsonPropertyName("phase_min_sessions")]
+    public int? PhaseMinSessions { get; set; }
+
+    [JsonPropertyName("phase_max_sessions")]
+    public int? PhaseMaxSessions { get; set; }
+
+    [JsonPropertyName("phase_overdue")]
+    public bool PhaseOverdue { get; set; }
+
+    [JsonPropertyName("sessions_this_week")]
+    public int SessionsThisWeek { get; set; }
+
+    [JsonPropertyName("days_since_last_strength")]
+    public int? DaysSinceLastStrength { get; set; }
+
+    [JsonPropertyName("last_session_tags")]
+    public List<string> LastSessionTags { get; set; }
+
+    [JsonPropertyName("weekly_strength_load")]
+    public double WeeklyStrengthLoad { get; set; }
+
+    [JsonPropertyName("sessions_per_week_last_4")]
+    public List<int> SessionsPerWeekLast4 { get; set; }
+
+    [JsonPropertyName("untagged_sessions_last_16_weeks")]
+    public int UntaggedSessionsLast16Weeks { get; set; }
+
+    [JsonPropertyName("inferred_sessions_last_16_weeks")]
+    public int InferredSessionsLast16Weeks { get; set; }
+
+    [JsonPropertyName("tagging_reminder_needed")]
+    public bool TaggingReminderNeeded { get; set; }
+
+    [JsonPropertyName("phase_current_week")]
+    public JsonElement? PhaseCurrentWeek { get; set; }
+
+    [JsonPropertyName("phase_next_week")]
+    public JsonElement? PhaseNextWeek { get; set; }
+
+    [JsonPropertyName("recommended_sessions_current_week")]
+    public JsonElement? RecommendedSessionsCurrentWeek { get; set; }
+
+    [JsonPropertyName("recommended_sessions_next_week")]
+    public JsonElement? RecommendedSessionsNextWeek { get; set; }
+
+    [JsonPropertyName("phase_reason_current_week")]
+    public JsonElement? PhaseReasonCurrentWeek { get; set; }
+
+    [JsonPropertyName("phase_reason_next_week")]
+    public JsonElement? PhaseReasonNextWeek { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
 public class TrainingLoadHistoryEntryDto
 {
     [JsonPropertyName("week_starting")]
@@ -784,6 +862,15 @@ public class Vo2MaxClassificationDto
     [JsonPropertyName("ml_per_kg_min")]
     public double? MlPerKgMin { get; set; }
 
+    [JsonPropertyName("p5min_pct_ftp")]
+    public double? P5minPctFtp { get; set; }
+
+    [JsonPropertyName("estimate_representative")]
+    public JsonElement? EstimateRepresentative { get; set; }
+
+    [JsonPropertyName("power_profile_period_days")]
+    public int? PowerProfilePeriodDays { get; set; }
+
     [JsonPropertyName("age_group")]
     public string? AgeGroup { get; set; }
 
@@ -847,6 +934,33 @@ public class WeekSummaryDto
     [JsonPropertyName("longest_activity_hours")]
     public double? LongestActivityHours { get; set; }
 
+    [JsonPropertyName("ride_load")]
+    public double? RideLoad { get; set; }
+
+    [JsonPropertyName("run_load")]
+    public double? RunLoad { get; set; }
+
+    [JsonPropertyName("strength_load")]
+    public double? StrengthLoad { get; set; }
+
+    [JsonPropertyName("ride_sessions")]
+    public int? RideSessions { get; set; }
+
+    [JsonPropertyName("run_sessions")]
+    public int? RunSessions { get; set; }
+
+    [JsonPropertyName("strength_sessions")]
+    public int? StrengthSessions { get; set; }
+
+    [JsonPropertyName("ride_time_hours")]
+    public double? RideTimeHours { get; set; }
+
+    [JsonPropertyName("run_time_hours")]
+    public double? RunTimeHours { get; set; }
+
+    [JsonPropertyName("strength_time_hours")]
+    public double? StrengthTimeHours { get; set; }
+
     [JsonPropertyName("vo2_sessions")]
     public int? Vo2Sessions { get; set; }
 
@@ -891,6 +1005,9 @@ public class WeekSummaryDto
 
     [JsonPropertyName("training_readiness")]
     public TrainingReadinessDto? TrainingReadiness { get; set; }
+
+    [JsonPropertyName("strength")]
+    public StrengthSummaryDto? Strength { get; set; }
 
     [JsonPropertyName("fueling_form_analysis")]
     public FuelingFormAnalysisDto? FuelingFormAnalysis { get; set; }

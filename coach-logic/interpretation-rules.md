@@ -246,7 +246,7 @@ Diagnostic signals:
 
 Identify the single primary limiter from combined signals:
 
-- VO2max → low p5min / VO2max; little recent high-intensity work
+- VO2max → low p5min / VO2max (see *Power profile validity* below); little recent high-intensity work
 - Threshold (FTP) → declining power in sustained efforts; cannot hold FTP
 - Aerobic durability → high decoupling (>8–10%) on steady efforts; power drop in long rides; DFA a1 `delta_pct` below −15 % on fresh days as supporting evidence
 - Fueling / energy availability → low carbs/h, low fueling ratio, high decoupling with low intake
@@ -254,6 +254,38 @@ Identify the single primary limiter from combined signals:
 
 If several signals point to fueling, resolve fueling FIRST — an
 underfueled session can mimic a fitness limitation.
+
+### Power profile validity
+`metrics.power_profile` holds the best efforts of the last `period_days`
+from normal training, not test results. A value is only evidence of
+capacity when it is plausibly maximal:
+
+| duration | plausible maximal effort |
+| -------- | ------------------------ |
+| p5min    | ≥ 105 % FTP              |
+| p20min   | ≥ 90 % FTP               |
+
+- `p5min` below FTP, or clearly below `p3min`, means no maximal 5-minute
+  effort exists in the window. Do NOT cite it as evidence of a low 5-minute
+  capacity or a VO2max limiter, and never compare it to FTP as if the two
+  were comparable ("5-min power is just below FTP" is meaningless). Say
+  instead that no 5-minute benchmark is available and base the VO2max
+  limiter on recent high-intensity work and the discipline priority; a
+  5-minute test may be suggested if the discipline block schedules one.
+- `metrics.vo2max_classification` is derived from the window's best
+  `p5min` using `16.6 + 8.87 * p5min W/kg`; a sub-maximal effort understates
+  both the estimate and its category. Check `estimate_representative`:
+  `false` means below 100% FTP; `"likely_understated"` means 100% to below
+  105%; `true` means at least 105%; null means p5min or usable FTP is
+  unavailable. `p5min_pct_ftp` reports the ratio rounded to one decimal;
+  bands use the unrounded ratio. `power_profile_period_days` identifies
+  the source window.
+  When `estimate_representative` is anything other than boolean `true`
+  (including null or absent), do NOT use the VO2max value or category as
+  evidence for a VO2max limiter or a performance trend. Say once that a
+  maximal 5-minute effort is missing, without repeating the caveat for
+  the power, value, and category separately.
+- `p20min` handling is defined in the consistency check (`prompts/library/06_consistency.md`).
 
 (Limiter-based session prescription is defined in decision-process.md.)
 
@@ -266,14 +298,20 @@ and automatic distribution.
 
 Priority: tags > interval detection > automatic classification
 
-If a session has multiple canonical tags, all matching tag mappings apply.
+For rides, if a session has multiple canonical tags, all matching tag mappings apply.
 Tags do not compete. A single session can classify into multiple ride types
 and should be counted in each mapped domain.
 
 ### Tag taxonomy (canonical source)
 Format: "<domain>-<level>"
-- domains: vo2max, lactate-threshold, aerobic-threshold, recovery, race-specific
-- levels:  low, moderate, high
+- dose domains: vo2max, lactate-threshold, aerobic-threshold, recovery, race-specific
+- dose levels: low, moderate, high
+- strength domain: strength; phase levels: adaptation, transition, maximum, maintenance
+
+Strength is the only domain with a non-dose level set: the Friel phase fixes
+load (% 1RM), repetitions, and frequency together. Its canonical tags are
+`strength-adaptation`, `strength-transition`, `strength-maximum`, and
+`strength-maintenance`; never strength-low/moderate/high.
 
 These prefixes are shared with the workout library (decision-process.md)
 and with library filter tooling. Do not rename without updating all three.
@@ -286,6 +324,13 @@ and with library filter tooling. Do not rename without updating all three.
     - else            → endurance
 - recovery-*          → recovery
 - race-specific-*     → race
+- strength-*          → strength
+- WeightTraining never counts toward vo2, threshold, endurance, long_ride, or
+  recovery domains; exclude it from intensity-distribution, decoupling, and
+  fueling reasoning, even if an activity also carries a ride tag.
+- `strength_load` is informational (HR- or RPE-derived); phase and frequency
+  come from tags and dates via `week_summary.strength`. Legacy tag `strength`
+  is ignored for classification, not for counting completed strength sessions.
 
 ### Multiple tags on one session (CRITICAL)
 - Resolve each tag independently using the mapping above.

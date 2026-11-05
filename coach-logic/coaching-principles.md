@@ -87,6 +87,11 @@ The appropriate model depends on phase, limiter, and fatigue.
 Training prioritizes the athlete's primary limiter. (Detection is in
 interpretation-rules.md; the resulting action in decision-process.md.)
 
+**Muscular Force (Friel)** — power = force x velocity. Off-bike strength in
+Prep/Base develops the force component through anatomical adaptation,
+transition, and maximum strength; maintain it through Build/Peak with strength
+maintenance. This complements cycling key sessions, not a new limiter domain.
+
 ---
 
 ## Training Load (concept)
@@ -102,6 +107,8 @@ form (CTL − ATL). (Form interpretation thresholds: interpretation-rules.md.)
 
 Adaptation occurs during recovery, not during training.
 Recovery indicators: HRV, resting heart rate, subjective fatigue.
+- Recovery weeks use a two-part design: short, low-intensity sessions and rest
+  in the first half, followed by short, higher-intensity sessions in the second.
 - include regular recovery weeks
 - reduce load when fatigue is high
 - prioritize sleep and nutrition

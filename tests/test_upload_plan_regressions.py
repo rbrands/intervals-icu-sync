@@ -136,6 +136,7 @@ class UploadPlanRegressionTests(unittest.TestCase):
                     "name": "Strength",
                     "duration_minutes": 45,
                     "activity_type": "WeightTraining",
+                    "tags": ["strength-adaptation"],
                 },
                 {
                     "date": "2026-05-21",
@@ -398,6 +399,58 @@ class UploadPlanRegressionTests(unittest.TestCase):
                     self.assertEqual(payload["duration"], 74 * 60)
                     self.assertEqual(payload["workout"], {"steps": steps})
 
+    def test_upload_plan_overwrites_ride_tss_and_duration_from_steps(self):
+        steps = [
+            {"duration_seconds": 1800, "power_pct_ftp": 100},
+            {"duration_seconds": 1800, "power_pct_ftp": 50},
+        ]
+        plan = [
+            {
+                "date": "2026-05-19",
+                "name": "Generated ride",
+                "duration_minutes": 90,
+                "tss": 120,
+                "description": "Threshold work. TSS: 120. Fueling: 60 g/h.",
+                "steps": steps,
+            },
+            {
+                "date": "2026-05-20",
+                "name": "Strength",
+                "duration_minutes": 45,
+                "tss": 15,
+                "activity_type": "WeightTraining",
+                "tags": ["strength-adaptation"],
+            },
+        ]
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                module = _load_upload_plan_module()
+                events = [{
+                    "id": 123,
+                    "name": "Generated ride",
+                    "start_date_local": "2026-05-19T00:00:00",
+                }] if existing else []
+                output = io.StringIO()
+                with (
+                    patch.object(module, "get_events", return_value=events),
+                    patch.object(module, "create_activity", return_value={"id": 1}) as create,
+                    patch.object(module, "update_event", return_value={"id": 123}) as update,
+                    contextlib.redirect_stdout(output),
+                ):
+                    module.upload_plan(plan)
+
+                if existing:
+                    ride_payload = update.call_args.args[3]
+                    self.assertEqual(ride_payload["moving_time"], 3600)
+                else:
+                    ride_payload = create.call_args_list[0].kwargs
+                    self.assertEqual(ride_payload["duration"], 3600)
+                self.assertEqual(ride_payload["description"], "Threshold work. TSS: 62. Fueling: 60 g/h.")
+                self.assertIn("TSS 120 -> 62, duration 90 -> 60 min", output.getvalue())
+                self.assertIn("TSS 15 -> 0", output.getvalue())
+                self.assertIn("2 uploaded, 0 skipped, 0 failed", output.getvalue())
+        self.assertEqual(plan[0]["tss"], 120)
+
     def test_upload_plan_preserves_long_description_with_appended_fueling(self):
         module = _load_upload_plan_module()
         description = "Coaching notes. " * 50
@@ -619,6 +672,30 @@ class UploadPlanRegressionTests(unittest.TestCase):
 
 
 class CheckPlanTssRegressionTests(unittest.TestCase):
+    def test_only_ride_entries_count_toward_weekly_target(self):
+        module = _load_check_plan_tss_module()
+        plan = [
+            {"date": "2026-11-02", "tss": 100},
+            {"date": "2026-11-03", "tss": 80, "activity_type": None},
+            {"date": "2026-11-04", "tss": 60, "activity_type": "VirtualRide"},
+            {"date": "2026-11-04", "tss": 15, "activity_type": "WeightTraining"},
+            {"date": "2026-11-05", "tss": 30, "activity_type": "Run",
+             "steps": [{"duration_seconds": 3600, "power_pct_ftp": 100}]},
+        ]
+        result = module.evaluate_plan(plan, load_target=240)
+        self.assertEqual(result["week"]["planned_tss"], 240)
+        self.assertEqual(result["week"]["planned_ride_tss"], 240)
+        self.assertEqual(result["week"]["planned_other_tss"], 30)
+        self.assertEqual(result["week"]["total_tss"], 240)
+        self.assertTrue(result["week"]["within_tolerance"])
+        self.assertTrue(result["valid"])
+        self.assertEqual([row["counted"] for row in result["workouts"]], [True, True, True, False, False])
+        weight_row, run_row = result["workouts"][3:]
+        self.assertEqual(weight_row["computed_tss"], 0)
+        self.assertTrue(weight_row["mismatch"])
+        self.assertEqual(run_row["computed_tss"], run_row["stated_tss"])
+        self.assertFalse(run_row["mismatch"])
+
     def test_current_week_checks_completed_and_planned_tss_against_full_target(self):
         module = _load_check_plan_tss_module()
         plan = [
@@ -641,7 +718,7 @@ class CheckPlanTssRegressionTests(unittest.TestCase):
         self.assertEqual(result["week"]["total_tss"], 360)
         self.assertTrue(result["week"]["within_tolerance"])
 
-    def test_evaluate_plan_detects_mismatch_and_target_deviation(self):
+    def test_mismatch_is_reported_but_only_target_deviation_invalidates(self):
         module = _load_check_plan_tss_module()
         plan = [
             {
@@ -661,11 +738,216 @@ class CheckPlanTssRegressionTests(unittest.TestCase):
 
         result = module.evaluate_plan(plan, load_target=200, tolerance_pct=10)
 
+        self.assertEqual(result["workouts"][0]["stated_tss"], 120)
+        self.assertEqual(result["workouts"][0]["computed_tss"], 62)
+        self.assertTrue(result["workouts"][0]["mismatch"])
         self.assertEqual(result["week"]["total_tss"], 92)
         self.assertFalse(result["week"]["within_tolerance"])
         self.assertFalse(result["valid"])
-        self.assertTrue(any("Workout on 2026-05-18" in issue for issue in result["issues"]))
+        self.assertTrue(any("Workout on 2026-05-18" in note for note in result["notes"]))
+        self.assertFalse(any("Workout on 2026-05-18" in issue for issue in result["issues"]))
         self.assertTrue(any("Weekly total 92 TSS" in issue for issue in result["issues"]))
+
+        within_target = module.evaluate_plan(plan, load_target=92, tolerance_pct=10)
+        self.assertTrue(within_target["workouts"][0]["mismatch"])
+        self.assertTrue(within_target["valid"])
+        self.assertEqual(within_target["issues"], [])
+
+    def test_weight_training_computed_tss_is_zero(self):
+        module = _load_check_plan_tss_module()
+        plan = [{"date": "2026-11-04", "tss": 15, "activity_type": "WeightTraining"}]
+        result = module.evaluate_plan(plan, load_target=0)
+        self.assertEqual(result["workouts"][0]["computed_tss"], 0)
+        self.assertEqual(result["week"]["planned_other_tss"], 0)
+        self.assertTrue(result["valid"])
+
+    def test_normalize_workout_load_overwrites_ride_values_from_steps(self):
+        module = _load_check_plan_tss_module()
+        ride = {
+            "date": "2026-05-18",
+            "name": "Tempo",
+            "duration_minutes": 90,
+            "tss": 120,
+            "description": "Tempo blocks. TSS: 120. Fueling: 60 g/h.",
+            "steps": [
+                {"duration_seconds": 1800, "power_pct_ftp": 100},
+                {"duration": 1830, "power": 50},
+            ],
+        }
+        normalized = module.normalize_workout_load(ride)
+        self.assertEqual(normalized["tss"], 63)
+        self.assertEqual(normalized["duration_minutes"], 60.5)
+        self.assertEqual(normalized["description"], "Tempo blocks. TSS: 63. Fueling: 60 g/h.")
+        self.assertEqual(ride["tss"], 120)
+
+        library = {"date": "2026-05-20", "tss": 30, "library_workout_id": 77, "steps": ride["steps"]}
+        self.assertIs(module.normalize_workout_load(library), library)
+        run = {"date": "2026-05-21", "tss": 30, "activity_type": "Run", "steps": ride["steps"]}
+        self.assertIs(module.normalize_workout_load(run), run)
+        strength = module.normalize_workout_load(
+            {"date": "2026-05-22", "tss": 15, "activity_type": "WeightTraining", "description": "TSS: 15"}
+        )
+        self.assertEqual(strength["tss"], 0)
+        self.assertEqual(strength["description"], "TSS: 0")
+
+
+class StrengthPlanValidationTests(unittest.TestCase):
+    def test_time_budgets_split_weekly_rides_but_include_all_sports_on_limited_days(self):
+        ride = {"date": "2026-11-02T08:00:00", "name": "Ride", "duration_minutes": 60}
+        workouts = [ride, self.strength(date="2026-11-02T18:00:00")]
+        for limit, status in ((1.75, "valid"), (1.5, "invalid"), (1.0, "invalid")):
+            with self.subTest(limit=limit):
+                data = {"week_summary": {"training_plan": [{
+                    "week": "2026-11-02",
+                    "weekly_time_target_hours": 1,
+                    "day_constraints": [{
+                        "date": "2026-11-02", "type": "LIMITED",
+                        "training_allowed": True, "max_training_time_hours": limit,
+                    }],
+                }]}}
+                result = self.validate(workouts, data)
+                self.assertEqual(result["status"], status)
+                self.assertEqual(result["week"]["planned_ride_hours"], 1)
+                self.assertEqual(result["week"]["planned_other_hours"], 0.75)
+                self.assertNotIn("exceeding weekly_time_target_hours", result["details"])
+                if status == "invalid":
+                    self.assertIn("LIMITED-day budget", result["details"])
+        self.assertEqual(self.validate(workouts)["status"], "valid")
+
+    def test_weekly_ride_time_cap_is_week_scoped_and_defaults_to_ride(self):
+        workouts = [
+            {"date": "2026-11-02", "name": "Ride", "duration_minutes": 60, "activity_type": None},
+            self.strength(),
+            {"date": "2026-11-09", "name": "Next week", "duration_minutes": 120},
+        ]
+        for target, status in ((1, "valid"), (0.5, "invalid")):
+            data = {"week_summary": {"training_plan": [{
+                "week": "2026-11-02", "weekly_time_target_hours": target,
+            }]}}
+            result = self.validate(workouts, data)
+            self.assertEqual(result["status"], status)
+            if status == "invalid":
+                self.assertIn("planned Ride duration for week 2026-11-02 is 1 hours", result["details"])
+
+    def test_tss_tool_reports_time_split_and_checks_optional_ride_time_cap(self):
+        workouts = [
+            {"date": "2026-11-02", "duration_minutes": 60},
+            self.strength(),
+            {"date": "2026-11-03", "duration_minutes": 30, "activity_type": "Run"},
+        ]
+        for target, valid in ((None, True), (1, True), (0.5, False)):
+            result = json.loads(self.server.check_plan_tss(
+                json.dumps(workouts), 0, weekly_time_target_hours=target,
+            ))
+            self.assertEqual(result["week"]["planned_ride_hours"], 1)
+            self.assertEqual(result["week"]["planned_other_hours"], 1.25)
+            self.assertEqual(result["week"]["time_within_budget"], valid)
+            self.assertEqual(result["valid"], valid)
+
+    @classmethod
+    def setUpClass(cls):
+        with patch.dict(os.environ, {"INTERVALS_API_KEY": "test-key", "ATHLETE_ID": "test-athlete"}):
+            spec = importlib.util.spec_from_file_location("strength_plan_local_mcp", REPO_ROOT / "scripts" / "mcp_server.py")
+            cls.server = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(cls.server)
+        from validate_plan import _expand_schema_errors, _message_for_error, _path_for_error
+        cls.expand = staticmethod(_expand_schema_errors)
+        cls.message = staticmethod(_message_for_error)
+        cls.location = staticmethod(_path_for_error)
+        schema = json.loads((REPO_ROOT / "contracts" / "week-plan" / "week-plan.schema.json").read_text())
+        Draft202012Validator.check_schema(schema)
+        cls.validator = Draft202012Validator(schema)
+
+    def strength(self, **overrides):
+        entry = {
+            "date": "2026-11-02", "name": "Strength", "duration_minutes": 45,
+            "activity_type": "WeightTraining", "tags": ["strength-adaptation"],
+        }
+        entry.update(overrides)
+        return entry
+
+    def validate(self, workouts, athlete_data=None):
+        return json.loads(self.server.validate_week_plan(
+            json.dumps({"workouts": workouts}),
+            athlete_data=json.dumps(athlete_data) if athlete_data is not None else "",
+        ))
+
+    def test_strength_schema_accepts_valid_entries_and_legacy_tag(self):
+        for duration in (30, 45, 75):
+            for tag in ("strength-adaptation", "strength-transition", "strength-maximum", "strength-maintenance"):
+                for wrapper in (True, False):
+                    with self.subTest(duration=duration, tag=tag, wrapper=wrapper):
+                        entries = [self.strength(duration_minutes=duration, tags=[tag, "gym"], tag="legacy", steps=[])]
+                        plan = {"workouts": entries} if wrapper else entries
+                        self.assertEqual(list(self.validator.iter_errors(plan)), [])
+
+    def test_strength_schema_errors_are_located_and_readable(self):
+        invalid = [
+            ({"tags": []}, ".tags", "canonical strength phase tag"),
+            ({"tags": ["strength-adaptation", "strength-maximum"]}, ".tags", "exactly one"),
+            ({"tags": ["vo2max-high"]}, ".tags", "canonical strength phase tag"),
+            ({"steps": [{"duration_seconds": 300}]}, ".steps", "absent or empty"),
+            ({"workout": {"steps": [{"duration_seconds": 300}]}}, ".workout.steps", "absent or empty"),
+            ({"duration_minutes": 20}, ".duration_minutes", "at least 30"),
+            ({"duration_minutes": 90}, ".duration_minutes", "at most 75"),
+            ({"library_workout_id": 7}, "", "library_workout_id is not allowed"),
+        ]
+        missing = self.strength()
+        del missing["tags"]
+        cases = [(self.strength(**fields), field, text) for fields, field, text in invalid]
+        cases.append((missing, "", "missing required property 'tags'"))
+        for entry, field, text in cases:
+            with self.subTest(entry=entry):
+                errors = self.expand(list(self.validator.iter_errors({"workouts": [entry]})))
+                self.assertTrue(any(
+                    self.location(list(error.absolute_path)).startswith("$.workouts[0]" + field)
+                    and text in self.message(error)
+                    for error in errors
+                ))
+
+    def test_ride_and_strength_same_day_pass_but_duplicates_fail(self):
+        ride = {"date": "2026-11-02T08:00:00", "name": "Ride", "duration_minutes": 60}
+        self.assertEqual(self.validate([ride, self.strength()])["status"], "valid")
+        for entries in (
+            [ride, dict(ride, activity_type="VirtualRide", date="2026-11-02T18:00:00")],
+            [self.strength(), self.strength(date="2026-11-02T18:00:00")],
+        ):
+            result = self.validate(entries)
+            self.assertEqual(result["status"], "invalid")
+            self.assertIn("$.workouts[1].date", result["details"])
+            self.assertIn("at most one", result["details"])
+
+    def test_constraints_reject_every_sport_but_are_optional(self):
+        data = {"week_summary": {"training_plan": [{
+            "day_constraints": [{"date": "2026-11-02", "training_allowed": False}],
+        }]}}
+        for entry in (self.strength(), self.strength(activity_type="Ride"), self.strength(activity_type="Run")):
+            with self.subTest(activity_type=entry["activity_type"]):
+                result = self.validate([entry], data)
+                self.assertEqual(result["status"], "invalid")
+                self.assertIn("$.workouts[0].date: training is not allowed", result["details"])
+                self.assertEqual(self.validate([entry])["status"], "valid")
+
+    def test_mcp_strength_schema_error_uses_existing_error_format(self):
+        result = self.validate([self.strength(duration_minutes=20)])
+        self.assertEqual(result["status"], "invalid")
+        self.assertIn("$.workouts[0].duration_minutes: must be at least 30", result["details"])
+
+    def test_mcp_completed_tss_uses_ride_load_and_legacy_fallback_only_if_absent(self):
+        for summary, expected in (
+            ({"ride_load": 100, "total_training_load": 130}, 100),
+            ({"total_training_load": 130}, 130),
+            ({"ride_load": 0, "total_training_load": 130}, 0),
+            ({"ride_load": None, "total_training_load": 130}, 0),
+        ):
+            with self.subTest(summary=summary):
+                result = json.loads(self.server.check_plan_tss(
+                    json.dumps([{"date": "2026-11-02", "tss": 20}]), 150,
+                    athlete_data=json.dumps({"week_summary": summary}),
+                ))
+                self.assertEqual(result["week"]["completed_tss"], expected)
+        tool = self.server.mcp._tool_manager.get_tool("check_plan_tss")
+        self.assertIsNotNone(tool)
 
 
 if __name__ == "__main__":

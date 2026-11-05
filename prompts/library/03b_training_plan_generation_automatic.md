@@ -3,7 +3,9 @@ If current-week data from prepare_week_data is already present in this chat and 
 
 Derive the planning parameters directly from the intervals.icu data. The week entries live in `week_summary.training_plan`; use the entry whose `week` equals the target week start:
 - Training phase and week type: from `phase` and `week_type` (NORMAL / RECOVERY / RACE) of that entry. Respect `week_note` when present.
-- Weekly target: from `weekly_load_target` (TSS) of that entry. Never invent a target and never fall back to another week's target.
+- Weekly Ride target: from `weekly_load_target` (TSS) of that entry, with
+  `weekly_time_target_hours` as a Ride-only upper budget when supplied. Never
+  invent a target or fall back to another week's target.
 - Available days: from `day_constraints` of that entry — days with `training_allowed: false` are unavailable, days with `training_allowed: true` and type LIMITED only get short, easy sessions. If `max_training_time_hours` is present, planned duration on that day must not exceed this value.
 - Already planned sessions: from `planned_workouts` for the target week — treat as anchors, do not replace
 - Consider current form (TSB) and fatigue (ATL)
@@ -13,16 +15,27 @@ Derive the planning parameters directly from the intervals.icu data. The week en
 
 Planning logic:
 1. Place key sessions matched to the training phase first (VO2max, threshold, long ride)
-2. Align total volume to the weekly target: use TSS from `weekly_load_target`. Still show estimated TSS per session. For the weekly total, sum TSS strictly per the TSS Calculation rules from the system prompt: computed from steps for generated workouts, library TSS for selected library workouts, and the stated TSS for anchored `planned_workouts`. The planned weekly total should land within ±10% of `weekly_load_target` unless constraints or fatigue clearly justify a deviation. Keep the provided target authoritative unless repeated historical deviation and current readiness together justify a safer reduction.
+2. Align Ride volume to the weekly target: sum Ride TSS strictly per the system prompt (generated rides from steps, library rides unchanged, anchored rides as stated). Completed plus planned Ride TSS should land within ±10% of `weekly_load_target` unless constraints or fatigue justify a safer reduction. Completed plus planned Ride hours must not exceed `weekly_time_target_hours` when supplied. Never use combined Ride+Run or strength totals.
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli
 
+Strength and guardrails:
+- Plan strength per decision-process.md, Strength and the Strength (off-bike)
+  library table; use week_summary.strength, not an exported raw history.
+- At most one ride and at most one WeightTraining entry per calendar day.
+- Weekly TSS and hours compare rides only (Ride, VirtualRide, MountainBikeRide,
+  GravelRide; absent or null activity_type = Ride). LIMITED-day caps sum ALL
+  entries on the date, including strength; no entry on unavailable days.
+- WeightTraining: exactly one strength-adaptation/transition/maximum/maintenance
+  tag, phase-table duration and fixed description, no steps or library ID,
+  numeric informational tss (supplied value, otherwise 0). Never mention missing RPE.
+
 Workout library lookup (when `list_library_workouts` is available):
 1. Determine all planned sessions and their full canonical tags first.
-2. Call `list_library_workouts` exactly once with all distinct tags,
+2. Call `list_library_workouts` exactly once with all distinct ride tags,
   `match_mode="any"`, `include_untagged=false`, and `limit=100`.
-3. Use a result only when its exact workout tag and dose fit the already planned
+3. For rides, use a result only when its exact workout tag and dose fit the already planned
   session. Prefer the closest duration and TSS as soft ranking criteria; neither
   value needs to equal the planned value. Calendar placement and day constraints
   are not library matching criteria. Preserve its
@@ -33,7 +46,9 @@ Workout library lookup (when `list_library_workouts` is available):
 Format: Day-by-day with session type, duration, intensity (zone), session goal, estimated TSS, and fueling recommendation.
 
 Final self-check before returning output:
-1. For every generated workout, recompute TSS from the final `steps` and
+1. For every generated ride, recompute TSS from the final `steps` and
    verify it matches the value in `description`.
-2. Verify the weekly TSS total against `weekly_load_target` (±10%).
+2. Verify Ride-only weekly TSS against `weekly_load_target` (±10%) and Ride-only
+   hours against `weekly_time_target_hours`. Check all-sport LIMITED-day caps
+   and the strength placement/entry contract.
 If a check fails, correct steps or plan composition first, then re-verify.

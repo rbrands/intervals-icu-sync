@@ -58,15 +58,34 @@ dates. Derive all dates from these (see system prompt, Date Handling).
   signal. It is NOT the in-ride DFA a1 reported in
   `activities[].dfa_a1_summary`; the two must never be mixed.
 - `rolling_p_max`: rolling max 1-second power (42-day).
+- `power_profile.p15s` … `p20min`: best efforts over the last
+  `period_days` (42) from normal training, not tests. Any value can be
+  sub-maximal when no all-out effort of that duration occurred in the
+  window (e.g. `p5min` below FTP). See interpretation rules, *Power profile
+  validity*, before using them as capacity evidence.
 - `power_profile.curve_slope`: slope of the power-duration curve.
   Less negative (≈ −0.45) = anaerobic/puncheur; more negative (≈ −0.70)
   = aerobic/climber.
-- `vo2max_classification.ml_per_kg_min`: VO2Max estimated from p5min power and weight (ml/kg/min).
+- `vo2max_classification.ml_per_kg_min`: VO2Max estimated as
+  `16.6 + 8.87 * (p5min watts / weight kg)` (ml/kg/min).
 - `vo2max_classification`: age- and sex-adjusted VO2Max category based on VO2Max
   (ml/kg/min), including `ml_per_kg_min`, `age_group`, `sex`, `category`,
   `category_range`, `next_category`, and `delta_to_next`. Age groups:
   teen_13_19, adult_20_29, master_30_39, master_40_49, grand_master_50_59,
   senior_60_plus. Categories: very_poor, poor, average, good, very_good, excellent.
+  Additional estimate-quality fields:
+  - `p5min_pct_ftp`: `p5min watts / FTP * 100`, rounded to one decimal.
+  - `estimate_representative`: `false` below 100% FTP,
+    `"likely_understated"` from 100% to below 105%, and `true` at or above
+    105%. Thresholds use the unrounded ratio. Null when p5min or FTP is
+    missing (also for non-finite inputs or non-positive FTP); the percentage
+    is null in those cases too.
+  - `power_profile_period_days`: copied from `power_profile.period_days`,
+    null when unavailable.
+  When `estimate_representative` is not exactly `true` (including null or
+  absent), do not use the VO2Max value or category as evidence of a VO2max
+  limiter or a performance trend. Say once that a maximal 5-minute effort
+  is missing. See interpretation rules, *Power profile validity*.
 - `sleep_secs`: SECONDS (÷3600 for hours).
 - `sleep_quality`: one of `GREAT`, `GOOD`, `AVG`, `POOR` (mapped from intervals.icu scale 1–4; GREAT = best).
 - `lthr`: lactate threshold heart rate (bpm).
@@ -103,6 +122,20 @@ value is missing or no previous exported activity exists.
 
 ## week_summary — non-obvious fields
 
+- `total_training_load`, `number_of_activities`, `total_time_hours`, and
+  `longest_activity_hours` aggregate Ride and Run activities together; they
+  exclude `WeightTraining`.
+- `ride_load`, `ride_sessions`, and `ride_time_hours` are Ride totals for
+  `Ride`, `VirtualRide`, `MountainBikeRide`, and `GravelRide`.
+- `run_load`, `run_sessions`, and `run_time_hours` are Run totals for `Run`,
+  `TrailRun`, and `VirtualRun`.
+- `strength_load`, `strength_sessions`, and `strength_time_hours` are
+  `WeightTraining` totals. Sessions count even when load is null or zero;
+  null load contributes zero to sums and remains null on activity rows.
+- `vo2_sessions`, `threshold_sessions`, `endurance_sessions`, decoupling
+  fields, `aerobic_threshold_estimate`, `days_since_last_hiit`, and
+  `days_since_last_polarized` remain scoped to
+  ride training analysis; WeightTraining activities do not contribute.
 - `ctl` / `atl`: current fitness/fatigue snapshot copied from daily metrics to
   keep readiness (`ctl`, `atl`, `form_*`) together in one section.
 - `form_absolute` / `form_pct` / `form_zone`: CTL−ATL, its ratio, the zone
@@ -120,7 +153,83 @@ value is missing or no previous exported activity exists.
   ride whose `training_distribution` is `HIIT` or `Polarized`.
 - `days_since_last_hard_session`: integer number of calendar days since the
   last session with TSS at least 50% above current CTL, the last `HIIT` or
-  `Polarized` ride, or the last `Threshold` ride with at least 50 TSS or RPE 7+.
+  `Polarized` ride, the last `Threshold` ride with at least 50 TSS or RPE 7+,
+  or a `WeightTraining` session tagged `strength-maximum`. The generic TSS
+  threshold does not make a strength activity hard. All three recency fields
+  are computed from the whole exported lookback window relative to
+  `current_date`, not only from the current ISO week.
+- `strength`: compact summary derived from internal completed strength history
+  and the per-sport totals in this object. The raw history is not exported.
+  - `current_phase`: phase (`adaptation`, `transition`, `maximum`, or
+    `maintenance`) of the most recent resolved strength session, including
+    inference; null when no recent resolved session is available.
+  - `phase_started`: date of the oldest session in the current consecutive
+    phase run; null when the phase is unset or reset.
+  - `phase_session_count`: number of resolved sessions in the current phase
+    run, including `inferred` sessions. Only `none` rows are skipped; a
+    different phase or a gap of at least 21 days between sessions ends the run.
+  - `phase_target_sessions`: phase target from the strength taxonomy: `4-6`,
+    `2-3`, `8-12`, or `ongoing`; null when there is no current phase.
+  - `phase_min_sessions` / `phase_max_sessions`: integer bounds of
+    `phase_target_sessions` for `current_phase` (adaptation 4/6, transition
+    2/3, maximum 8/12); both null for `maintenance` or an unset phase.
+  - `phase_overdue`: true only when the count exceeds the phase maximum
+    (6 adaptation, 3 transition, 12 maximum). False for maintenance or an
+    unset phase.
+  - `phase_current_week`: deterministic strength phase for all strength
+    sessions of the current ISO week, computed from the session run before
+    this Monday and the cycling phase in `training_plan[].phase` of this week.
+  - `phase_next_week`: deterministic phase for next week, computed from the
+    run including this week's completed sessions plus planned WeightTraining
+    events later this week, and next week's cycling phase.
+  - `recommended_sessions_current_week` / `recommended_sessions_next_week`:
+    default strength session count for that week: 1 for `maintenance` and
+    `beginner_build`, otherwise 2.
+  - `phase_reason_current_week` / `phase_reason_next_week`: short code for the
+    phase decision: `continue`, `advance_min_reached` (minimum reached:
+    adaptation 4, transition 2, maximum 8), `no_history`, `gap_reset` (last
+    session at least 21 days before the week start), `build_guard`
+    (Build/Peak after a completed adaptation run: maintenance), or
+    `beginner_build` (Build/Peak without a completed adaptation run:
+    adaptation, 1 session).
+  - `sessions_this_week`: current-week count copied from `strength_sessions`.
+  - `days_since_last_strength`: calendar days since the most recent completed
+    strength session; null when history is empty or no date is available.
+  - `last_session_tags`: canonical strength tags for the most recent completed
+    strength session; an empty list when that session has no resolved phase tag.
+  - `weekly_strength_load`: current-week load copied from `strength_load`.
+  - `sessions_per_week_last_4`: four integer counts of all completed
+    WeightTraining sessions, tagged or not, in the last four completed ISO
+    weeks, oldest first and aligned with `training_load_history` weeks.
+  - `untagged_sessions_last_16_weeks`: number of unresolved sessions in the
+    internal history (16 weeks by default). Only `phase_source: "none"` counts,
+    not inferred sessions.
+  - `inferred_sessions_last_16_weeks`: number of sessions whose phase was
+    inferred from a recent earlier activity- or plan-resolved session.
+  - `tagging_reminder_needed`: true only when the current or previous ISO
+    week contains completed strength sessions with source `none` or `inferred`
+    and no planned
+    WeightTraining event existed in that same week (even an untagged planned
+    event suppresses it). False otherwise. This flag is surfaced by the data
+    quality check (`check_athlete_data`, area `strength_untagged`), not by
+    the coach.
+  - Phase state resets when `days_since_last_strength` is at least 21: phase
+    becomes null, count becomes zero, and `phase_started` becomes null.
+  - Internal `phase_source` resolution: canonical activity tags (`activity`)
+    win, then same-date planned WORKOUT tags (`planned`), then nearest-date
+    planned WeightTraining tags in the same ISO year/week (`planned_week`).
+    Equal-distance ties prefer the earlier date; never cross a Monday/Sunday
+    boundary for planned-event matching. Next, inherit the phase of the most
+    recent earlier session resolved by `activity`, `planned`, or `planned_week`
+    if the gap is less than 21 days (`inferred`). Inferred sessions do not
+    become new inference anchors. Before the first resolved session or after
+    a gap of at least 21 days, tags are empty and source is `none`. Legacy
+    `strength` tags are ignored; the raw history is not exported.
+  - The coach never mentions tagging in plans or analyses; tagging gaps are
+    reported by the data quality check. For analysis with `current_phase`
+    null and `strength_sessions > 0`, describe adaptation as a working
+    assumption, not a finding, inside the Strength bullet. Never mention
+    missing RPE.
 - `aerobic_threshold_estimate`: week-level aggregate of the per-ride
   `dfa_a1_summary` entries (see activities). Present ONLY when at least one
   valid ride in the lookback actually crossed DFA a1 = 0.75 (i.e. has a
@@ -184,6 +293,20 @@ value is missing or no previous exported activity exists.
 
 - `id` identifies the activity in intervals.icu; `type` contains the source
   activity type (for example `Ride`, `Run`, or `VirtualRide`).
+- `WeightTraining` entries carry only `id`, `type`, `date`, `name`,
+  `duration_hours`, `training_load`, CTL/ATL/form and their deltas, `rpe`,
+  `tags`, and `notes`, plus strength metadata added during consolidation:
+  - `strength_phase`: the resolved phase, including inference, or null.
+  - `strength_phase_source`: `activity`, `planned`, `planned_week`, `inferred`,
+    or `none`. Original activity `tags` remain unchanged.
+  - `strength_tagging_reminder_needed`: true for `none` or `inferred` sessions
+    with no planned WeightTraining event in their ISO week. The data quality
+    check additionally restricts reminders to the current/previous ISO week
+    and requires the summary's `tagging_reminder_needed` flag. For `inferred`,
+    it says "counted as <phase> - tag the session if it was a different phase";
+    for `none`, it suggests `strength-<current_phase>` or `strength-adaptation`
+    when the current phase is null. Only exported activities can be listed;
+    no extra history rows are exported to extend the activity window.
 - `notes`: free-text athlete description; qualitative context (effort,
   conditions, how legs felt); null if unset.
 - `weather`: null for indoor rides (no GPS). `max_rain` > 0 = wet.

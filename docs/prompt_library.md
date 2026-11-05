@@ -94,6 +94,18 @@ Regel fuer Sicherheitsgrad:
   ein Muster. Schlage daraus allein nie eine Zonenänderung vor; lasse den
   Punkt ganz weg, wenn das Feld fehlt.
 
+**Strength**
+- Aus `week_summary.strength`: aktuelle Phase und `phase_session_count` gegen
+  `phase_target_sessions`, `sessions_this_week` gegen die Frequenzregel aus
+  decision-process.md, Strength, sowie Platzierung relativ zu Schluesseleinheiten.
+  Diesen Punkt weglassen, wenn `current_phase` null und
+  `week_summary.strength_sessions == 0` ist. Strength-Load ist nur informativ;
+  keine Intensitaetsverteilungs-, Decoupling- oder Missing-RPE-Bewertung.
+  Bei `current_phase` null und `strength_sessions > 0` adaptation als
+  Arbeitsannahme nennen, nicht als Befund. Innerhalb dieses Punkts einen
+  neutralen Satz hinzufuegen: Einheiten taggen oder Kraft vom Coach planen
+  lassen, damit die Phase verfolgt werden kann. Keine Warnung daraus machen.
+
 **Fueling**
 - Durchschnittliche Carb-Aufnahme pro Stunde
 - Kritische Einheiten mit unzureichender Versorgung
@@ -146,6 +158,17 @@ Confidence level rule:
   changing zones from this alone; skip the point entirely when the field is
   absent.
 
+**Strength**
+- Use `week_summary.strength`: current_phase, phase_session_count versus
+  phase_target_sessions; sessions_this_week versus the frequency rule in
+  decision-process.md, Strength; placement relative to ride key sessions.
+  Skip this bullet when current_phase is null and
+  `week_summary.strength_sessions == 0`. Strength load is informational only;
+  do not interpret intensity distribution or decoupling, or mention missing RPE.
+  When current_phase is null and strength_sessions > 0, name adaptation as a
+  working assumption, not a finding. Do not mention tagging; tagging gaps are
+  reported by the data quality check, not by the analysis.
+
 **Fueling**
 - Average carb intake per hour
 - Critical sessions with insufficient fueling
@@ -173,7 +196,7 @@ Hole die aktuellen Daten von intervals.icu per prepare_week_data. Erstelle mir b
 Rahmenbedingungen:
 - Berücksichtige aktuelle Form (TSB) und Ermüdung (ATL)
 - Passe die Belastung an den primären Limiter an
-- Maximal [X] Stunden Gesamtumfang
+- Maximal [X] Stunden Radumfang (Kraft und Laufen ausgeschlossen)
 - Verfügbare Tage: [Tage eintragen, z. B. Mo, Mi, Do, Sa, So]
 - Geplante Events oder Rennen: [ggf. eintragen]
 
@@ -186,6 +209,18 @@ Planungslogik:
 3. Fueling-Strategie für intensive Einheiten berücksichtigen
 4. Regenerationstage explizit einplanen
 5. Keine Dopplung bereits absolvierter Schlüsselreize
+
+Strength-Regeln:
+- Kraft nach decision-process.md, Strength und workout-library.md, Strength
+  (off-bike) planen; week_summary.strength verwenden.
+- At most one ride and at most one WeightTraining entry per calendar day.
+- Wochen-TSS und Stunden: nur Rad (Ride, VirtualRide, MountainBikeRide,
+  GravelRide; fehlender/null activity_type = Ride). LIMITED-Tageslimits:
+  Summe ALLER Einheiten; keine Einheit an nicht verfuegbaren Tagen.
+- WeightTraining: genau ein kanonischer strength-Phasentag, Dauer und feste
+  Beschreibung aus der Phasentabelle, keine Steps oder Library-ID, TSS nur
+  informativ (vorgegebener Wert, sonst 0). RPE ist optional.
+- Der folgende Library-Lookup und die Step-TSS-Pruefung gelten nur fuer Rad.
 
 Workout-Library (falls `list_library_workouts` verfügbar ist):
 1. Zuerst alle Einheiten und ihre vollständigen kanonischen Tags festlegen.
@@ -201,10 +236,10 @@ Workout-Library (falls `list_library_workouts` verfügbar ist):
 Format: Tageweise mit Einheit, Dauer, Intensität (Zone), Ziel der Einheit, geschätztem TSS und Fueling-Empfehlung.
 
 Abschließender Selbstcheck vor der Ausgabe:
-1. Für jedes neu erzeugte Workout den TSS aus den finalen `steps` neu berechnen
+1. Fuer jede neu erzeugte Radeinheit den TSS aus den finalen `steps` neu berechnen
        und prüfen, dass er mit dem Wert in `description` übereinstimmt.
-2. Prüfen, dass die gesamte geplante Dauer den manuell vorgegebenen maximalen
-       Gesamtumfang nicht überschreitet.
+2. Nur Raddauer gegen die manuell vorgegebenen Stunden pruefen;
+       LIMITED-Tageslimits gelten fuer die Summe ALLER Einheiten.
 Falls eine Prüfung fehlschlägt, zuerst Steps oder Planzusammenstellung korrigieren und anschließend erneut prüfen.
 ```
 
@@ -216,7 +251,7 @@ Fetch the current data from intervals.icu via prepare_week_data. Based on the we
 Constraints:
 - Consider current form (TSB) and fatigue (ATL)
 - Adjust load to the primary limiter
-- Maximum [X] hours total volume
+- Maximum [X] hours Ride volume (strength and running excluded)
 - Available days: [enter days, e.g. Mon, Wed, Thu, Sat, Sun]
 - Planned events or races: [enter if applicable]
 
@@ -229,6 +264,18 @@ Planning logic:
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli
+
+Strength and guardrails:
+- Plan strength per decision-process.md, Strength and the Strength (off-bike)
+  library; use week_summary.strength.
+- At most one ride and at most one WeightTraining entry per calendar day.
+- Weekly TSS and hours compare rides only (Ride, VirtualRide, MountainBikeRide,
+  GravelRide; absent or null activity_type = Ride). LIMITED-day caps sum ALL
+  entries; no entry on unavailable days.
+- WeightTraining: exactly one canonical strength phase tag, phase-table
+  duration and fixed description, no steps or library ID, informational tss
+  (supplied value, otherwise 0). RPE is optional.
+- The following library lookup and step-TSS self-check apply only to rides.
 
 Workout library lookup (when `list_library_workouts` is available):
 1. Determine all planned sessions and their full canonical tags first.
@@ -243,10 +290,10 @@ Workout library lookup (when `list_library_workouts` is available):
 Format: Day-by-day with session type, duration, intensity (zone), session goal, estimated TSS, and fueling recommendation.
 
 Final self-check before returning output:
-1. For every generated workout, recompute TSS from the final `steps` and
+1. For every generated ride, recompute TSS from the final `steps` and
        verify it matches the value in `description`.
-2. Verify the total planned duration does not exceed the manually specified
-       maximum total volume.
+2. Verify Ride duration against the manually specified Ride hours;
+       LIMITED-day caps sum ALL entries, including strength.
 If a check fails, correct steps or plan composition first, then re-verify.
 ```
 
@@ -272,10 +319,22 @@ Entnimm die Planungsgrundlage direkt aus den intervals.icu-Daten. Die Wocheneint
 
 Planungslogik:
 1. Schlüsseleinheiten passend zur Trainingsphase zuerst platzieren (VO2max, Schwelle, Lange Ausfahrt)
-2. Gesamtumfang am Wochenziel ausrichten: nach dem TSS aus `weekly_load_target` planen und den geschätzten TSS je Einheit ausweisen. Für die Wochensumme den TSS strikt nach den Regeln zur TSS-Berechnung aus dem System-Prompt summieren: bei neu erzeugten Workouts aus den Steps berechnen, bei ausgewählten Library-Workouts den Library-TSS und bei verankerten `planned_workouts` den dort angegebenen TSS verwenden. Die geplante Wochensumme soll innerhalb von ±10 % des `weekly_load_target` liegen, sofern Einschränkungen oder Ermüdung keine begründete Abweichung erfordern. Das vorgegebene Ziel bleibt maßgeblich, außer wiederholte historische Abweichungen und die aktuelle Trainingsbereitschaft rechtfertigen gemeinsam eine sicherere Reduzierung.
+2. Radumfang am Wochenziel ausrichten: nur Rad-TSS nach den Regeln zur TSS-Berechnung aus dem System-Prompt summieren (neue Radeinheiten aus Steps, Library-Radeinheiten unveraendert, geplante Radeinheiten wie angegeben). Absolvierte plus geplante Rad-TSS innerhalb ±10 % von `weekly_load_target`, ausser Sicherheit verlangt eine Reduzierung; Radstunden hoechstens `weekly_time_target_hours`, falls vorhanden.
 3. Fueling-Strategie für intensive Einheiten berücksichtigen
 4. Regenerationstage explizit einplanen
 5. Keine Dopplung bereits absolvierter Schlüsselreize
+
+Strength-Regeln:
+- Kraft nach decision-process.md, Strength und workout-library.md, Strength
+  (off-bike) planen; week_summary.strength verwenden.
+- At most one ride and at most one WeightTraining entry per calendar day.
+- Wochen-TSS und Stunden: nur Rad (Ride, VirtualRide, MountainBikeRide,
+  GravelRide; fehlender/null activity_type = Ride). LIMITED-Tageslimits:
+  Summe ALLER Einheiten; keine Einheit an nicht verfuegbaren Tagen.
+- WeightTraining: genau ein kanonischer strength-Phasentag, Dauer und feste
+  Beschreibung aus der Phasentabelle, keine Steps oder Library-ID, TSS nur
+  informativ (vorgegebener Wert, sonst 0). RPE ist optional.
+- Der folgende Library-Lookup und die Step-TSS-Pruefung gelten nur fuer Rad.
 
 Workout-Library (falls `list_library_workouts` verfügbar ist):
 1. Zuerst alle Einheiten und ihre vollständigen kanonischen Tags festlegen.
@@ -291,9 +350,10 @@ Workout-Library (falls `list_library_workouts` verfügbar ist):
 Format: Tageweise mit Einheit, Dauer, Intensität (Zone), Ziel der Einheit, geschätztem TSS und Fueling-Empfehlung.
 
 Abschließender Selbstcheck vor der Ausgabe:
-1. Für jedes neu erzeugte Workout den TSS aus den finalen `steps` neu berechnen
+1. Fuer jede neu erzeugte Radeinheit den TSS aus den finalen `steps` neu berechnen
        und prüfen, dass er mit dem Wert in `description` übereinstimmt.
-2. Die wöchentliche TSS-Summe gegen `weekly_load_target` prüfen (±10 %).
+2. Nur Rad-TSS gegen `weekly_load_target` pruefen (±10 %), Radstunden gegen
+       `weekly_time_target_hours`; LIMITED-Tageslimits summieren ALLE Einheiten.
 Falls eine Prüfung fehlschlägt, zuerst Steps oder Planzusammenstellung korrigieren und anschließend erneut prüfen.
 ```
 
@@ -314,10 +374,22 @@ Derive the planning parameters directly from the intervals.icu data. The week en
 
 Planning logic:
 1. Place key sessions matched to the training phase first (VO2max, threshold, long ride)
-2. Align total volume to the weekly target: use TSS from `weekly_load_target`. Still show estimated TSS per session. For the weekly total, sum TSS strictly per the TSS Calculation rules from the system prompt: computed from steps for generated workouts, library TSS for selected library workouts, and the stated TSS for anchored `planned_workouts`. The planned weekly total should land within ±10% of `weekly_load_target` unless constraints or fatigue clearly justify a deviation. Keep the provided target authoritative unless repeated historical deviation and current readiness together justify a safer reduction.
+2. Align Ride volume to the weekly target: use Ride TSS from `weekly_load_target`. For Ride totals, follow the TSS Calculation rules from the system prompt: generated rides from steps, library rides unchanged, anchored rides as stated. Completed plus planned Ride TSS should be within ±10% of the target unless constraints or fatigue justify a safer reduction; Ride hours must not exceed `weekly_time_target_hours` when supplied.
 3. Account for fueling strategy for intense sessions
 4. Explicitly schedule recovery days
 5. Do not duplicate already-completed key stimuli
+
+Strength and guardrails:
+- Plan strength per decision-process.md, Strength and the Strength (off-bike)
+  library; use week_summary.strength.
+- At most one ride and at most one WeightTraining entry per calendar day.
+- Weekly TSS and hours compare rides only (Ride, VirtualRide, MountainBikeRide,
+  GravelRide; absent or null activity_type = Ride). LIMITED-day caps sum ALL
+  entries; no entry on unavailable days.
+- WeightTraining: exactly one canonical strength phase tag, phase-table
+  duration and fixed description, no steps or library ID, informational tss
+  (supplied value, otherwise 0). RPE is optional.
+- The following library lookup and step-TSS self-check apply only to rides.
 
 Workout library lookup (when `list_library_workouts` is available):
 1. Determine all planned sessions and their full canonical tags first.
@@ -332,9 +404,10 @@ Workout library lookup (when `list_library_workouts` is available):
 Format: Day-by-day with session type, duration, intensity (zone), session goal, estimated TSS, and fueling recommendation.
 
 Final self-check before returning output:
-1. For every generated workout, recompute TSS from the final `steps` and
+1. For every generated ride, recompute TSS from the final `steps` and
        verify it matches the value in `description`.
-2. Verify the weekly TSS total against `weekly_load_target` (±10%).
+2. Verify Ride-only TSS against `weekly_load_target` (±10%) and Ride hours
+       against `weekly_time_target_hours`; LIMITED-day caps sum ALL entries.
 If a check fails, correct steps or plan composition first, then re-verify.
 ```
 
@@ -547,7 +620,7 @@ Keep the summary compact and action-oriented.
 ## 6. Datenkonsistenz / Data Consistency Check
 
 The deterministic `check_athlete_data` MCP tool is preferred when available.
-It accepts an existing JSON string and returns seven checks plus a compact
+It accepts an existing JSON string and returns eight checks plus a compact
 summary without fetching again. The [data-quality rules](../README.md#deterministic-data-quality-check)
 define the authoritative thresholds and edge cases for both prompts below.
 
@@ -559,20 +632,28 @@ Dies ist ein Datenqualitäts-Check, kein Coaching-Interpretation; gib hier keine
 Wenn die aktuellen Daten aus prepare_week_data bereits im Chat vorhanden sind und noch relevant sind, verwende sie erneut und rufe prepare_week_data nicht noch einmal auf.
 
 If check_athlete_data is available, pass the existing complete JSON as
-athlete_data and present its seven checks and summary in German without
+athlete_data and present its eight checks and summary in German without
 changing statuses. Otherwise apply the rules below with these clarifications:
 missing/non-positive FTP or W' comparisons are Missing; 10-20% includes both
 boundaries; >20% is Missing/inconsistent. For the season plan, require a
 non-empty `phase` for both the current and next week: `OK` when both are
 present, `Warning` when only one is present, and `Missing` when neither is
 present; week entries and day constraints alone do not count. Use the inclusive
-current_date - lookback_days through current_date window, excluding future activities. Also check activity feedback: OK when
-every activity has non-null rpe and carbs_ingested_g (zero counts); Missing
-when there are no activities or either field is missing for all activities;
-Warning for other gaps. Missing feedback limits exertion/fueling comparisons.
-Count all seven areas for the overall result; p20min context does not lower it.
+current_date - lookback_days through current_date window, excluding future activities. Also check activity feedback for
+non-WeightTraining activities only (RPE and carbs are optional for strength): OK when
+every applicable activity has non-null rpe and carbs_ingested_g (zero counts) or only strength
+activities are present; Missing when there are no activities at all or either field is missing
+for all applicable activities; Warning for other gaps. Missing feedback limits exertion/fueling comparisons.
+Strength tagging: Warning (never Missing) when `week_summary.strength.tagging_reminder_needed`
+is true; list eligible exported WeightTraining activities of the current and previous ISO week
+(date, name, id), excluding activity-/plan-resolved sessions and those with
+`strength_tagging_reminder_needed: false`. For source `none` or legacy payloads,
+suggest `strength-<current_phase>` (or `strength-adaptation` when the phase is null).
+For source `inferred`, say "counted as <strength_phase> - tag the session if it was a
+different phase", using the session's phase; OK otherwise. Listings stay within the
+exported activity window. Count all eight areas for the overall result; p20min context does not lower it.
 Prioritize Missing before Warning, then season plan, wellness, FTP, W',
-feedback, density, historical targets; no fix is required if everything is OK.
+feedback, density, historical targets, strength tagging; no fix is required if everything is OK.
 
 Bewerte jede unten genannte Stelle. Für jede Stelle gib einen Status (`OK`, `Warning` oder `Missing`) und eine ein Satz lange Erklärung an, welche praktische Auswirkung das hat, wenn er nicht `OK` ist. Nutze die genauen Schwellenwerte; erfinde keine eigenen.
 
@@ -614,6 +695,11 @@ Bewerte jede unten genannte Stelle. Für jede Stelle gib einen Status (`OK`, `Wa
 - `Missing`, wenn alle Einträge null sind.
 - Wirkung bei `Missing`: Es gibt keinen historischen Trend von Ziel-vs.-Erreichung; das ist konsistent mit (und erwartet neben) einem fehlenden Saisonplan oben.
 
+**Strength tagging**
+- `Warning` (never `Missing`) when `week_summary.strength.tagging_reminder_needed` is true: list eligible exported WeightTraining activities of the current/previous ISO week (date, name, id). Exclude activity-/plan-resolved sessions and those with `strength_tagging_reminder_needed: false`. For source `none` or legacy payloads suggest `strength-<current_phase>` (or `strength-adaptation` when null). For `inferred`, say "counted as <strength_phase> - tag the session if it was a different phase", using the session's phase. Listings stay within the exported activity window.
+- `OK`, wenn das Flag false ist oder die Strength-Zusammenfassung fehlt.
+- If strength tagging is the suggested fix, use "Untagged strength sessions are counted as the current phase. Tag a session only if it was a different phase." For unresolved (`none`) sessions use "Tag the session with a strength-<phase> tag so it counts toward the phase." Mixed findings include both instructions. Only the data quality check mentions tagging.
+
 **Summary**
 Beende mit einer Zeile: Gesamt-Datenvollständigkeit als `Good` (alle Bereiche `OK`), `Partial` (nur `Warning`/`Missing`-Bereiche, höchstens zwei) oder `Limited` (drei oder mehr `Warning`/`Missing`-Bereiche). Danach ein Satz, welche einzelne Maßnahme die Datenqualität am meisten verbessern würde (z. B. „ein Wellness-Tracker anschließen" oder „einen Saisonplan in intervals.icu einrichten").
 
@@ -628,7 +714,7 @@ This is a data-quality check, not a coaching interpretation — do not give trai
 If current-week data from prepare_week_data is already present in this chat and still relevant, reuse it and do not call prepare_week_data again.
 
 If check_athlete_data is available, pass the existing complete JSON as
-athlete_data and use its seven checks and summary without changing statuses.
+athlete_data and use its eight checks and summary without changing statuses.
 Otherwise apply the manual rules below.
 
 Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Missing`) and a one-sentence explanation of the practical impact if it is not `OK`. Use the exact thresholds given; do not invent your own.
@@ -673,9 +759,9 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Mi
 - Impact when `Warning` or `Missing`: recent-load and intensity-distribution interpretations are based on very little data and have low confidence.
 
 **Activity feedback tracking**
-- In the same window, check `rpe` and `carbs_ingested_g`.
-- `OK` if both are non-null for every activity; zero counts as recorded.
-- `Missing` if there are no activities or either field is absent/null for all activities.
+- In the same window, check `rpe` and `carbs_ingested_g` for non-`WeightTraining` activities only; both are optional for strength.
+- `OK` if both are non-null for every applicable activity, or if only strength activities are present; zero counts as recorded.
+- `Missing` if there are no activities at all, or either field is absent/null for all applicable activities.
 - `Warning` for other gaps.
 - Impact: subjective exertion and actual fueling cannot be reliably compared with load.
 
@@ -685,12 +771,17 @@ Evaluate each area below. For each one, report a status (`OK`, `Warning`, or `Mi
 - `Missing` if every entry is null.
 - Impact when `Missing`: no historical target-vs-achievement trend is available; this is consistent with (and expected alongside) a missing season plan above.
 
+**Strength tagging**
+- `Warning` (never `Missing`) if `week_summary.strength.tagging_reminder_needed` is true: list eligible exported `WeightTraining` activities of the current/previous ISO week (date, name, id). Exclude activity-/plan-resolved sessions and those with `strength_tagging_reminder_needed: false`. For source `none` or legacy payloads suggest `strength-<current_phase>`, or `strength-adaptation` when `current_phase` is null. For `inferred`, say "counted as <strength_phase> - tag the session if it was a different phase", using the session's phase. Listings stay within the exported activity window.
+- `OK` if the flag is false or the strength summary is absent.
+- If strength tagging is the suggested fix, use "Untagged strength sessions are counted as the current phase. Tag a session only if it was a different phase." For unresolved (`none`) sessions use "Tag the session with a strength-<phase> tag so it counts toward the phase." Mixed findings include both instructions. This is the only place tagging is mentioned.
+
 **Summary**
 End with one line: overall data completeness as `Good` (all areas `OK`), `Partial` (only `Warning`/`Missing` areas, no more than two), or `Limited` (three or more `Warning`/`Missing` areas). Follow this with one sentence on which single fix would improve the data quality most (e.g. "connecting a wellness tracker" or "setting up a season plan in intervals.icu").
 
 Keep the response compact: one short line per area, not a full paragraph.
 Prioritize `Missing` before `Warning`, then season plan, wellness, FTP, W',
-feedback, density, and historical targets. If all seven areas are `OK`, no
+feedback, density, historical targets, and strength tagging. If all eight areas are `OK`, no
 fix is required. The p20min contextual note does not lower any status.
 ```
 
@@ -698,9 +789,10 @@ fix is required. The p20min contextual note does not lower any status.
 
 ## 7. Nächstbeste Trainingseinheit / Next Best Training
 
-Recommends one session for **today** without follow-up questions, or a preliminary
-session for tomorrow if already trained today. Output is limited to 100 words of
-prose plus upload JSON for the main recommendation; the alternative is prose only.
+Recommends one main ride for **today** without follow-up questions, or a
+preliminary session for tomorrow if already trained today. Output is limited to
+100 words of prose plus upload JSON for at most one ride and optionally one
+same-day strength session; the easier alternative is prose only.
 The user can request upload afterwards, just as with the weekly plan.
 Rest recommendations are prose only.
 
@@ -743,13 +835,16 @@ Die heutige Readiness ist kein Messwert für morgen.
 
 **Empfehlung und Upload**
 Nutze dasselbe Ausgabeformat für die Workout-Erstellung und denselben Upload-Ablauf
-wie beim Wochenplan, aber für genau eine Einheit:
+wie beim Wochenplan. Gib genau eine Hauptempfehlung aus, mit maximal einer Fahrt
+und optional einer WeightTraining-Einheit am selben Tag, wenn die Strength-Regel
+eine Phase ungleich `none` ergibt. Die leichtere Alternative bleibt ausschließlich im Fließtext:
 - Maximal 100 Wörter Fließtext: Datum, Einheitstyp, Dauer, Zielzone, TSS und Carbs/h,
   eine kurze Begründung und eine leichtere Alternative mit Abbruch-/Downgrade-Kriterium.
   Keine separate Analyse oder Metriktabelle.
-- Anschließend Upload-JSON für die Hauptempfehlung nach dem bestehenden Schema,
-  den Markern und TSS-Regeln des System-Prompts erzeugen. Die Alternative bleibt
-  ausschließlich im Fließtext.
+- Anschließend Upload-JSON für die Haupteinheit nach dem bestehenden Schema,
+  den Markern und TSS-Regeln des System-Prompts erzeugen. Optional eine
+  WeightTraining-Einheit am selben Tag ergänzen, wenn die Strength-Regel
+  eine Phase ungleich `none` ergibt. Die leichtere Alternative bleibt ausschließlich im Fließtext.
 - Der User prüft die Empfehlung. Erst auf ausdrücklichen Upload-Wunsch den bestehenden
   Wochenplan-Ablauf verwenden:
   lokaler MCP: save_week_plan(plan_json=...), dann validate_week_plan(), dann
@@ -802,12 +897,17 @@ Do not treat today's readiness as tomorrow's measured readiness.
 
 **Recommendation and upload**
 Use the same workout-generation output contract and upload workflow as the weekly
-plan, but for exactly one workout:
+plan. Return exactly one workout recommendation for the main session, with at
+most one ride plus optionally one same-day `WeightTraining` session when the
+strength rule (phase other than `none`) applies. The alternative stays in prose only; the easier
+alternative must not be added to upload JSON:
 - At most 100 words of prose: date, session type, duration, target zone, TSS and
   carbs/h, one short reason, and an easier alternative with a downgrade/stop criterion.
   No separate analysis or metrics table.
 - Then generate upload JSON for the main recommendation using the system prompt's
-  existing schema, markers, and TSS rules. The alternative stays in prose only.
+  existing schema, markers, and TSS rules. Optionally add one same-day strength
+  entry when the strength rule in decision-process.md yields a phase other than `none`. The easier
+  alternative stays in prose only.
 - Let the user review the recommendation. Upload only after the user explicitly
   requests it, using the existing weekly-plan workflow:
   local MCP: save_week_plan(plan_json=...), then validate_week_plan(), then

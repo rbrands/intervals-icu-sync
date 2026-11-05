@@ -132,6 +132,37 @@
         "date",
         "name",
         "duration_minutes"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "activity_type": { "const": "WeightTraining" }
+            },
+            "required": ["activity_type"]
+          },
+          "then": {
+            "required": ["tags"],
+            "properties": {
+              "tags": {
+                "contains": {
+                  "type": "string",
+                  "pattern": "^strength-(adaptation|transition|maximum|maintenance)$"
+                },
+                "minContains": 1,
+                "maxContains": 1
+              },
+              "steps": { "maxItems": 0 },
+              "workout": {
+                "properties": {
+                  "steps": { "maxItems": 0 }
+                }
+              },
+              "duration_minutes": { "minimum": 30, "maximum": 75 },
+              "library_workout_id": false
+            }
+          }
+        }
       ]
     },
     "step": {

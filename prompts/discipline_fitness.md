@@ -34,15 +34,14 @@ Discipline: Fitness / Health (no race goal)
 - treat any RACE_A / RACE_B entry as RACE_C unless the athlete explicitly
   declares it a goal: it replaces the week's comparable intensity and
   never triggers a taper
-- recommend 2 strength sessions per week in prose (lower body, core,
-  not on VO2max days); never emit them in the upload JSON
+- plan strength sessions per decision-process.md, Strength; strength load is
+  visible in week_summary.strength
 - embed K1 sprints (6 s, workout-library.md) into one Z2 ride per week
   year-round; neuromuscular power declines fastest with age and this
   stimulus costs almost no recovery
-- if wellness signals show fatigue not explained by ride load, assume
-  unseen off-bike load (strength, running, other sports): choose the more
-  conservative option for that week and state this assumption in the
-  response; do not ask the athlete
+- read wellness fatigue alongside recorded ride/run data and
+  week_summary.strength; use the conservative recovery option when needed,
+  without inventing unseen off-bike load
 
 ## Phase Interpretation
 Overrides the generic phase actions in decision-process.md for this profile:

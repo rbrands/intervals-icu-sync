@@ -43,9 +43,11 @@ _SUPPORTED_ACTIVITY_TYPES = {
     "Run",
     "TrailRun",
     "VirtualRun",
+    "WeightTraining",
 }
 
 _RUN_ACTIVITY_TYPES = {"Run", "TrailRun", "VirtualRun"}
+_STRENGTH_ACTIVITY_TYPES = {"WeightTraining"}
 
 
 def _has_training_load(activity: dict) -> bool:
@@ -55,7 +57,12 @@ def _has_training_load(activity: dict) -> bool:
 
 def _passes_load_filter(activity: dict) -> bool:
     """Return True when an activity should be kept by load/metric rules."""
-    if activity.get("type") in _RUN_ACTIVITY_TYPES and _has_training_load(activity):
+    if activity.get("type") in _STRENGTH_ACTIVITY_TYPES:
+        return True
+    if (
+        activity.get("type") in _RUN_ACTIVITY_TYPES
+        and _has_training_load(activity)
+    ):
         return True
     return (
         _as_float(activity.get("icu_training_load")) > 20
@@ -88,8 +95,7 @@ def main() -> None:
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
     )
-    # Filter activities: cycling rides and runs with meaningful training load;
-    # exclude Strava duplicates.
+    # Strength sessions do not require load; exclude Strava duplicates.
     # Tagged activities below the load threshold are kept only when they carry usable
     # metrics, so empty placeholder entries do not reach the coach.
     activities = [

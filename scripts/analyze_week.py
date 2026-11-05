@@ -160,9 +160,14 @@ _SUPPORTED_ACTIVITY_TYPES = {
     "Run",
     "TrailRun",
     "VirtualRun",
+    "WeightTraining",
 }
 
+_RIDE_ACTIVITY_TYPES = {"Ride", "VirtualRide", "MountainBikeRide", "GravelRide"}
 _RUN_ACTIVITY_TYPES = {"Run", "TrailRun", "VirtualRun"}
+_STRENGTH_ACTIVITY_TYPES = {"WeightTraining"}
+_RIDE_RUN_ACTIVITY_TYPES = _RIDE_ACTIVITY_TYPES | _RUN_ACTIVITY_TYPES
+_HARD_SESSION_ACTIVITY_TYPES = _RIDE_RUN_ACTIVITY_TYPES | _STRENGTH_ACTIVITY_TYPES
 MIN_DECOUPLING_DURATION_HOURS = 1.5
 
 
@@ -173,7 +178,12 @@ def _has_training_load(activity: dict) -> bool:
 
 def _passes_load_filter(activity: dict) -> bool:
     """Return True when an activity should be kept by load/metric rules."""
-    if activity.get("type") in _RUN_ACTIVITY_TYPES and _has_training_load(activity):
+    if activity.get("type") in _STRENGTH_ACTIVITY_TYPES:
+        return True
+    if (
+        activity.get("type") in _RUN_ACTIVITY_TYPES
+        and _has_training_load(activity)
+    ):
         return True
     return (
         _as_float(activity.get("icu_training_load")) > 20
@@ -202,23 +212,34 @@ def _activity_zone_times(activity: dict) -> list:
     ]
 
 
+def _activity_date(activity: dict) -> date | None:
+    """Parse the local start date of an activity; None when unavailable."""
+    start = (activity.get("start_date_local") or "")[:10]
+    try:
+        return date.fromisoformat(start)
+    except ValueError:
+        return None
+
+
+def filter_lookback_activities(activities: list) -> list:
+    """Qualifying activities from the whole export window, for recency fields."""
+    return [
+        a
+        for a in activities
+        if a.get("type") in _SUPPORTED_ACTIVITY_TYPES
+        and a.get("source") != "STRAVA"
+        and _passes_load_filter(a)
+        and _activity_date(a) is not None
+    ]
+
+
 def filter_activities(activities: list) -> list:
     monday, sunday = _current_week_range()
-    result = []
-    for a in activities:
-        if (
-            a.get("type") in _SUPPORTED_ACTIVITY_TYPES
-            and a.get("source") != "STRAVA"
-            and _passes_load_filter(a)
-        ):
-            start = (a.get("start_date_local") or "")[:10]
-            try:
-                activity_date = date.fromisoformat(start)
-            except ValueError:
-                continue
-            if monday <= activity_date <= sunday:
-                result.append(a)
-    return result
+    return [
+        a
+        for a in filter_lookback_activities(activities)
+        if monday <= _activity_date(a) <= sunday
+    ]
 
 
 def _z5_plus_pct(activity: dict) -> float:
@@ -271,6 +292,8 @@ def _get_zone_distribution(activity: dict) -> dict:
 
 
 def _has_valid_decoupling_signal(activity: dict) -> bool:
+    if activity.get("type") not in _RIDE_ACTIVITY_TYPES:
+        return False
     if activity.get("decoupling") is None:
         return False
     if activity.get("type") in _RUN_ACTIVITY_TYPES:
@@ -514,16 +537,84 @@ def compute_days_since_last_hard_session(
     return None
 
 
-def compute_metrics(activities: list, current_ctl: float | None = None) -> dict:
-    total_load = sum(_as_float(a.get("icu_training_load")) for a in activities)
-    times = [_as_float(a.get("moving_time")) / 3600 for a in activities]
+def compute_recency_fields(
+    activities: list,
+    as_of: date,
+    current_ctl: float | None = None,
+) -> dict:
+    """Day-based recency fields from all exported lookback activities.
+
+    Unlike the weekly totals, these are not limited to the current ISO week:
+    a hard session late last week must stay visible early this week.
+    """
+    ride_activities = [
+        activity for activity in activities
+        if activity.get("type") in _RIDE_ACTIVITY_TYPES
+    ]
+    return {
+        "days_since_last_hiit": compute_days_since_last_distribution(
+            ride_activities, ["HIIT"], as_of
+        ),
+        "days_since_last_polarized": compute_days_since_last_distribution(
+            ride_activities, ["HIIT", "Polarized"], as_of
+        ),
+        "days_since_last_hard_session": compute_days_since_last_hard_session(
+            [
+                activity for activity in activities
+                if activity.get("type") in _HARD_SESSION_ACTIVITY_TYPES
+            ],
+            as_of,
+            current_ctl,
+        ),
+    }
+
+
+def compute_metrics(
+    activities: list,
+    current_ctl: float | None = None,
+    recency_activities: list | None = None,
+) -> dict:
+    """Build Ride+Run combined totals and separate per-sport weekly metrics.
+
+    ``recency_activities`` widens the pool for the day-based recency fields
+    to the whole lookback window; the weekly totals always come from
+    ``activities`` (the current ISO week). Defaults to ``activities``.
+    """
+    ride_run_activities = [
+        activity for activity in activities
+        if activity.get("type") in _RIDE_RUN_ACTIVITY_TYPES
+    ]
+    ride_activities = [
+        activity for activity in activities
+        if activity.get("type") in _RIDE_ACTIVITY_TYPES
+    ]
+    def sport_totals(activity_types: set[str]) -> tuple[float, int, float]:
+        sport_activities = [
+            activity for activity in activities
+            if activity.get("type") in activity_types
+        ]
+        load = sum(_as_float(activity.get("icu_training_load")) for activity in sport_activities)
+        time_hours = sum(
+            _as_float(activity.get("moving_time")) / 3600
+            for activity in sport_activities
+        )
+        return load, len(sport_activities), time_hours
+
+    ride_load, ride_sessions, ride_time_hours = sport_totals(_RIDE_ACTIVITY_TYPES)
+    run_load, run_sessions, run_time_hours = sport_totals(_RUN_ACTIVITY_TYPES)
+    strength_load, strength_sessions, strength_time_hours = sport_totals(
+        _STRENGTH_ACTIVITY_TYPES
+    )
+
+    total_load = sum(_as_float(a.get("icu_training_load")) for a in ride_run_activities)
+    times = [_as_float(a.get("moving_time")) / 3600 for a in ride_run_activities]
     total_time = sum(times)
     longest = max(times, default=0.0)
 
     vo2_sessions = 0
     threshold_sessions = 0
     endurance_sessions = 0
-    for a in activities:
+    for a in ride_activities:
         category = _classify_ride(a)
         if category == "vo2max":
             vo2_sessions += 1
@@ -534,7 +625,7 @@ def compute_metrics(activities: list, current_ctl: float | None = None) -> dict:
 
     decouplings = [
         float(a["decoupling"])
-        for a in activities
+        for a in ride_activities
         if _has_valid_decoupling_signal(a)
     ]
     avg_decoupling = sum(decouplings) / len(decouplings) if decouplings else 0.0
@@ -543,19 +634,26 @@ def compute_metrics(activities: list, current_ctl: float | None = None) -> dict:
 
     return {
         "total_training_load": total_load,
-        "number_of_activities": len(activities),
+        "number_of_activities": len(ride_run_activities),
         "total_time_hours": total_time,
         "longest_activity_hours": longest,
+        "ride_load": ride_load,
+        "run_load": run_load,
+        "strength_load": strength_load,
+        "ride_sessions": ride_sessions,
+        "run_sessions": run_sessions,
+        "strength_sessions": strength_sessions,
+        "ride_time_hours": ride_time_hours,
+        "run_time_hours": run_time_hours,
+        "strength_time_hours": strength_time_hours,
         "vo2_sessions": vo2_sessions,
         "threshold_sessions": threshold_sessions,
         "endurance_sessions": endurance_sessions,
         "avg_decoupling": avg_decoupling,
         "avg_decoupling_label": avg_decoupling_label,
         "high_decoupling_rides": high_decoupling,
-        "days_since_last_hiit": compute_days_since_last_distribution(activities, ["HIIT"], date.today()),
-        "days_since_last_polarized": compute_days_since_last_distribution(activities, ["HIIT", "Polarized"], date.today()),
-        "days_since_last_hard_session": compute_days_since_last_hard_session(
-            activities,
+        **compute_recency_fields(
+            recency_activities if recency_activities is not None else activities,
             date.today(),
             current_ctl,
         ),
@@ -595,7 +693,8 @@ def compute_aerobic_threshold_estimate(
     crossings = [
         a["dfa_a1_summary"]
         for a in coach_activities
-        if isinstance(a.get("dfa_a1_summary"), dict)
+        if (a.get("type") is None or a.get("type") in _RIDE_ACTIVITY_TYPES)
+        and isinstance(a.get("dfa_a1_summary"), dict)
         and a["dfa_a1_summary"].get("valid")
         and a["dfa_a1_summary"].get("power_at_0_75") is not None
     ]
@@ -775,7 +874,12 @@ def main() -> None:
     monday, sunday = _current_week_range()
     print(f"Calendar week: {monday.isoformat()} – {sunday.isoformat()}")
     activities = load_data()
-    rides = filter_activities(activities)
+    lookback_activities = filter_lookback_activities(activities)
+    week_activities = filter_activities(activities)
+    ride_run_activities = [
+        activity for activity in week_activities
+        if activity.get("type") in _RIDE_RUN_ACTIVITY_TYPES
+    ]
     training_plan = load_training_plan(date.today())
     athlete_metrics = load_metrics()
     aerobic_threshold = compute_aerobic_threshold_estimate(
@@ -783,9 +887,14 @@ def main() -> None:
         athlete_metrics.get("ftp"),
         athlete_metrics.get("power_zones_pct"),
     )
-    if not rides:
+    if not week_activities:
         print("No qualifying rides found.")
         form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
+        form.update(
+            compute_recency_fields(
+                lookback_activities, date.today(), athlete_metrics.get("ctl")
+            )
+        )
         if aerobic_threshold:
             form["aerobic_threshold_estimate"] = aerobic_threshold
         if training_plan:
@@ -793,13 +902,21 @@ def main() -> None:
         else:
             save_json(form, None, monday)
         sys.exit(0)
-    fueling_data = load_fueling(monday)
-    metrics = compute_metrics(rides, athlete_metrics.get("ctl"))
+    fueling_data = load_fueling(monday) if ride_run_activities else {}
+    metrics = compute_metrics(
+        week_activities,
+        athlete_metrics.get("ctl"),
+        recency_activities=lookback_activities,
+    )
     if aerobic_threshold:
         metrics["aerobic_threshold_estimate"] = aerobic_threshold
     form = compute_form(athlete_metrics.get("ctl"), athlete_metrics.get("atl"))
     metrics.update(form)
-    fueling_form = analyse_fueling_form(form["form_pct"], fueling_data, rides, training_plan) if fueling_data else None
+    fueling_form = (
+        analyse_fueling_form(form["form_pct"], fueling_data, ride_run_activities, training_plan)
+        if fueling_data and ride_run_activities
+        else None
+    )
     print_report(metrics, athlete_metrics, fueling_form, training_plan)
     save_json(metrics, fueling_form, monday, training_plan)
 

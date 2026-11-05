@@ -7,10 +7,13 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Literal, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator
+
+from .strength import CANONICAL_STRENGTH_TAGS, STRENGTH_ADAPTATION_TAG
 
 
 Status = Literal["OK", "Warning", "Missing"]
+STRENGTH_TYPE = "WeightTraining"
 Number = int | float
 
 
@@ -59,12 +62,25 @@ class _PlanEntry(_InputModel):
         return _iso_date(value) if value is not None else None
 
 
+class _Strength(_InputModel):
+    current_phase: str | None = None
+    tagging_reminder_needed: bool | None = None
+
+
 class _Summary(_InputModel):
     training_plan: list[_PlanEntry] | None = None
+    strength: _Strength | None = None
 
 
 class _Activity(_InputModel):
     date: str
+    id: str | int | None = None
+    name: str | None = None
+    type: str | None = None
+    tags: list[str] | None = None
+    strength_phase: Literal["adaptation", "transition", "maximum", "maintenance"] | None = None
+    strength_phase_source: Literal["activity", "planned", "planned_week", "inferred", "none"] | None = None
+    strength_tagging_reminder_needed: bool | None = None
     rpe: Number | None = None
     carbs_ingested_g: Number | None = None
 
@@ -72,6 +88,13 @@ class _Activity(_InputModel):
     @classmethod
     def validate_date(cls, value: str) -> str:
         return _iso_date(value)
+
+    @field_validator("strength_phase_source")
+    @classmethod
+    def validate_phase_source(cls, value: str | None, info: ValidationInfo) -> str | None:
+        if value == "inferred" and info.data.get("strength_phase") is None:
+            raise ValueError("An inferred strength session must have a strength_phase")
+        return value
 
 
 class _HistoryEntry(_InputModel):
@@ -169,17 +192,91 @@ _LABELS = {
     "recent_activity_density": "Recent activity density",
     "activity_feedback": "Activity feedback tracking",
     "load_target_history": "Load target history",
+    "strength_untagged": "Strength tagging",
 }
+
+_STRENGTH_UNRESOLVED_FIX = (
+    "Tag the session with a strength-<phase> tag so it counts toward the phase."
+)
 
 _FIXES = {
     "season_plan": "Set up or update the season plan phase in intervals.icu for the current and next week.",
     "wellness_tracking": "Connect a wellness tracker or record recovery signals.",
     "ftp_consistency": "Verify the configured FTP and the availability of its comparison estimates.",
     "w_prime_consistency": "Verify the configured W' and the availability of its rolling estimate.",
-    "activity_feedback": "Record RPE and carbohydrate intake for recent activities.",
+    "activity_feedback": "Record RPE and carbohydrate intake for recent ride and run activities.",
     "recent_activity_density": "Check that recent activities are synced and included in the export.",
     "load_target_history": "Add weekly load targets to the season plan for historical comparisons.",
+    "strength_untagged": (
+        "Untagged strength sessions are counted as the current phase. "
+        "Tag a session only if it was a different phase."
+    ),
 }
+
+
+def _is_untagged_strength(activity: _Activity) -> bool:
+    tags = {tag.lower() for tag in activity.tags or []}
+    return activity.type == STRENGTH_TYPE and not (tags & CANONICAL_STRENGTH_TAGS)
+
+
+def _strength_untagged(
+    strength: _Strength | None, activities: list[_Activity], window_start: date, today: date
+) -> QualityCheck:
+    needed = bool(strength and strength.tagging_reminder_needed)
+    phase = strength.current_phase if strength and strength.current_phase else None
+    suggested_tag = f"strength-{phase}" if phase else STRENGTH_ADAPTATION_TAG
+    candidates = [
+        activity
+        for activity in sorted(activities, key=lambda activity: activity.date)
+        if window_start <= date.fromisoformat(activity.date) <= today
+        and _is_untagged_strength(activity)
+        and activity.strength_phase_source not in ("activity", "planned", "planned_week")
+        and activity.strength_tagging_reminder_needed is not False
+    ]
+    untagged = []
+    unresolved = []
+    inferred = []
+    for activity in candidates:
+        entry = {"date": activity.date, "name": activity.name, "id": activity.id}
+        label = f"{activity.date} {activity.name or 'unnamed'} (id {activity.id})"
+        if activity.strength_phase_source is not None:
+            entry["phase_source"] = activity.strength_phase_source
+            entry["phase"] = activity.strength_phase
+        if activity.strength_phase_source == "inferred":
+            inferred.append(
+                f"{label}: counted as {activity.strength_phase} - "
+                "tag the session if it was a different phase."
+            )
+        else:
+            unresolved.append(label)
+        untagged.append(entry)
+    if not needed:
+        explanation = (
+            "No completed strength session in the current or previous ISO week needs a "
+            "phase tag."
+        )
+    else:
+        explanations = []
+        if unresolved:
+            listed = "; ".join(unresolved)
+            explanations.append(
+                "Completed WeightTraining activities in the current or previous ISO week have "
+                "no canonical strength phase tag and no planned strength event in that week"
+                + f": {listed}. Suggested tag: {suggested_tag}. {_STRENGTH_UNRESOLVED_FIX}"
+            )
+        if not candidates:
+            explanations.append(
+                "The affected strength activities are outside the exported activity list. "
+                + (_STRENGTH_UNRESOLVED_FIX if phase is None else _FIXES["strength_untagged"])
+            )
+        explanations.extend(inferred)
+        explanation = " ".join(explanations)
+    return _check(
+        "strength_untagged", "Warning" if needed else "OK", explanation,
+        tagging_reminder_needed=needed, untagged_activities=untagged if needed else [],
+        suggested_tag=suggested_tag, current_phase=phase,
+        window_start=window_start.isoformat(), window_end=today.isoformat(),
+    )
 
 
 def check_athlete_data(athlete_data: dict[str, Any]) -> QualityReport:
@@ -283,20 +380,31 @@ def check_athlete_data(athlete_data: dict[str, Any]) -> QualityReport:
         ),
         activity_count=count, window_start=lower.isoformat(), window_end=today.isoformat(),
     ))
-    rpe_count = sum(activity.rpe is not None for activity in activities)
-    carbs_count = sum(activity.carbs_ingested_g is not None for activity in activities)
+    # RPE and carbohydrate intake are optional for strength sessions (decision D6).
+    feedback_activities = [
+        activity for activity in activities if activity.type != STRENGTH_TYPE
+    ]
+    applicable = len(feedback_activities)
+    strength_count = count - applicable
+    rpe_count = sum(activity.rpe is not None for activity in feedback_activities)
+    carbs_count = sum(activity.carbs_ingested_g is not None for activity in feedback_activities)
     feedback_status: Status = (
-        "Missing" if not count or not rpe_count or not carbs_count else
-        "OK" if rpe_count == carbs_count == count else "Warning"
+        "Missing" if not count else
+        "OK" if not applicable else
+        "Missing" if not rpe_count or not carbs_count else
+        "OK" if rpe_count == applicable and carbs_count == applicable else "Warning"
     )
     checks.append(_check(
         "activity_feedback", feedback_status,
-        f"RPE is recorded for {rpe_count}/{count} and carbohydrate intake for "
-        f"{carbs_count}/{count} activities." + (
+        f"RPE is recorded for {rpe_count}/{applicable} and carbohydrate intake for "
+        f"{carbs_count}/{applicable} applicable activities (strength activities excluded: "
+        f"{strength_count})." + (
             " Subjective exertion and actual fueling cannot be reliably compared with load."
             if feedback_status != "OK" else ""
         ),
-        activity_count=count, rpe_recorded=rpe_count, carbs_recorded=carbs_count,
+        activity_count=count, applicable_activities=applicable,
+        strength_activities_excluded=strength_count,
+        rpe_recorded=rpe_count, carbs_recorded=carbs_count,
     ))
     target_count = sum(
         entry.weekly_load_target is not None for entry in data.training_load_history or []
@@ -308,18 +416,35 @@ def check_athlete_data(athlete_data: dict[str, Any]) -> QualityReport:
         "cannot be assessed, as is expected when a season plan is missing.",
         recorded_targets=target_count,
     ))
+    checks.append(_strength_untagged(
+        data.week_summary.strength if data.week_summary else None,
+        data.activities or [], current_week - timedelta(days=7), today,
+    ))
     non_ok = [check for check in checks if check["status"] != "OK"]
     overall: Literal["Good", "Partial", "Limited"] = (
         "Good" if not non_ok else "Partial" if len(non_ok) <= 2 else "Limited"
     )
     # Prefer missing/inconsistent data, then a fixed priority headed by the season
-    # plan, which can also restore historical targets.
+    # plan, which can also restore historical targets; strength tagging comes last.
     priority = list(_FIXES)
     first = min(
         non_ok, key=lambda check: (check["status"] != "Missing", priority.index(check["area"])),
         default=None,
     )
     fix = _FIXES[first["area"]] if first else "No data-quality fix is required."
+    if first and first["area"] == "strength_untagged":
+        entries = first["evidence"]["untagged_activities"]
+        has_inferred = any(entry.get("phase_source") == "inferred" for entry in entries)
+        has_unresolved = any(entry.get("phase_source") != "inferred" for entry in entries)
+        if not entries:
+            has_unresolved = first["evidence"]["current_phase"] is None
+            has_inferred = not has_unresolved
+        fix = " ".join(
+            text for needed, text in (
+                (has_inferred, _FIXES["strength_untagged"]),
+                (has_unresolved, _STRENGTH_UNRESOLVED_FIX),
+            ) if needed
+        )
     lines = [
         f"{_LABELS[check['area']]}: {check['status']} - {check['explanation']}"
         + (" Context: " + " ".join(check["context"]) if check["context"] else "")

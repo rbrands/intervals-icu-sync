@@ -291,6 +291,12 @@ The GitHub Actions workflow deploys both `agent.yaml` and `agent-staging.yaml`.
 Staging inherits the production definition and overrides its agent name plus
 its vector store, skill, and toolbox names. Any nested agent field can be
 overridden in `agent-staging.yaml` for experiments without changing production.
+Instructions are defined only in `agent.yaml`; staging inherits them during
+deployment unless it explicitly defines its own `definition.instructions`.
+Update `agent.yaml` to promote staging-tested instructions to production.
+Pull requests deploy that shared definition to staging only, while pushes to
+`main` deploy it to both production and staging. Knowledge files and discipline
+prompts remain shared deployment sources.
 Production and staging use the `gpt-6-luna` model deployment. Staging keeps
 separate vector store, skill, and toolbox resources for isolated testing.
 When invoking staging, set `AGENT_NAME=training-architect-agent-staging`; the
@@ -359,9 +365,14 @@ python foundry-agent/deploy_agent.py --skill-only
 ### GitHub Actions
 
 The workflow [`.github/workflows/deploy-agent.yml`](../.github/workflows/deploy-agent.yml)
-runs the script twice on changes to `foundry-agent/**`, `coach-logic/**`, or the
-discipline prompts: once for production and once for staging. It can also be
-triggered manually. The discipline is no longer a deploy-time choice — it is selected at runtime via the `discipline`
+runs on changes to `foundry-agent/**`, `coach-logic/**`, the discipline prompts,
+or the workflow itself. Pull requests targeting `main` deploy only
+`agent-staging.yaml`; pushes to `main` and manual runs deploy both production
+and staging. Fork pull requests are skipped because deployment requires Azure
+credentials. Azure OIDC must allow the repository's `pull_request` subject
+(`repo:rbrands/intervals-icu-sync:pull_request`), as for the code deployment.
+All pull requests share the same staging agent; the latest deployment replaces
+its current version. The discipline is no longer a deploy-time choice — it is selected at runtime via the `discipline`
 structured input.
 
 Required GitHub secrets (the OIDC ones already exist for the webservice deploy):

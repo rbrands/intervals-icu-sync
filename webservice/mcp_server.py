@@ -109,6 +109,7 @@ def _tool_span(name: str):
 
 # Allow imports from src/ and from this package when run directly
 sys.path.insert(0, str(_ROOT / "src"))
+sys.path.insert(0, str(SCRIPTS_DIR))
 _WEBSERVICE_DIR = Path(__file__).resolve().parent
 if str(_WEBSERVICE_DIR) not in sys.path:
     sys.path.insert(0, str(_WEBSERVICE_DIR))
@@ -123,6 +124,10 @@ from intervals_icu.client import (
     get_library_workouts,
 )
 from intervals_icu.training_readiness import annotate_hard_sessions, compute_training_readiness
+from prepare_week_for_coach import (
+    _merge_fueling_into_activities, annotate_strength_phases,
+    build_strength_week_summary, fetch_strength_history,
+)
 
 from context import api_key_var, athlete_id_var
 from intervals_icu.prompt_templates import render_coach_prompt
@@ -673,7 +678,7 @@ class AuthHeaderMiddleware:
     <table>
         <tr><th>Method</th><th>Description</th></tr>
         <tr><td><code>prepare_week_data</code></td><td>Runs the full pipeline and returns consolidated coach input JSON. Supports optional <code>lookback_days</code> (default: 7) for the activity/fueling window while <code>week_summary</code> stays calendar-week based.</td></tr>
-        <tr><td><code>check_athlete_data</code></td><td>Checks supplied athlete data JSON for completeness and consistency across seven areas, returning statuses, evidence and a compact report without API calls or coaching recommendations.</td></tr>
+        <tr><td><code>check_athlete_data</code></td><td>Checks supplied athlete data JSON for completeness and consistency across eight areas, returning statuses, evidence and a compact report without API calls or coaching recommendations.</td></tr>
         <tr><td><code>get_latest_activities</code></td><td>Returns a compact latest-first activity list to avoid large payload truncation.</td></tr>
         <tr><td><code>get_activity_streams_sampled</code></td><td>Returns a compact, down-sampled stream payload for a single activity. Supports optional stream selection, time/distance windows, and a point cap to keep outputs small.</td></tr>
         <tr><td><code>list_library_workouts</code></td><td>Lists the caller's own workout library with library workout ID, duration, TSS and tags. Supports optional filters: tag_prefixes, match_mode (any/all), include_untagged, limit.</td></tr>
@@ -835,44 +840,6 @@ def _filter_fueling_analysis_by_lookback(
     updated = dict(fueling_data)
     updated["activities"] = filtered
     return updated
-
-
-def _merge_fueling_into_activities(
-    activities: list[dict] | None,
-    fueling_data: dict | None,
-) -> tuple[list[dict], dict | None]:
-    activity_list = activities if isinstance(activities, list) else []
-
-    fueling_by_date: dict[str, list[dict]] = {}
-    cleaned_fueling = fueling_data
-    if isinstance(fueling_data, dict):
-        fueling_activities = fueling_data.get("activities")
-        if isinstance(fueling_activities, list):
-            for entry in fueling_activities:
-                if not isinstance(entry, dict):
-                    continue
-                entry_date = entry.get("date")
-                if not isinstance(entry_date, str):
-                    continue
-                fueling_by_date.setdefault(entry_date, []).append(entry)
-        cleaned_fueling = {k: v for k, v in fueling_data.items() if k != "activities"}
-
-    merged_activities: list[dict] = []
-    for activity in activity_list:
-        date_key = activity.get("date")
-        queue = fueling_by_date.get(date_key, []) if isinstance(date_key, str) else []
-        fueling_match = queue.pop(0) if queue else None
-        if isinstance(fueling_match, dict):
-            fueling_match = {
-                k: v
-                for k, v in fueling_match.items()
-                if k not in {"date", "name", "duration_hours"}
-            }
-        merged = dict(activity)
-        merged["fueling"] = fueling_match
-        merged_activities.append(merged)
-
-    return merged_activities, cleaned_fueling
 
 
 def _merge_training_load_history(
@@ -1131,8 +1098,8 @@ def check_athlete_data(athlete_data: str) -> QualityReport:
 
     Pass the complete JSON returned by prepare_week_data, or an attached coach
     input payload. No API calls, persistence or training recommendations.
-    Returns a native structured JSON object with seven checks (OK/Warning/Missing),
-    evidence, contextual p20min notes,
+    Returns a native structured JSON object with eight checks (OK/Warning/Missing),
+    evidence, contextual p20min notes, a strength tagging warning,
     overall completeness (Good/Partial/Limited), one suggested data-quality fix,
     and a compact report_text. Dates and lookback_days come only from the input.
     Malformed input raises a tool error; absent metrics produce Missing checks.
@@ -1321,9 +1288,15 @@ def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) 
                 week_data["ctl"] = ctl
             if week_data.get("atl") is None and atl is not None:
                 week_data["atl"] = atl
+            ride_plan = _extract_ride_plan_summary(plan_data, monday)
+            strength_history = fetch_strength_history(
+                today, api_key=api_key, athlete_id=athlete_id,
+            )
+            week_data["strength"] = build_strength_week_summary(
+                strength_history, today, week_data, training_plan=ride_plan,
+            )
             week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
 
-            ride_plan = _extract_ride_plan_summary(plan_data, monday)
             if ride_plan:
                 week_data["training_plan"] = ride_plan
 
@@ -1343,6 +1316,7 @@ def _run_week_pipeline(lookback_days: int, athlete_id: str, api_key: str, span) 
                 lookback_days=lookback_days,
             )
             activities, fueling_data = _merge_fueling_into_activities(activities, fueling_data)
+            activities = annotate_strength_phases(activities, strength_history)
             activities = annotate_hard_sessions(
                 activities,
                 current_ctl=week_data.get("ctl"),
@@ -1729,7 +1703,10 @@ def upload_week_plan(
 
     Entries with library_workout_id copy the stored workout structure and type.
     Entries may set optional activity_type, defaulting to Ride when omitted; Run
-    and WeightTraining entries can be uploaded without steps. Existing WORKOUT
+    and WeightTraining entries can be uploaded without steps. Generated rides
+    with steps have tss, the "TSS: <n>" description mention, and
+    duration_minutes recomputed from the steps before upload; WeightTraining
+    gets tss 0. Existing WORKOUT
     events with the same name and date are updated (PUT); new ones are created
     (POST) — no duplicates.
 
@@ -1863,8 +1840,12 @@ def check_plan_tss(
     Args:
         plan_json: Training plan as a JSON string. Must be a JSON array of
                    workout objects or an object with a "workouts" array.
-                   Each workout requires "date" and "tss". If it contains
-                   "steps", TSS is recomputed from step durations and power.
+                   Each workout requires "date" and "tss". If a ride contains
+                   "steps", TSS is recomputed from step durations and power;
+                   stated vs computed is reported per workout (mismatch is
+                   informational) and the weekly total uses the computed value.
+                   Only the weekly target deviation (or an exceeded Ride time
+                   budget) makes the result invalid.
                    If "library_workout_id" is set, the stated "tss" is kept as-is.
                    Example:
                    [

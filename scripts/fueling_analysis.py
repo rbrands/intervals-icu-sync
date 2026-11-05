@@ -26,6 +26,8 @@ def _filter_by_lookback(activities: list[dict]) -> list[dict]:
     lower_bound = today - timedelta(days=_lookback_days())
     filtered: list[dict] = []
     for activity in activities:
+        if activity.get("type") == "WeightTraining":
+            continue
         date_str = activity.get("date")
         if not date_str:
             continue
@@ -117,7 +119,13 @@ def _has_sprint_intervals(summary_lower: str) -> bool:
     )
 
 
-def classify_ride(activity: dict) -> str:
+def classify_ride(activity: dict) -> str | None:
+    tags = [t.lower().replace("treshold", "threshold") for t in (activity.get("tags") or [])]
+    if activity.get("type") == "WeightTraining" or any(
+        tag.startswith("strength-") for tag in tags
+    ):
+        return None
+
     duration = activity.get("duration_hours") or 0
     z1_z2 = activity.get("z1_z2_pct") or 0
     z3_z4 = activity.get("z3_z4_pct") or 0
@@ -126,8 +134,6 @@ def classify_ride(activity: dict) -> str:
     if isinstance(summary, list):
         summary = " ".join(summary)
     summary_lower = summary.lower()
-    tags = [t.lower().replace("treshold", "threshold") for t in (activity.get("tags") or [])]
-
     has_long_intervals = any(p in summary_lower for p in _LONG_INTERVAL_PATTERNS)
     has_vo2_intervals = any(p in summary_lower for p in _SHORT_INTERVAL_PATTERNS)
     has_sprint_intervals = _has_sprint_intervals(summary_lower)

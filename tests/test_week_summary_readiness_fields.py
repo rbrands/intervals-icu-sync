@@ -88,6 +88,46 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
         self.assertEqual(readiness["status"], "red")
         self.assertIn("today", readiness["safety_vetoes"][0])
 
+    def test_resolved_maximum_strength_phase_updates_recency_before_readiness(self):
+        today = date(2026, 11, 4)
+        activities = [
+            {
+                "type": "WeightTraining",
+                "start_date_local": "2026-11-04T10:00:00Z",
+                "tags": [],
+                "strength_phase": "maximum",
+            }
+        ]
+        summary = {
+            "ctl": 60,
+            "atl": 55,
+            "form_zone": "fresh",
+            "days_since_last_hard_session": None,
+        }
+
+        self.assertTrue(
+            prepare_week_for_coach.annotate_hard_sessions(activities)[0]["is_hard_session"]
+        )
+        prepare_week_for_coach._update_hard_session_recency(summary, activities, today)
+        readiness = prepare_week_for_coach.compute_training_readiness({}, summary)
+
+        self.assertEqual(summary["days_since_last_hard_session"], 0)
+        self.assertEqual(readiness["status"], "red")
+        self.assertIn("today", readiness["safety_vetoes"][0])
+
+    def test_resolved_nonmaximum_strength_phase_overrides_maximum_tag(self):
+        annotated = prepare_week_for_coach.annotate_hard_sessions(
+            [
+                {
+                    "type": "WeightTraining",
+                    "tags": ["strength-maximum"],
+                    "strength_phase": "maintenance",
+                }
+            ]
+        )
+
+        self.assertFalse(annotated[0]["is_hard_session"])
+
     def test_training_readiness_uses_safety_veto_for_two_adverse_recovery_signals(self):
         metrics = {
             "sleep_secs": 5 * 3600,
@@ -172,6 +212,122 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
     def test_compute_ftp_eftp_delta_pct(self):
         self.assertEqual(get_metrics.compute_ftp_eftp_delta_pct(100, 110), 10.0)
         self.assertEqual(get_metrics.compute_ftp_eftp_delta_pct(260, 260.2), 0.08)
+
+    def test_recency_fields_use_lookback_window_not_current_week(self):
+        """Regression: a hard Saturday session must stay visible on Wednesday.
+
+        current_date 2026-11-04 (Wednesday), hard HIIT ride on Saturday
+        2026-10-31 — previous ISO week, but inside the lookback window.
+        """
+        wednesday = date.fromisoformat("2026-11-04")
+        saturday_hiit = {
+            "type": "Ride",
+            "source": "GARMIN",
+            "start_date_local": "2026-10-31T10:00:00Z",
+            "icu_training_load": 95,
+            "icu_zone_times": [{"id": "Z1", "secs": 2000}, {"id": "Z5", "secs": 1000}],
+        }
+        easy_tuesday = {
+            "type": "Ride",
+            "source": "GARMIN",
+            "start_date_local": "2026-11-03T10:00:00Z",
+            "icu_training_load": 40,
+            "icu_zone_times": [{"id": "Z1", "secs": 7000}],
+        }
+
+        fields = analyze_week.compute_recency_fields(
+            [saturday_hiit, easy_tuesday], wednesday
+        )
+
+        self.assertEqual(fields["days_since_last_hiit"], 4)
+        self.assertEqual(fields["days_since_last_polarized"], 4)
+        self.assertEqual(fields["days_since_last_hard_session"], 4)
+
+        week_only = analyze_week.compute_recency_fields([easy_tuesday], wednesday)
+        self.assertIsNone(week_only["days_since_last_hard_session"])
+
+    def test_recency_counts_strength_maximum_session_from_previous_week(self):
+        wednesday = date.fromisoformat("2026-11-04")
+        saturday_maximum = {
+            "type": "WeightTraining",
+            "source": "GARMIN",
+            "start_date_local": "2026-10-31T10:00:00Z",
+            "tags": ["strength-maximum"],
+        }
+
+        fields = analyze_week.compute_recency_fields([saturday_maximum], wednesday)
+
+        self.assertEqual(fields["days_since_last_hard_session"], 4)
+        self.assertIsNone(fields["days_since_last_hiit"])
+
+    def test_compute_metrics_recency_pool_is_wider_than_weekly_totals(self):
+        class _FixedDate(date):
+            @classmethod
+            def today(cls):
+                return cls(2026, 11, 4)
+
+        saturday_hiit = {
+            "type": "Ride",
+            "source": "GARMIN",
+            "start_date_local": "2026-10-31T10:00:00Z",
+            "icu_training_load": 95,
+            "moving_time": 3600,
+            "icu_zone_times": [{"id": "Z1", "secs": 2000}, {"id": "Z5", "secs": 1000}],
+        }
+        easy_tuesday = {
+            "type": "Ride",
+            "source": "GARMIN",
+            "start_date_local": "2026-11-03T10:00:00Z",
+            "icu_training_load": 40,
+            "moving_time": 3600,
+            "icu_zone_times": [{"id": "Z1", "secs": 7000}],
+        }
+
+        with patch.object(analyze_week, "date", _FixedDate):
+            metrics = analyze_week.compute_metrics(
+                [easy_tuesday],
+                current_ctl=60,
+                recency_activities=[saturday_hiit, easy_tuesday],
+            )
+
+        self.assertEqual(metrics["days_since_last_hard_session"], 4)
+        self.assertEqual(metrics["days_since_last_hiit"], 4)
+        # Weekly totals stay ISO-week based.
+        self.assertEqual(metrics["total_training_load"], 40)
+        self.assertEqual(metrics["number_of_activities"], 1)
+
+    def test_main_includes_recency_fields_when_week_has_no_activities(self):
+        class _FixedDate(date):
+            @classmethod
+            def today(cls):
+                return cls(2026, 11, 4)
+
+        saturday_hiit = {
+            "type": "Ride",
+            "source": "GARMIN",
+            "start_date_local": "2026-10-31T10:00:00Z",
+            "icu_training_load": 95,
+            "icu_zone_times": [{"id": "Z1", "secs": 2000}, {"id": "Z5", "secs": 1000}],
+        }
+
+        with (
+            patch.object(analyze_week, "date", _FixedDate),
+            patch.object(analyze_week, "load_data", return_value=[saturday_hiit]),
+            patch.object(analyze_week, "load_training_plan", return_value=[]),
+            patch.object(
+                analyze_week,
+                "load_metrics",
+                return_value={"ctl": 60.0, "atl": 75.0},
+            ),
+            patch.object(analyze_week, "load_coach_activities", return_value=[]),
+            patch.object(analyze_week, "save_json") as save_json,
+            self.assertRaises(SystemExit),
+        ):
+            analyze_week.main()
+
+        saved_form = save_json.call_args.args[0]
+        self.assertEqual(saved_form["days_since_last_hard_session"], 4)
+        self.assertEqual(saved_form["days_since_last_hiit"], 4)
 
     def test_compute_days_since_last_hard_session_uses_distribution_labels(self):
         activities = [

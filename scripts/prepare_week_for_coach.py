@@ -8,12 +8,20 @@ from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from analyze_week import _HARD_SESSION_ACTIVITY_TYPES, compute_days_since_last_hard_session
 from intervals_icu.training_readiness import annotate_hard_sessions, compute_training_readiness
+from intervals_icu.strength import (
+    CANONICAL_STRENGTH_TAGS, STRENGTH_PHASE_BY_TAG, STRENGTH_PHASE_MAX_SESSIONS,
+    STRENGTH_PHASE_MIN_SESSIONS, resolve_strength_week_phase,
+)
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 _ROOT = SCRIPTS_DIR.parent
 PROCESSED_DIR = _ROOT / "data" / "processed"
+
+STRENGTH_HISTORY_WEEKS = 16
 
 _VERSION_FILE = _ROOT / "VERSION"
 _SCHEMA_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip() if _VERSION_FILE.exists() else "unknown"
@@ -26,6 +34,382 @@ def _lookback_days() -> int:
     except ValueError:
         return 7
     return value if value >= 1 else 7
+
+
+def _strength_history_weeks() -> int:
+    raw = os.environ.get("STRENGTH_HISTORY_WEEKS", str(STRENGTH_HISTORY_WEEKS))
+    try:
+        value = int(raw)
+    except ValueError:
+        return STRENGTH_HISTORY_WEEKS
+    return value if value >= 1 else STRENGTH_HISTORY_WEEKS
+
+
+def _canonical_strength_tags(tags: object) -> list[str]:
+    if not isinstance(tags, list):
+        return []
+    return [tag for tag in tags if isinstance(tag, str) and tag in CANONICAL_STRENGTH_TAGS]
+
+
+def _optional_number(value: object) -> int | float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return int(number) if number.is_integer() else number
+
+
+def build_strength_history(
+    completed_activities: list[dict],
+    planned_events: list[dict],
+    *,
+    today: date | None = None,
+) -> list[dict]:
+    """Resolve activity/planned tags, then infer from a recent anchored session.
+
+    When `today` is given, planned WeightTraining events for the rest of the
+    current ISO week are appended as rows flagged `"planned": True`. They only
+    feed the next-week phase projection; completed-session summaries ignore them.
+    """
+    planned_tags_by_date: dict[str, list[str]] = {}
+    planned_weeks: set[tuple[int, int]] = set()
+    for event in planned_events:
+        if event.get("type") not in (None, "WeightTraining"):
+            continue
+        event_date = (event.get("start_date_local") or event.get("date") or "")[:10]
+        if not event_date:
+            continue
+        planned_weeks.add(date.fromisoformat(event_date).isocalendar()[:2])
+        tags = _canonical_strength_tags(event.get("tags"))
+        if tags:
+            target = planned_tags_by_date.setdefault(event_date, [])
+            target.extend(tag for tag in tags if tag not in target)
+
+    history = []
+    for activity in sorted(
+        completed_activities,
+        key=lambda activity: activity.get("start_date_local") or "",
+        reverse=True,
+    ):
+        if (
+            activity.get("type") != "WeightTraining"
+            or activity.get("source") == "STRAVA"
+        ):
+            continue
+        session_date = (activity.get("start_date_local") or "")[:10]
+        if not session_date:
+            continue
+        session_day = date.fromisoformat(session_date)
+        session_week = session_day.isocalendar()[:2]
+
+        tags = _canonical_strength_tags(activity.get("tags"))
+        if tags:
+            phase_source = "activity"
+        else:
+            tags = planned_tags_by_date.get(session_date, [])
+            phase_source = "planned" if tags else "none"
+            if not tags:
+                candidates = [
+                    planned_date
+                    for planned_date in planned_tags_by_date
+                    if date.fromisoformat(planned_date).isocalendar()[:2] == session_week
+                ]
+                if candidates:
+                    closest_date = min(
+                        candidates,
+                        key=lambda day: (
+                            abs((date.fromisoformat(day) - session_day).days),
+                            day,
+                        ),
+                    )
+                    tags = planned_tags_by_date[closest_date]
+                    phase_source = "planned_week"
+
+        moving_time = _optional_number(activity.get("moving_time")) or 0
+        history.append(
+            {
+                "id": activity.get("id"),
+                "date": session_date,
+                "tags": list(tags),
+                "phase_source": phase_source,
+                "planned_week_exists": session_week in planned_weeks,
+                "duration_minutes": int((moving_time + 30) // 60),
+                "training_load": _optional_number(activity.get("icu_training_load")),
+                "rpe": _optional_number(activity.get("icu_rpe")),
+            }
+        )
+
+    anchor = None
+    for row in reversed(history):
+        if row["phase_source"] != "none":
+            anchor = row
+        elif anchor is not None:
+            gap = (date.fromisoformat(row["date"]) - date.fromisoformat(anchor["date"])).days
+            if gap < 21:
+                row["tags"] = list(anchor["tags"])
+                row["phase_source"] = "inferred"
+
+    if today is not None:
+        history.extend(_upcoming_planned_strength_rows(planned_events, history, today))
+
+    return history
+
+
+def _upcoming_planned_strength_rows(
+    planned_events: list[dict],
+    history: list[dict],
+    today: date,
+) -> list[dict]:
+    """Return planned strength rows from today (if not yet trained) through Sunday."""
+    sunday = today + timedelta(days=6 - today.weekday())
+    trained_today = any(row.get("date") == today.isoformat() for row in history)
+    rows = []
+    for event in planned_events:
+        if event.get("type") not in (None, "WeightTraining"):
+            continue
+        event_date = (event.get("start_date_local") or event.get("date") or "")[:10]
+        try:
+            event_day = date.fromisoformat(event_date)
+        except ValueError:
+            continue
+        if event_day > sunday or event_day < today:
+            continue
+        if event_day == today and trained_today:
+            continue
+        rows.append(
+            {
+                "id": None,
+                "date": event_date,
+                "tags": _canonical_strength_tags(event.get("tags")),
+                "phase_source": "planned_event",
+                "planned": True,
+            }
+        )
+    return sorted(rows, key=lambda row: row["date"], reverse=True)
+
+
+def _completed_strength_rows(strength_history: list[dict]) -> list[dict]:
+    return [row for row in strength_history if not row.get("planned")]
+
+
+def _row_strength_phase(row: dict) -> str | None:
+    if row.get("phase_source") == "none":
+        return None
+    return next(
+        (STRENGTH_PHASE_BY_TAG[tag] for tag in row.get("tags", []) if tag in STRENGTH_PHASE_BY_TAG),
+        None,
+    )
+
+
+def _phase_sessions(rows: list[dict]) -> list[tuple[date, str | None]]:
+    sessions = []
+    for row in rows:
+        try:
+            sessions.append((date.fromisoformat(row["date"]), _row_strength_phase(row)))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return sessions
+
+
+def _cycling_phase_for_week(training_plan: list[dict] | None, week_monday: date) -> str | None:
+    for entry in training_plan or []:
+        if isinstance(entry, dict) and entry.get("week") == week_monday.isoformat():
+            phase = entry.get("phase")
+            return phase if isinstance(phase, str) else None
+    return None
+
+
+def annotate_strength_phases(activities: list[dict], strength_history: list[dict]) -> list[dict]:
+    """Attach resolved phases without changing activity tags or exporting history."""
+    by_id = {
+        str(row["id"]): row
+        for row in _completed_strength_rows(strength_history)
+        if row.get("id") is not None
+    }
+    annotated = []
+    for activity in activities:
+        entry = dict(activity)
+        if entry.get("type") == "WeightTraining":
+            row = by_id.get(str(entry.get("id")))
+            if row is not None:
+                entry["strength_phase"] = next(
+                    (STRENGTH_PHASE_BY_TAG[tag] for tag in row["tags"]
+                     if tag in STRENGTH_PHASE_BY_TAG), None,
+                )
+                entry["strength_phase_source"] = row["phase_source"]
+                entry["strength_tagging_reminder_needed"] = (
+                    row["phase_source"] in ("none", "inferred")
+                    and not row.get("planned_week_exists", False)
+                )
+        annotated.append(entry)
+    return annotated
+
+
+def _update_hard_session_recency(week_summary: dict, activities: list[dict], as_of: date) -> None:
+    week_summary["days_since_last_hard_session"] = compute_days_since_last_hard_session(
+        [
+            activity
+            for activity in activities
+            if activity.get("type") in _HARD_SESSION_ACTIVITY_TYPES
+        ],
+        as_of,
+        week_summary.get("ctl"),
+    )
+
+
+def build_strength_week_summary(
+    strength_history: list[dict],
+    today: date,
+    week_summary: dict,
+    *,
+    training_plan: list[dict] | None = None,
+) -> dict:
+    """Summarize strength phase continuity and reuse weekly per-sport totals.
+
+    Also resolves the deterministic strength phase and recommended session count
+    for the current and the next ISO week (see docs/strength_training.md 3.3).
+    """
+    planned_rows = [row for row in strength_history if row.get("planned")]
+    history = sorted(
+        _completed_strength_rows(strength_history),
+        key=lambda row: row.get("date", ""),
+        reverse=True,
+    )
+    latest = history[0] if history else None
+    latest_date = None
+    if latest:
+        try:
+            latest_date = date.fromisoformat(latest["date"])
+        except (KeyError, TypeError, ValueError):
+            latest_date = None
+    days_since = (today - latest_date).days if latest_date else None
+
+    current_phase = None
+    phase_started = None
+    phase_session_count = 0
+    if days_since is None or days_since < 21:
+        previous_day = latest_date
+        for row in history:
+            session_day = date.fromisoformat(row["date"])
+            if previous_day is not None and (previous_day - session_day).days >= 21:
+                break
+            previous_day = session_day
+            if row.get("phase_source") == "none":
+                continue
+            phase = next(
+                (
+                    STRENGTH_PHASE_BY_TAG[tag]
+                    for tag in row.get("tags", [])
+                    if tag in STRENGTH_PHASE_BY_TAG
+                ),
+                None,
+            )
+            if phase is None:
+                continue
+            if current_phase is None:
+                current_phase = phase
+            if phase != current_phase:
+                break
+            phase_started = row.get("date")
+            phase_session_count += 1
+
+    phase_targets = {
+        "adaptation": "4-6",
+        "transition": "2-3",
+        "maximum": "8-12",
+        "maintenance": "ongoing",
+    }
+    phase_maximum = STRENGTH_PHASE_MAX_SESSIONS.get(current_phase)
+    current_monday = today - timedelta(days=today.weekday())
+    next_monday = current_monday + timedelta(weeks=1)
+    completed_sessions = _phase_sessions(history)
+    phase_current_week, recommended_current_week, reason_current_week = (
+        resolve_strength_week_phase(
+            completed_sessions,
+            current_monday,
+            _cycling_phase_for_week(training_plan, current_monday),
+        )
+    )
+    phase_next_week, recommended_next_week, reason_next_week = resolve_strength_week_phase(
+        # Untagged sessions of the current week count toward its resolved phase.
+        [
+            (session_day, phase or phase_current_week)
+            if session_day >= current_monday
+            else (session_day, phase)
+            for session_day, phase in completed_sessions + _phase_sessions(planned_rows)
+        ],
+        next_monday,
+        _cycling_phase_for_week(training_plan, next_monday),
+    )
+    sessions_per_week = [0, 0, 0, 0]
+    tagging_reminder_needed = False
+    first_week = current_monday - timedelta(weeks=4)
+    for row in history:
+        session_date = date.fromisoformat(row["date"])
+        if first_week <= session_date < current_monday:
+            sessions_per_week[(session_date - first_week).days // 7] += 1
+        if (
+            current_monday - timedelta(weeks=1) <= session_date <= today
+            and row.get("phase_source") in ("none", "inferred")
+            and not row.get("planned_week_exists", False)
+        ):
+            tagging_reminder_needed = True
+    return {
+        "current_phase": current_phase,
+        "phase_started": phase_started,
+        "phase_session_count": phase_session_count,
+        "phase_target_sessions": phase_targets.get(current_phase),
+        "phase_min_sessions": STRENGTH_PHASE_MIN_SESSIONS.get(current_phase),
+        "phase_max_sessions": phase_maximum,
+        "phase_overdue": phase_maximum is not None and phase_session_count > phase_maximum,
+        "sessions_this_week": week_summary.get("strength_sessions", 0),
+        "days_since_last_strength": days_since,
+        "last_session_tags": list(latest.get("tags", [])) if latest else [],
+        "weekly_strength_load": week_summary.get("strength_load", 0),
+        "sessions_per_week_last_4": sessions_per_week,
+        "untagged_sessions_last_16_weeks": sum(
+            row.get("phase_source") == "none" for row in history
+        ),
+        "inferred_sessions_last_16_weeks": sum(
+            row.get("phase_source") == "inferred" for row in history
+        ),
+        "tagging_reminder_needed": tagging_reminder_needed,
+        "phase_current_week": phase_current_week,
+        "phase_next_week": phase_next_week,
+        "recommended_sessions_current_week": recommended_current_week,
+        "recommended_sessions_next_week": recommended_next_week,
+        "phase_reason_current_week": reason_current_week,
+        "phase_reason_next_week": reason_next_week,
+    }
+
+
+def fetch_strength_history(
+    today: date,
+    *,
+    api_key: str | None = None,
+    athlete_id: str | None = None,
+) -> list[dict]:
+    """Fetch projected strength activities and planned events for recent history."""
+    from intervals_icu.client import (
+        get_planned_strength_events,
+        get_strength_history_activities,
+    )
+    if api_key is None or athlete_id is None:
+        from intervals_icu.config import API_KEY, ATHLETE_ID
+
+        api_key = API_KEY if api_key is None else api_key
+        athlete_id = ATHLETE_ID if athlete_id is None else athlete_id
+
+    oldest_day = today - timedelta(weeks=_strength_history_weeks())
+    oldest = oldest_day.isoformat()
+    newest = today.isoformat()
+    completed = get_strength_history_activities(api_key, athlete_id, oldest, newest)
+    planned_oldest = (oldest_day - timedelta(days=oldest_day.weekday())).isoformat()
+    planned_newest = (today + timedelta(days=6 - today.weekday())).isoformat()
+    planned = get_planned_strength_events(
+        api_key, athlete_id, planned_oldest, planned_newest,
+    )
+    return build_strength_history(completed, planned, today=today)
 
 
 def run(script: str, extra_env: dict[str, str] | None = None) -> None:
@@ -159,6 +543,10 @@ def _merge_fueling_into_activities(
 
     merged_activities: list[dict] = []
     for activity in activity_list:
+        if activity.get("type") == "WeightTraining":
+            merged_activities.append(dict(activity))
+            continue
+
         date_key = activity.get("date")
         queue = fueling_by_date.get(date_key, []) if isinstance(date_key, str) else []
         fueling_match = queue.pop(0) if queue else None
@@ -231,10 +619,15 @@ def consolidate() -> None:
         week_data["ctl"] = ctl
     if week_data.get("atl") is None and atl is not None:
         week_data["atl"] = atl
-    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
-
-    # Embed Ride training plan info into week_summary
     ride_plan = _extract_ride_plan_summary(plan_data, monday)
+    strength_history = fetch_strength_history(today)
+    week_data["strength"] = build_strength_week_summary(
+        strength_history,
+        today,
+        week_data,
+        training_plan=ride_plan,
+    )
+    # Embed Ride training plan info into week_summary
     if ride_plan:
         week_data["training_plan"] = ride_plan
 
@@ -244,6 +637,9 @@ def consolidate() -> None:
         activities if isinstance(activities, list) else [],
         fueling_data if isinstance(fueling_data, dict) else None,
     )
+    activities = annotate_strength_phases(activities, strength_history)
+    _update_hard_session_recency(week_data, activities, date.today())
+    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
     activities = annotate_hard_sessions(activities, current_ctl=week_data.get("ctl"))
 
     coach_input = {

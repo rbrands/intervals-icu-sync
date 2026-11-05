@@ -69,6 +69,11 @@ This keeps the base prompt stable while allowing the athlete profile to be swapp
 
 **`coach-logic/`** — Modular dxocumentation of the coaching domain knowledge:
 
+Canonical tag domains are `vo2max`, `lactate-threshold`, `aerobic-threshold`,
+`race-specific`, and `recovery` with dose levels `low`, `moderate`, `high`;
+`strength` alone uses phase levels `adaptation`, `transition`, `maximum`,
+`maintenance`. Legacy `strength` is not a canonical tag.
+
 | File | Content |
 |---|---|
 | `coaching-principles.md` | Training philosophy and foundational coaching principles based on Joe Friel |
@@ -95,7 +100,7 @@ recommendations. Python callers can use
 
 The MCP response is a native JSON object in `structuredContent`, with a
 declared output schema, not a serialized JSON string in a `result` field.
-It contains `checks` (seven areas, each with `area`, `status`,
+It contains `checks` (eight areas, each with `area`, `status`,
 `explanation`, `evidence`, and `context`), `overall`, `non_ok_count`,
 `suggested_fix`, `report_text`, and the input date/window metadata.
 `report_text` contains one line per area plus one summary line; explanations
@@ -108,8 +113,9 @@ are in English and can be translated by the caller without changing statuses.
 | W' consistency | Apply the same thresholds to `metrics.rolling_w_prime`, relative to `metrics.w_prime`. |
 | Wellness | `OK` if any of `metrics.resting_hr`, `metrics.hrv`, or `metrics.sleep_secs` is non-null; otherwise `Missing`. |
 | Activity density | Count activities dated from `current_date - lookback_days` through `current_date`, both inclusive, matching the preparation pipeline's lower boundary while excluding future entries. At least 3: `OK`; 1–2: `Warning`; 0: `Missing`. |
-| Activity feedback | In that same window, `OK` if every activity has non-null `rpe` and `carbs_ingested_g` (zero counts as recorded); `Missing` if there are no activities or either field is absent/null for every activity; otherwise incomplete feedback is `Warning`. |
+| Activity feedback | In that same window, consider only non-`WeightTraining` activities (RPE and carbohydrate intake are optional for strength, decision D6). `OK` if every applicable activity has non-null `rpe` and non-null `carbs_ingested_g` (zero counts as recorded), or if only strength activities are present. `Missing` if there are no activities at all, or if RPE or carbohydrate data is absent for every applicable activity; otherwise incomplete feedback is `Warning`. Evidence reports `applicable_activities` and `strength_activities_excluded`. |
 | Historical targets | `OK` if any `training_load_history` entry has a non-null `weekly_load_target` (including zero); otherwise `Missing`. |
+| Strength tagging | `Warning` (never `Missing`) when `week_summary.strength.tagging_reminder_needed` is true. Lists eligible exported `WeightTraining` activities from the previous ISO Monday through `current_date` (date, name, id, and phase/source when available), excluding activity-/plan-resolved sessions and sessions with `strength_tagging_reminder_needed: false`. For source `none`, suggests `strength-<current_phase>` or `strength-adaptation` when the current phase is null. For `inferred`, says "counted as <phase> - tag the session if it was a different phase", using the session's `strength_phase`. `OK` when the flag is false or the strength summary is absent. Evidence: `tagging_reminder_needed`, `untagged_activities`, `suggested_tag`, `current_phase`, window dates. The listing cannot extend beyond the exported activity window; the coach itself never mentions tagging. |
 
 If `0.95 * metrics.power_profile.p20min.watts` is more than 20% below FTP,
 the FTP check adds context about the power-profile window and potentially
@@ -119,8 +125,16 @@ change the status or overall rating.
 Overall completeness is `Good` for zero non-OK areas, `Partial` for one or
 two, and `Limited` for three or more. The single suggested fix uses a stable
 priority: `Missing` before `Warning`, then season plan, wellness, FTP, W',
-feedback, activity density, and historical targets. This is a data-quality
+feedback, activity density, historical targets, and strength tagging. This is a data-quality
 priority, not a training prescription; complete data requires no fix.
+
+When strength tagging is the suggested fix, the summary says: "Untagged strength
+sessions are counted as the current phase. Tag a session only if it was a
+different phase." For unresolved sessions (`phase_source: "none"`), it instead
+says: "Tag the session with a strength-<phase> tag so it counts toward the phase."
+Mixed inferred/unresolved findings include both instructions. The same wording
+is used in `suggested_fix` and the final line of `report_text`; per-activity
+phase evidence and the suggested tag remain available.
 
 `current_date`, `week_starting`, and a positive integer `lookback_days` are
 required. Dates must use `YYYY-MM-DD`, and `week_starting` must be the Monday
@@ -267,6 +281,7 @@ intervals-icu-sync/
 │   ├── genai_without_mcp.md       # Any-GenAI workflow without MCP (English)
 │   ├── webinar_notes.md            # Webinar companion guide (German)
 │   ├── prompt_library.md           # Copy-paste prompts for ChatGPT / Claude (DE + EN)
+│   ├── strength_training.md        # Planned strength-training integration and data rules
 │   └── training_readiness.md       # Training Readiness traffic-light explainer (English)
 ├── notebooks/
 │   └── week_summary.ipynb          # Interactive weekly training overview
@@ -277,6 +292,7 @@ intervals-icu-sync/
 │       ├── config.py               # Loads API_KEY, ATHLETE_ID from .env
 │       ├── data_quality.py         # Shared deterministic athlete-data quality checks
 │       ├── dfa_a1.py               # Shared DFA alpha 1 analysis of in-ride R-R intervals (hrv stream)
+│       ├── strength.py              # Canonical strength phase tags and phase mapping
 │       ├── training_readiness.py   # Shared readiness traffic-light calculation
 │       ├── week_data_schema.py     # Pydantic models for consolidated week_data JSON schema
 │       └── wbal.py                 # Shared W'bal computation (Skiba differential model)
@@ -288,6 +304,7 @@ intervals-icu-sync/
 │   ├── test_data_quality.py        # Data-quality thresholds and MCP tool regression tests
 │   ├── test_dfa_a1_analysis.py     # DFA a1 computation, activity gate and weekly aerobic-threshold aggregate
 │   ├── test_next_best_training_prompt.py  # Compact recommendation and upload prompt contract
+│   ├── test_strength_week_scope.py  # WeightTraining scope, summary and week phase resolver
 │   └── test_upload_plan_regressions.py  # Regression tests for upload_plan.py and ZWO generation
 ├── .env.example
 ├── .pre-commit-config.yaml       # Git hook config (strips Jupyter outputs before commit)
@@ -320,6 +337,12 @@ and `gpt-6-sol`. The additional models are configured in
 `foundry-agent/infra/main.bicep` via `additionalModelDeployments`; agent model
 selection remains separate. See the [Foundry infrastructure guide](foundry-agent/README.md#infrastructure-bicep)
 for versions, capacities, and the manual preview/apply workflow.
+
+The [Foundry agent deployment workflow](.github/workflows/deploy-agent.yml)
+deploys only the staging agent for same-repository pull requests targeting `main`.
+Pushes to `main` and manual runs deploy both production and staging; fork PRs
+are skipped. See the [agent CI/CD guide](foundry-agent/README.md#github-actions)
+for Azure OIDC requirements.
 
 > macOS note: if `python`/`pip` are not available (or point to Python 2), use `python3` and `pip3` for all commands below.
 
@@ -472,10 +495,10 @@ to upload the plan to intervals.icu
 
 ### `get_activities.py`
 
-Fetches cycling and running activities from intervals.icu (Monday of previous week → today) and saves them to `data/raw/`.
-Included activity types are `Ride`, `MountainBikeRide`, and `GravelRide` (plus `VirtualRide` for indoor/platform rides), and `Run`, `TrailRun`, and `VirtualRun`.
+Fetches cycling, running, and weight-training activities from intervals.icu (Monday of previous week → today) and saves them to `data/raw/`.
+Included activity types are `Ride`, `MountainBikeRide`, and `GravelRide` (plus `VirtualRide` for indoor/platform rides), `Run`, `TrailRun`, and `VirtualRun`, and `WeightTraining`.
 Missing or invalid `icu_training_load` values are treated as `0` during filtering.
-Cycling activities with a training load above `20` are always kept. Running activities are kept whenever intervals.icu supplies `icu_training_load`, even if the value is below `20`. Tagged activities below the cycling threshold are kept only when they carry at least one usable metric (training load, average or normalized power, heart rate, or zone times), so incomplete placeholder entries are dropped. If `icu_zone_times` is missing, running activities fall back to `icu_hr_zone_times` for the Z1/Z2, Z3/Z4, and Z5+ distribution.
+Cycling activities with a training load above `20` are always kept. Running activities are kept whenever intervals.icu supplies `icu_training_load`, even if the value is below `20`. WeightTraining activities are always kept; load is optional. STRAVA-source duplicates remain excluded. Tagged ride/run activities below the cycling threshold are kept only when they carry at least one usable metric (training load, average or normalized power, heart rate, or zone times), so incomplete placeholder entries are dropped. If `icu_zone_times` is missing, running activities fall back to `icu_hr_zone_times` for the Z1/Z2, Z3/Z4, and Z5+ distribution.
 For activities with power data, the coach export also includes the activity FTP (`activity_ftp`) and activity-specific eFTP (`activity_eftp`) supplied by intervals.icu; these are separate from the current athlete Metrics FTP. `activity_eftp` is estimated from the best efforts of that single ride and is a lower-bound estimate: rides without near-maximal efforts always yield values well below the athlete's real FTP, so low per-ride values carry no signal (see `coach-logic/interpretation-rules.md`, *Per-Activity eFTP*).
 Every exported activity also carries the post-activity fitness state reported by intervals.icu (`icu_ctl`/`icu_atl`) as `ctl`, `atl` and `form_absolute` (CTL − ATL), so the CTL/ATL/TSB trajectory across the export window is visible per session and not only as the current snapshot in `week_summary`.
 
@@ -490,13 +513,23 @@ Output: `data/raw/activities_{date}.json`
 ### `get_metrics.py`
 
 Fetches athlete performance metrics: the current Ride FTP from the athlete settings, FTP classification by age/sex (including W/kg), VO2Max, VO2Max classification by age/sex, eFTP, the percentage delta between FTP and eFTP (`ftp_eftp_delta_pct`), W', rolling W', the configured Ride power zone upper bounds as % FTP (`power_zones_pct`, used as the Zone 2 reference for the DFA a1 aerobic-threshold estimate), weight, CTL, ATL, resting HR, HRV, and the 42-day power profile. The consolidated `training_load_history` also includes four completed weekly CTL/ATL snapshots with the same explicit form fields as `week_summary`, alongside the weekly TSS target and actual load.
-In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place. The consolidation step also writes an explainable daily traffic light to `week_summary.training_readiness`, combining form, hard-session recency, HRV, resting HR, and sleep. Every exported activity includes `is_hard_session`, using the same classification as hard-session recency. A session with TSS at least 50% above current CTL counts as hard regardless of its training distribution. In addition, `HIIT` and `Polarized` sessions always count as hard, while `Threshold` sessions require at least 50 TSS or RPE 7+ so short, easy rides with incidental Z3/Z4 time do not reset hard-session recency.
+In consolidated `coach_input` payloads, `ctl` and `atl` are surfaced under `week_summary` (together with form fields) to keep readiness metrics in one place. The consolidation step also writes an explainable daily traffic light to `week_summary.training_readiness`, combining form, hard-session recency, HRV, resting HR, and sleep. Every exported activity includes `is_hard_session`, using the same classification as hard-session recency. A resolved `WeightTraining` activity in the `maximum` strength phase counts as hard. A session with TSS at least 50% above current CTL counts as hard regardless of its training distribution. In addition, `HIIT` and `Polarized` sessions always count as hard, while `Threshold` sessions require at least 50 TSS or RPE 7+ so short, easy rides with incidental Z3/Z4 time do not reset hard-session recency.
 Also exports `wellness_trends` for `weight`, `resting_hr`, and `hrv` with only: `current`, `avg_7d`, `avg_prev_7d`, and `trend_7d`.
 Weight values are normalized to kilograms (kg). If the athlete account stores weight in pounds, `get_metrics.py` converts it to kg before writing outputs.
 
 **Power Profile Type**: Adds a heuristic rider type estimate to `metrics.power_profile` using the 42-day power curve (`p15s`, `p1min`, `p5min`, `p20min`, `curve_slope`). Exposed fields are `type`, `type_key`, `heuristic_score`, `type_scores`, and `type_method` (currently `heuristic_v1`).
 
 **VO2Max Classification**: Classification by age group (13–19, 20–29, 30–39, 40–49, 50–59, 60+) and sex (male/female). Categories: *very poor*, *poor*, *average*, *good*, *very good*, *excellent*. Includes delta to next category and thresholds for range.
+The estimate uses `16.6 + 8.87 * p5min W/kg`. Classification also includes
+`p5min_pct_ftp` (one decimal), `estimate_representative` (`false` below
+100% FTP, `"likely_understated"` from 100% to below 105%, `true` at or above
+105%; thresholds use the unrounded ratio), and `power_profile_period_days`
+(copied from `power_profile.period_days`). Missing p5min or usable FTP
+leaves the percentage and flag null. Unless the flag is boolean `true`,
+the coach must not use the VO2Max value/category as limiter or performance
+trend evidence and states once that a maximal 5-minute effort is missing.
+Week-data schema version is `1.6.0`; the generated C# contract uses
+`JsonElement?` for the boolean/string/null flag.
 
 ```bash
 python scripts/get_metrics.py
@@ -508,8 +541,8 @@ Output: `data/processed/metrics_{date}.json`
 
 ### `analyze_week.py`
 
-Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies cycling and running sessions (VO2max / Threshold / Endurance), computes aerobic decoupling (for Base/Pyramidal/Threshold activities ≥ 90 min only), and prints a coaching interpretation.
-The weekly summary keeps training-distribution fields focused on these three categories; long-ride counting for fueling decisions is handled in `fueling_analysis.weekly_summary.number_of_long_rides`.
+Analyzes the current calendar week (Mon–Sun) using Joe Friel training principles. Classifies Ride sessions (VO2max / Threshold / Endurance), computes aerobic decoupling (for Base/Pyramidal/Threshold rides ≥ 90 min only), and prints a coaching interpretation.
+`total_training_load`, `number_of_activities`, `total_time_hours`, and `longest_activity_hours` aggregate Ride and Run activities and exclude `WeightTraining`. The `ride_*`, `run_*`, and `strength_*` load/session/time fields report each sport separately. Training-distribution sessions, decoupling, aerobic-threshold estimates, and `days_since_*` remain Ride-only; long-ride counting for fueling decisions is handled in `fueling_analysis.weekly_summary.number_of_long_rides`.
 
 Also computes **Form %** based on CTL (fitness) and ATL (fatigue), and writes `ctl`/`atl` alongside form fields into `week_summary`, including weeks with no qualifying rides yet:
 
@@ -520,13 +553,17 @@ Also computes **Form %** based on CTL (fitness) and ATL (fatigue), and writes `c
 
 Session distribution semantics in `week_summary`:
 
-- `vo2_sessions`: sessions classified as VO2max.
+- `vo2_sessions`: Ride sessions classified as VO2max.
 - `threshold_sessions`: sessions classified as threshold.
 - `endurance_sessions`: catch-all bucket for sessions that are neither VO2max nor threshold.
     This includes long steady activities that are not classified as VO2max/threshold.
 - `days_since_last_hiit`: calendar days since the last activity classified as `HIIT`.
 - `days_since_last_polarized`: calendar days since the last activity classified as `HIIT` or `Polarized`.
 - `days_since_last_hard_session`: calendar days since the last activity classified as `HIIT`, `Polarized`, or `Threshold`.
+
+The three recency fields are computed from all exported activities in the lookback window
+relative to the current date, not only from the current ISO week, so a hard session on the
+previous weekend stays visible early in the new week.
 
 Long-ride counting for fueling is tracked separately in
 `fueling_analysis.weekly_summary.number_of_long_rides`.
@@ -544,8 +581,9 @@ Output: console + `data/processed/week_summary_{monday}.json`
 
 ### `prepare_activities_for_coach.py`
 
-Exports a simplified JSON of cycling and running activities in the active lookback window (`LOOKBACK_DAYS`, default: `7`) for sharing with a coach or ChatGPT. Includes duration, training load, HR (avg/max), RPE, interval summary, zone distribution from `icu_zone_times` or fallback `icu_hr_zone_times`, compact interval HR analysis (`interval_hr_analysis` with `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, `hr_power_decoupling`), decoupling, and carbohydrate intake. Power, FTP, polarization index, power-curve, and W'bal fields are included only when an activity has power data. The HR interval summary is computed only from eligible WORK intervals (minimum 120 seconds and minimum 95% FTP intensity). Decoupling labels are only classified for Base/Pyramidal/Threshold activities ≥ 90 min; shorter or high-intensity activities show `"limited durability signal"`.
+Exports a simplified JSON of cycling, running, and `WeightTraining` activities in the active lookback window (`LOOKBACK_DAYS`, default: `7`) for sharing with a coach or ChatGPT. Cycling and running exports include duration, training load, HR (avg/max), RPE, interval summary, zone distribution from `icu_zone_times` or fallback `icu_hr_zone_times`, compact interval HR analysis (`interval_hr_analysis` with `hr_start_avg`, `hr_end_avg`, `hr_drift_pct`, `hr_power_decoupling`), decoupling, and carbohydrate intake. `WeightTraining` exports use a reduced field set only: `id`, `type`, `date`, `name`, `duration_hours`, `training_load`, `ctl`, `atl`, `form_absolute`, the three load deltas, `rpe`, `tags`, and `notes`; no power, heart-rate, zone, interval, decoupling, W'bal, power-curve, DFA, fueling, or weather fields are included, and none of those analyses are run. For cycling and running activities, power, FTP, polarization index, power-curve, and W'bal fields are included only when an activity has power data. The HR interval summary is computed only from eligible WORK intervals (minimum 120 seconds and minimum 95% FTP intensity). Decoupling labels are only classified for Base/Pyramidal/Threshold activities ≥ 90 min; shorter or high-intensity activities show `"limited durability signal"`.
 Ride-level W' fields use `icu_w_prime`; if that value is missing or `0`, the scripts automatically fall back to `icu_rolling_w_prime`. These fields are omitted for activities without power data.
+WeightTraining activities are always kept within the export window, except STRAVA duplicates; load is optional. Missing `training_load` stays null on the activity, contributes zero to weekly strength load sums, and does not affect tag/date-based phase counts or hard-session classification.
 For longer rides that were ridden as aerobic sessions (≥ 60 min, HR data, not a race, no `lactate-threshold-*`/`vo2max-*`/`race-specific-*` tag, and either a canonical `aerobic-threshold-*`/`recovery-*` tag or a `Base`/`Pyramidal` `training_distribution` — the tag has priority because outdoor terrain often pushes an easy ride's power distribution into Z3/Z4) whose intervals.icu `stream_types` include `hrv`, the script analyzes the recorded R-R intervals and adds a compact `dfa_a1_summary` (DFA alpha 1: artifact and coverage quality gate, mean a1, share of time above 0.75 / below 0.5, and power and HR at a1 ≈ 0.75 as a per-ride aerobic-threshold estimate, plus `power_at_0_75_pct_ftp` relative to the activity FTP; in-ride durability remains a `decoupling` reading). At most the three newest qualifying rides are analyzed per run; threshold workouts, HIIT and fast group rides are deliberately skipped so that a low aerobic share never reads as a warning for an intentionally hard ride. The key is omitted entirely for rides without an `hrv` stream or outside the gate, and `valid: false` with a `reason` is written when the strap data fails the quality gate. Requires HRV logging to be enabled on the head unit (e.g. Garmin Edge: *System → Data Recording → Log HRV*) and a chest strap that transmits R-R intervals. Streams are fetched once per ride with a type filter and shared between the W'bal and DFA a1 analyses.
 Activities in the exported list are sorted by date/time with the newest activity first.
 Each activity also includes `ctl_delta`, `atl_delta`, and `form_absolute_delta` directly after their corresponding values: its CTL, ATL, and absolute form minus those of the chronologically previous **exported** activity. For example, CTL 45.2 after 44.1 gives `ctl_delta: 1.1`; ATL 52.1 after 53.3 gives `atl_delta: -1.2`. Deltas are rounded to one decimal place; each delta is `null` when either value is missing or there is no earlier exported activity.
@@ -560,7 +598,7 @@ Output: `data/processed/coach_input_{monday}.json`
 
 ### `fueling_analysis.py`
 
-Analyzes carbohydrate fueling quality per activity and for the active lookback window (`LOOKBACK_DAYS`, default: `7`). Classifies fueling based on duration (no fueling needed / optional / required), computes carbs/h and fueling ratio, detects underfueled sessions, and generates coaching recommendations. Long rides in this context are counted with the script's long-ride rule and surfaced as `weekly_summary.number_of_long_rides`. Rides whose interval summary contains standalone efforts of 30 s or less (e.g. `6x 6s`) with little Z5+ time are classified as `endurance_with_sprint`.
+Analyzes carbohydrate fueling quality per activity and for the active lookback window (`LOOKBACK_DAYS`, default: `7`). Classifies fueling based on duration (no fueling needed / optional / required), computes carbs/h and fueling ratio, detects underfueled sessions, and generates coaching recommendations. `WeightTraining` activities are excluded from per-activity and weekly fueling analysis and receive no `fueling` field in consolidated activities. Long rides in this context are counted with the script's long-ride rule and surfaced as `weekly_summary.number_of_long_rides`. Rides whose interval summary contains standalone efforts of 30 s or less (e.g. `6x 6s`) with little Z5+ time are classified as `endurance_with_sprint`.
 
 ```bash
 python scripts/fueling_analysis.py
@@ -620,6 +658,56 @@ Aborts immediately if any script fails. During consolidation it computes
 contains `status`, `score`, `confidence`, `recommendation`, reasons, safety
 vetoes, and the contribution of every available input signal. Missing optional
 wellness values lower confidence instead of counting as negative readiness.
+Strength activities are retained in the activity list without an attached
+fueling object. Consolidation adds `strength_phase`, `strength_phase_source`
+(`activity`, `planned`, `planned_week`, `inferred`, `none`), and
+`strength_tagging_reminder_needed` (source `none`/`inferred` and no planned
+WeightTraining event in that ISO week) to exported strength activities by ID.
+The original activity tags remain unchanged. Consolidation fetches a projected
+16-week history of completed WeightTraining sessions plus planned WeightTraining
+WORKOUT events, resolves canonical phase tags, and exports the compact
+`week_summary.strength` plus metadata on already-exported activities; the raw history
+stays internal and is not included in coach or MCP payloads. The compact summary
+includes `sessions_per_week_last_4` (all sessions per completed ISO week, oldest
+first, aligned with `training_load_history`),
+`untagged_sessions_last_16_weeks` (only sessions with phase_source `none`),
+`inferred_sessions_last_16_weeks` (only source `inferred`), and
+`tagging_reminder_needed` (`none` or `inferred` sessions in the current/previous ISO week
+with no planned strength event in that same week; surfaced as the `strength_untagged`
+warning of `check_athlete_data`, never by the coach). Activity phase tags win,
+then same-date planned tags, then tags from the nearest planned WeightTraining
+event in the same ISO year/week; equal-distance ties prefer the earlier date.
+As a final fallback, an untagged session inherits the phase of the most recent
+earlier activity-/plan-resolved session when the gap is less than 21 days
+(`inferred`). Inferred sessions count toward `phase_session_count` and continue
+the run but do not anchor further inference. Before the first resolved session,
+or at a gap of 21 days or more, the source remains `none`. Phase runs stop at
+gaps of at least 21 days between sessions; 21 days without a session also resets
+the current phase. `phase_overdue` is true only above 6 adaptation, 3 transition,
+or 12 maximum sessions (false for maintenance/unset phase), with no automatic
+phase switch inside a run.
+Python also resolves the strength phase deterministically at the start of each
+week: `phase_current_week` uses the history before this Monday, while
+`phase_next_week` also counts this week's completed sessions and planned
+WeightTraining events through Sunday. No history, or a gap of 21 days or more,
+starts adaptation. A run advances once it reaches its minimum (adaptation 4 →
+transition 2 → maximum 8 → maintenance). In Build/Peak weeks
+(`training_plan[].phase`), athletes with at least one full adaptation run switch
+to maintenance; otherwise the week uses one beginner adaptation session.
+`recommended_sessions_current_week` / `recommended_sessions_next_week` is 1 for
+maintenance and beginner build, otherwise 2. `phase_reason_*` is one of
+`continue`, `advance_min_reached`, `no_history`, `gap_reset`, `build_guard`, or
+`beginner_build`. Strength planning is on by default; the coach skips it only
+when the request says `Strength phase for this plan: none` or the athlete says
+so in chat.
+Planned events are fetched through Sunday of the current week, including the
+full ISO week containing the history start. The raw history remains internal.
+Week-data schema version is 1.6.0.
+The local and hosted MCP `prepare_week_data` tools use the same derivation.
+Set `STRENGTH_HISTORY_WEEKS` to change the default history window, including
+the window used for the untagged count. In the coach activity payload, `is_hard_session` is true for
+WeightTraining only when tagged `strength-maximum`; the generic CTL-based TSS
+threshold does not apply to strength sessions.
 
 ```bash
 python scripts/prepare_week_for_coach.py
@@ -744,7 +832,7 @@ FastMCP server that exposes the training data pipeline and plan upload as MCP to
 ### `check_athlete_data.py`
 
 Checks a consolidated coach-input export using the same deterministic
-seven-area data-quality rules as the MCP tool.
+eight-area data-quality rules as the MCP tool.
 
 ```bash
 # Check the current week's consolidated export (no fresh API fetch)
@@ -757,9 +845,13 @@ python scripts/check_athlete_data.py --input data/processed/coach_input_2026-10-
 python scripts/check_athlete_data.py --json
 ```
 
-Default output: seven compact status lines plus overall completeness and a
+Default output: eight compact status lines plus overall completeness and a
 single data-quality fix. `--json` prints the full report with evidence and
-context. No file is written. Exit code `0` means the check ran successfully,
+context. Inferred strength sessions use their exported `strength_phase_source`
+and `strength_phase` to report the counted phase, with tagging needed only if
+it differed; unresolved sessions are instructed to add a phase tag so they count
+toward the phase. No file is
+written. Exit code `0` means the check ran successfully,
 including `Partial` or `Limited` results; `1` means the file could not be read
 or the input was invalid. Use the consolidated export, not a raw activity
 list. To refresh input first, run `prepare_week_for_coach.py`.
@@ -768,7 +860,7 @@ list. To refresh input first, run `prepare_week_for_coach.py`.
 
 ### `check_plan_tss.py`
 
-Checks whether a generated plan's stated TSS values match the deterministic step-based calculation and whether the weekly total is within the requested target tolerance.
+Reports each workout's stated Ride TSS next to the deterministic step-based calculation and checks whether completed plus planned Ride TSS (using the computed values) is within the weekly Ride target tolerance. Run and WeightTraining entries are listed but excluded.
 
 ```bash
 # Check a generated plan file against the target load
@@ -778,9 +870,28 @@ python scripts/check_plan_tss.py --plan /tmp/plan.json --load-target 300 --toler
 python scripts/check_plan_tss.py --plan data/plans/my_plan.json --load-target 300
 ```
 
-The script accepts either a bare workout array or an object shaped like `{ "workouts": [...] }`. For workouts with `library_workout_id`, the `tss` value is kept as-is. For generated workouts with `steps`, TSS is recomputed from the step durations and power values and compared against the stated value using a ±5% tolerance floor of 2 TSS points.
+The script accepts either a bare workout array or an object shaped like `{ "workouts": [...] }`. Ride types are `Ride`, `VirtualRide`, `MountainBikeRide`, and `GravelRide`; absent or null `activity_type` defaults to Ride. For ride workouts with `library_workout_id`, the `tss` value is kept as-is. For generated rides with `steps` (top-level or `workout.steps`), TSS is recomputed from the step durations and power values; `stated_tss`, `computed_tss`, and `mismatch` are reported per workout, but a mismatch is informational only (listed in `notes`) and does not make the result invalid, because `upload_plan.py` overwrites the stated values on upload. The weekly total uses `computed_tss`. WeightTraining entries have `computed_tss` 0; other non-ride entries keep their stated TSS.
 
-Output: a JSON object with `workouts`, `week`, `valid`, and `issues` keys.
+Output: a JSON object with `workouts`, `week`, `valid`, `issues`, and `notes` keys.
+Only the weekly target deviation (and an exceeded optional Ride time budget) sets
+`valid` to false and adds an entry to `issues`.
+Each workout has `counted` to indicate Ride-target inclusion. `week.planned_tss`
+is retained and equals `planned_ride_tss`; `planned_other_tss` sums excluded
+entries. `total_tss = planned_ride_tss + completed_tss`. Pass completed **Ride**
+TSS with `--completed-tss` for the current week and zero for a future week.
+`week.planned_ride_hours` and `planned_other_hours` report the matching duration
+split. Optional `--weekly-time-target-hours` checks an upper budget for planned
+Ride hours only (no lower-bound or percentage tolerance); `time_within_budget`
+reports the result and a violation makes `valid` false.
+
+The local MCP `check_plan_tss(plan_json, load_target, tolerance_pct=10,
+completed_tss=0, athlete_data="")` returns the same JSON. Optional `athlete_data`
+is a coach-input JSON string; it derives completed TSS from
+`week_summary.ride_load`, falling back to `total_training_load` only when
+`ride_load` is absent. Omit athlete data and keep completed TSS zero for a
+future week.
+The local MCP TSS tool also accepts `weekly_time_target_hours` explicitly;
+it does not infer the intended week from athlete data.
 
 ---
 
@@ -798,6 +909,8 @@ Each entry in the JSON file must have:
 Optional per entry: `description` (free-text notes), `tags` (list of tag strings, e.g. `["vo2max-moderate", "race-specific-low"]`), `activity_type` (intervals.icu activity type; defaults to `Ride`), `steps` (structured workout intervals → uploaded as a ZWO file), and `library_workout_id` (copies the exact stored library workout, including its `type` and `workout_doc`, instead of generated steps).
 
 Use `activity_type` for non-ride planned activities and for indoor rides. Supported upload values are `Ride`, `VirtualRide`, `MountainBikeRide`, `GravelRide`, `Run`, `TrailRun`, `VirtualRun`, and `WeightTraining`. The coach sets `VirtualRide` for workouts it expects to be ridden indoors (derived from the recent `activities[].type` majority or an explicit statement in the chat; see `coach-logic/decision-process.md`, "Training Environment") and omits the field for outdoor rides. `Run` and `WeightTraining` entries can be uploaded without `steps`; in that case the event is created from duration, notes, and tags only.
+
+Before uploading, generated rides with `steps` (no `library_workout_id`) have `tss`, any `TSS: <n>` mention in the `description`, and `duration_minutes` recomputed from the steps (TSS = Σ duration_seconds/3600 × (power_pct_ftp/100)² × 100, rounded); `WeightTraining` entries get `tss` 0. Each correction is printed as an `Adjusted:` line. Library workouts and other entries are uploaded unchanged. This applies to both MCP `upload_week_plan` tools, which call this script.
 
 ```json
 {
@@ -849,6 +962,29 @@ Output: one `Created` or `Updated` line per workout, summary of counts.
 ### `validate_plan.py`
 
 Validates a plan JSON file against the upload schema before calendar upload.
+WeightTraining entries require `tags` containing exactly one canonical phase
+tag (`strength-adaptation`, `strength-transition`, `strength-maximum`, or
+`strength-maintenance`), duration 30-75 minutes, absent or empty steps
+(including nested `workout.steps`), and no `library_workout_id`. The legacy
+`tag` field remains tolerated but does not replace the required `tags` array.
+Schema errors include JSON locations and readable messages.
+
+The local MCP `validate_week_plan(plan_json="", max_errors=10, athlete_data="")`
+also checks at most one ride and one WeightTraining entry per calendar date;
+a ride and strength session on the same date are allowed. Optional
+`athlete_data` is a coach-input JSON string: entries of every sport are rejected
+on dates marked `training_allowed: false` in
+`week_summary.training_plan[].day_constraints`. Availability checks are skipped
+when no constraints are supplied. These date-level semantic checks are in the
+local MCP tool; the standalone script validates the schema.
+The local MCP validator checks `weekly_time_target_hours` in each supplied
+training-plan week against planned rides in that ISO week only. On `LIMITED`
+days, `max_training_time_hours` caps the sum of ALL entries on the date.
+For example, 60 minutes Ride plus 45 minutes WeightTraining requires 1.75
+hours: a 1.75-hour day cap passes, while 1.5 or 1.0 hours fails. Time checks
+are skipped when the respective target or constraints are absent. After schema
+validation, the result includes `week.planned_ride_hours` and
+`week.planned_other_hours` for the supplied plan.
 
 Default inputs:
 - Plan: `data/plans/week_plan.json`
@@ -879,7 +1015,7 @@ Exit code behavior:
 Interactive Jupyter notebook that loads the consolidated `coach_input_{monday}.json` and displays a structured overview of the current training week:
 
 - **Athlete Metrics**: FTP, eFTP, VO2Max, W\', HRV, weight — FTP values shown in W and W/kg
-- **Data Quality Check**: deterministic seven-area completeness/consistency report and status table, using the loaded consolidated export without a new API fetch; activities-only exports show an explicit unavailable message.
+- **Data Quality Check**: deterministic eight-area completeness/consistency report and status table, using the loaded consolidated export without a new API fetch; activities-only exports show an explicit unavailable message.
 - **Week Summary**: total load, time, ride count, session types (VO2 / Threshold / Endurance), aerobic decoupling (only from Base/Pyramidal/Threshold rides ≥ 90 min; shows `"no durability data"` if no eligible rides exist)
 - **Training Readiness**: CTL, ATL, Form Zone, HRV, and a color-coded readiness traffic light with score, confidence, recommendation, contributing signals, and safety limits (`ctl`, `atl`, and `training_readiness` are read from `week_summary`)
 - **Activities Table**: per-ride details including power, RPE, zone distribution, decoupling (labeled only for Base/Pyramidal/Threshold rides ≥ 90 min), and carbohydrate data
@@ -962,10 +1098,12 @@ Covers seven use cases:
 | **Fueling Analysis** | Dedicated fueling strategy review with pattern detection and recommendations |
 | **Metrics & Wellness Summary** | Compact overview of current performance metrics, HRV, sleep, and form state with load recommendation |
 | **Data Consistency Check** | Completeness and consistency report of the athlete data without coaching interpretation |
-| **Next Best Training** | At most 100 words plus upload JSON for one session today (preliminary tomorrow if already trained); easier alternative in prose only, no automatic upload |
+| **Next Best Training** | At most 100 words plus exactly one main workout recommendation: at most one ride and optionally one same-day strength session (preliminary tomorrow if already trained); easier alternative in prose only, no automatic upload |
 
 `coach_prompt_next_best_training` returns the same `{"workouts": [...]}` upload
-format as a weekly plan, between `BEGIN_UPLOAD_JSON` / `END_UPLOAD_JSON` markers.
+format as a weekly plan, between `BEGIN_UPLOAD_JSON` / `END_UPLOAD_JSON` markers:
+at most one ride and optionally one same-day `WeightTraining` session when the
+strength rule yields a phase other than `none`. The easier alternative remains prose-only.
 Upload options (only after an explicit user request):
 - **Local scripts:** save the JSON block as a plan file, run
   `python scripts/validate_plan.py --plan <file>`, then

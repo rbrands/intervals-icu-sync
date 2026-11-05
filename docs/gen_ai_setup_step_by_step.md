@@ -333,6 +333,8 @@ For the coaching assessment to be meaningful, enter the following in intervals.i
 - **Carbohydrates consumed** (grams) — required for fueling analysis
 - **Description / Notes** *(optional but recommended)* — a short comment on how the ride felt, any issues, or context the coach should know about
 
+For **WeightTraining** sessions, the coach needs the `strength-<phase>` tag; RPE is optional.
+
 The more consistently you log these, the better the coaching output.
 
 ## Step 1 – Prepare the week and share with your coach
@@ -381,4 +383,3 @@ Need more ready-to-use variants? See the prompt library in `docs/prompt_library.
 After discussing the assessment, ask Claude to create the plan and upload it:
 
 > Based on our discussion, please create a training plan for next week and upload it directly to my intervals.icu calendar using the `upload_week_plan` tool. Show me the plan first and wait for my confirmation before uploading.
-

@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from datetime import date, timedelta
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,10 @@ def _load_module(module_name: str, relative_path: str):
 prepare_activities = _load_module(
     "prepare_activities_metric_filter_script",
     "scripts/prepare_activities_for_coach.py",
+)
+get_activities = _load_module(
+    "get_activities_metric_filter_script",
+    "scripts/get_activities.py",
 )
 analyze_week = _load_module(
     "analyze_week_metric_filter_script",
@@ -144,6 +149,168 @@ class ActivityMetricFilteringTests(unittest.TestCase):
 
         self.assertEqual(prepare_activities.filter_activities([empty_run]), [])
         self.assertEqual(analyze_week.filter_activities([empty_run]), [])
+
+    def test_weight_training_with_load_is_kept_by_both_activity_load_filters(self):
+        strength = _activity(
+            type="WeightTraining",
+            tags=[],
+            icu_training_load=25,
+        )
+
+        self.assertIn("WeightTraining", get_activities._SUPPORTED_ACTIVITY_TYPES)
+        self.assertIn("WeightTraining", prepare_activities._SUPPORTED_ACTIVITY_TYPES)
+        self.assertTrue(get_activities._passes_load_filter(strength))
+        self.assertTrue(prepare_activities._passes_load_filter(strength))
+        self.assertEqual(prepare_activities.filter_activities([strength]), [strength])
+
+        light_strength = _activity(
+            id="light-strength",
+            type="WeightTraining",
+            tags=[],
+            icu_training_load=3,
+        )
+        self.assertTrue(get_activities._passes_load_filter(light_strength))
+        self.assertTrue(prepare_activities._passes_load_filter(light_strength))
+        self.assertEqual(prepare_activities.filter_activities([light_strength]), [light_strength])
+
+    def test_weight_training_with_optional_load_is_kept(self):
+        for load in (None, 0):
+            for tags in ([], ["strength-maximum"]):
+                with self.subTest(load=load, tags=tags):
+                    strength = _activity(type="WeightTraining", tags=tags, icu_training_load=load)
+                    self.assertTrue(get_activities._passes_load_filter(strength))
+                    self.assertTrue(prepare_activities._passes_load_filter(strength))
+                    self.assertEqual(prepare_activities.filter_activities([strength]), [strength])
+                    self.assertEqual(analyze_week.filter_activities([strength]), [strength])
+                    exported = prepare_activities.extract_fields(strength)
+                    self.assertEqual(exported["training_load"], load)
+                    prepare_activities._add_training_load_deltas([exported])
+                    for field in ("ctl_delta", "atl_delta", "form_absolute_delta"):
+                        self.assertIsNone(exported[field])
+                    duplicate = dict(strength, source="STRAVA")
+                    self.assertEqual(prepare_activities.filter_activities([duplicate]), [])
+                    self.assertEqual(analyze_week.filter_activities([duplicate]), [])
+
+    def test_raw_and_coach_exports_keep_strength_with_null_and_zero_load(self):
+        strengths = [
+            _activity(id=f"strength-{index}", type="WeightTraining",
+                      tags=["strength-maximum"], icu_training_load=load)
+            for index, load in enumerate((None, 0))
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            with (
+                patch.object(get_activities, "API_KEY", "test-key"),
+                patch.object(get_activities, "ATHLETE_ID", "test-athlete"),
+                patch.object(get_activities, "DATA_DIR", directory),
+                patch.object(get_activities, "get_activities", return_value=[
+                    *strengths, dict(strengths[0], source="STRAVA"),
+                ]),
+            ):
+                get_activities.main()
+            raw = json.loads((directory / f"activities_{date.today().isoformat()}.json").read_text())
+            self.assertEqual(raw, strengths)
+            with (
+                patch.object(prepare_activities, "OUTPUT_DIR", directory),
+                patch.object(prepare_activities, "load_data", return_value=raw),
+                patch.object(prepare_activities.subprocess, "run", return_value=Mock(returncode=0)),
+            ):
+                prepare_activities.main()
+            monday = date.today() - timedelta(days=date.today().weekday())
+            exported = json.loads((directory / f"coach_input_{monday.isoformat()}.json").read_text())
+            self.assertEqual([row["training_load"] for row in exported], [None, 0])
+
+    def test_weight_training_export_has_only_the_reduced_field_set(self):
+        strength = _activity(
+            type="WeightTraining",
+            icu_training_load=25,
+            icu_ctl=48.2,
+            icu_atl=55.1,
+            icu_rpe=8,
+            tags=["strength-maximum"],
+            description="Heavy lifting session",
+            icu_average_watts=210,
+            average_heartrate=145,
+            max_heartrate=170,
+            icu_zone_times=_zone_times(z1=100, z2=200),
+            interval_summary=["3x 5m 200w"],
+            carbs_used=80,
+            carbs_ingested=60,
+            average_weather_temp=18,
+            decoupling=4.2,
+            icu_max_wbal_depletion=1000,
+            icu_ftp=250,
+            icu_pm_ftp=245,
+        )
+
+        exported = prepare_activities.extract_fields(strength)
+
+        self.assertEqual(
+            set(exported),
+            {
+                "id",
+                "type",
+                "date",
+                "name",
+                "duration_hours",
+                "training_load",
+                "ctl",
+                "atl",
+                "form_absolute",
+                "rpe",
+                "tags",
+                "notes",
+            },
+        )
+        self.assertEqual(exported["type"], "WeightTraining")
+        self.assertEqual(exported["training_load"], 25)
+        self.assertEqual(exported["ctl"], 48.2)
+        self.assertEqual(exported["atl"], 55.1)
+        self.assertEqual(exported["form_absolute"], -6.9)
+        self.assertEqual(exported["tags"], ["strength-maximum"])
+
+    def test_weight_training_load_deltas_are_still_added(self):
+        newest = prepare_activities.extract_fields(
+            _activity(type="WeightTraining", icu_ctl=48, icu_atl=55)
+        )
+        previous = prepare_activities.extract_fields(
+            _activity(type="WeightTraining", icu_ctl=45, icu_atl=50)
+        )
+
+        prepare_activities._add_training_load_deltas([newest, previous])
+
+        self.assertEqual(newest["ctl_delta"], 3.0)
+        self.assertEqual(newest["atl_delta"], 5.0)
+        self.assertEqual(newest["form_absolute_delta"], -2.0)
+
+    def test_weight_training_main_loop_does_not_fetch_analysis_data(self):
+        strength = _activity(
+            type="WeightTraining",
+            icu_training_load=25,
+            icu_average_watts=210,
+            icu_ctl=48,
+            icu_atl=55,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with (
+                patch.object(prepare_activities, "load_data", return_value=[strength]),
+                patch.object(prepare_activities, "OUTPUT_DIR", Path(tmpdir)),
+                patch.object(
+                    prepare_activities.subprocess, "run", return_value=Mock(returncode=0)
+                ),
+                patch.object(prepare_activities, "get_activity_streams") as streams,
+                patch.object(prepare_activities, "get_activity_power_curve") as power_curve,
+                patch.object(prepare_activities, "get_activity_intervals") as intervals,
+                patch.object(prepare_activities, "_compute_wbal_summary") as wbal,
+                patch.object(prepare_activities, "_compute_dfa_a1_summary") as dfa_a1,
+            ):
+                prepare_activities.main()
+
+        streams.assert_not_called()
+        power_curve.assert_not_called()
+        intervals.assert_not_called()
+        wbal.assert_not_called()
+        dfa_a1.assert_not_called()
 
     def test_run_with_hr_zones_without_power_is_kept_without_power_fields(self):
         run = _activity(

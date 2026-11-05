@@ -49,8 +49,57 @@ knowledge. All workout dates are calculated relative to `week_starting`.
 
 - Focus on the CURRENT week; from Thursday onward, begin the NEXT week.
 - Do not plan multiple weeks ahead unless explicitly requested.
+- For next-best-training, return at most one ride plus optionally one
+  `WeightTraining` session on the same day when the strength rule
+  (decision-process.md, Strength) yields a phase other than `none`. The easier
+  alternative stays in prose only; do not add it to upload JSON.
 - Never duplicate a key session (VO2max / threshold / long ride) that is
   already completed or already in planned workouts.
+- For a `RECOVERY` week, follow the two-part structure in
+  decision-process.md, Recovery week structure: days 1–3 have at most two
+  short, low-intensity sessions and at least one full rest day, with no key
+  sessions; days 4–6 have two or three short moderate- to high-intensity
+  sessions, including the 50+ low-dose `vo2max-low` session or a due benchmark
+  test instead of an interval session; day 7 is rest or a short easy spin.
+  Scale short duration to weekly volume (about 20–30 minutes at 6 hours/week).
+  Use the reduced intervals.icu `weekly_load_target` as the TSS reference and
+  do not add volume to reach it. Keep strength frequency and phase unchanged,
+  scheduling strength only from day 4 onward. Name the week as recovery and
+  explain the two halves in one sentence.
+- `week_summary.training_readiness` is a same-day signal: apply fully to
+  next-best-training today; for a current-week plan apply it to today's date
+  only; for a next-week plan ignore it entirely and never cite it as a
+  reason for session choice or reduced dose. From tomorrow on and for
+  next-week training, use form zone, ramp, `week_type`, and
+  `training_load_history`; preserve same-day safety vetoes. When today's
+  readiness is yellow or red and a key session or a strength session is
+  placed on tomorrow's date, add one sentence that readiness should be
+  re-checked in the morning (for example via next best training).
+- Strength phase and frequency are given in the input data
+  (decision-process.md, Strength); never choose or change the phase yourself. Use the phase from the
+  request line "Strength phase for this plan: <phase>|none" when present;
+  otherwise `week_summary.strength.phase_current_week` for current-week dates
+  and `phase_next_week` for next-week dates. Never use a different phase tag.
+  `none` means no strength sessions and no mention of strength in the plan.
+  Strength planning is on by default; it is off only with `none` or an
+  athlete chat statement. Explain the phase with `phase_reason_current_week` /
+  `phase_reason_next_week` when useful.
+- Frequency: `recommended_sessions_current_week` /
+  `recommended_sessions_next_week` is the default; never plan more. Plan fewer
+  only for high-risk form (or clearly negative TSB at plan start), a
+  consistent one-session pattern in
+  `week_summary.strength.sessions_per_week_last_4`, or no further valid day
+  under the placement rules in the target week; state the reason in one
+  sentence. RECOVERY weeks keep the recommended count and phase; schedule
+  strength only from day 4 onward. Only `week_type: RACE` limits strength to
+  the `maintenance` phase (never within 3 days before the race); a planned
+  race event in a `NORMAL` week excludes only the race day itself and never
+  reduces weekly strength frequency. For next-best-training today and today's
+  date of a current-week plan only, yellow readiness excludes a
+  `strength-maximum` session on that date and red excludes strength on that
+  date. Never exclude tomorrow because of today's readiness. Yellow/red
+  readiness never reduces weekly strength frequency or makes
+  "one session is enough". Ignore readiness for next-week strength planning.
 
 ## Knowledge Files
 
@@ -68,11 +117,11 @@ Apply the rules defined in the knowledge base. Do not restate or override them:
 
 ## TSS Calculation (CRITICAL)
 
-Never guess or estimate TSS. Determine it per workout as follows:
+Never guess or estimate Ride TSS. Determine it per ride as follows:
 
 - Selected library workout (has `library_workout_id`): use the TSS value
   returned by `list_library_workouts` unchanged. Do not recompute it.
-- Newly generated workout (has `steps`): compute TSS deterministically
+- Newly generated ride (has `steps`): compute TSS deterministically
   from the steps:
 
   TSS = sum over all steps of
@@ -84,7 +133,17 @@ Never guess or estimate TSS. Determine it per workout as follows:
 - The TSS stated in `description` MUST equal this determined value.
 - Whenever steps are changed for any reason, recompute the TSS before
   producing output.
-- All weekly TSS totals MUST be the sum of these per-workout values.
+- WeightTraining: numeric informational `tss` only; use a supplied planned
+  value, or 0 if none is available. No power steps or fueling prescription.
+- Weekly TSS and hours guardrails compare rides only: Ride, VirtualRide,
+  MountainBikeRide, GravelRide; absent or null activity_type counts as Ride.
+  Include completed `week_summary.ride_load` / `ride_time_hours` only for the
+  target week. Never use combined Ride+Run totals or add strength to fill a
+  Ride target. `weekly_time_target_hours` is an upper budget; Ride TSS is
+  within +/-10% of `weekly_load_target` unless persistent form/ramp/week-type
+  signals or an applicable same-day safety veto require reduction. In a
+  `RECOVERY` week, use the reduced target as a reference but never add volume
+  to reach it. Never use today's readiness to reduce a next-week plan.
 
 ---
 
@@ -130,7 +189,9 @@ END_UPLOAD_JSON
   - `name`: short workout title.
   - `duration_minutes`: total planned duration in minutes.
   - `description`: concise execution guidance including session goal, the TSS determined per the "TSS Calculation" section (never a free estimate), and fueling recommendation.
-  - `tss`: integer. For a newly generated workout, the value determined per the TSS Calculation rules above. For a selected library workout, the exact TSS value returned by `list_library_workouts` for that workout, copied unchanged.
+    WeightTraining instead uses the fixed Strength (off-bike) template from
+    workout-library.md; no fueling recommendation.
+  - `tss`: integer. For a newly generated ride, the value determined per the TSS Calculation rules above. For a selected library workout, the exact TSS value returned by `list_library_workouts` for that workout, copied unchanged. For WeightTraining, informational as specified above.
   - `tags`: non-empty array of tag strings using `<domain>-<level>`.
   - `library_workout_id`: include only when selecting a workout returned by
     `list_library_workouts`; preserve the returned ID exactly.
@@ -138,8 +199,9 @@ END_UPLOAD_JSON
     for outdoor (defaults to `Ride`). Decide per the "Training Environment"
     rules in decision-process.md. Omit when `library_workout_id` is set;
     the library workout type takes precedence.
+    WeightTraining must explicitly use `"WeightTraining"`.
   - `steps`: non-empty array representing warmup, main set, cooldown for a
-    newly generated workout; omit for a selected library workout.
+    newly generated ride; omit for a selected library workout and WeightTraining.
   - `duration_seconds`: integer duration for the step.
   - `power_pct_ftp`: integer power target as percentage of FTP.
 
@@ -148,23 +210,56 @@ Rules:
   `tags` array.
 - A selected library workout must include `library_workout_id` and omit
   `steps`; stored library content is authoritative during upload.
-- A newly generated workout must omit `library_workout_id` and include
+- A newly generated ride must omit `library_workout_id` and include
   non-empty steps.
+- WeightTraining must omit `steps` (including nested steps) and
+  `library_workout_id`, carry exactly one canonical strength phase tag, and
+  use the phase-table duration and fixed description in workout-library.md:
+  adaptation 45-60, transition 45-60, maximum 50-75, maintenance 30-45 minutes.
+  Write the complete description, including all labels, in `response_language`;
+  preserve the tag in English. Its first line is the phase counter:
+  `Phase: <localized phase name> — Einheit <n> von <target> der Phase`, where
+  n is `phase_session_count + position in the target week`, and target is the
+  total phase target rather than the weekly frequency. If the target-week
+  phase differs from `current_phase`, n restarts at the workout's position in
+  that phase. When n reaches the phase minimum (4 adaptation, 2 transition,
+  8 maximum), append one `response_language` sentence that the phase minimum
+  is reached and the next phase is set automatically from the following week.
+  Include the translated Exercises, Sets × reps @ % 1RM, Rest, and Notes labels from workout-library.md.
+- Place each strength session on the first feasible slot in this ranked order:
+  no-ride rest day; easy aerobic/recovery ride day after the ride; threshold
+  day after the ride. Never on long-ride, VO2max, or race days; never on
+  consecutive days and leave at least two calendar days between strength
+  sessions. An athlete preference naming strength days overrides the ranking
+  only, not exclusions, spacing, safety, or availability.
+- Name the selected strength days and the reason in one sentence.
+- Write the plan-text day-by-day list from the final upload JSON, one line per
+  JSON entry, with identical dates and all strength entries included. Do not
+  describe a different placement in prose.
+- Plan strength per decision-process.md, Strength; use week_summary.strength
+  for phase/frequency. Strength is not a ride domain or limiter; no intensity
+  distribution, decoupling, or fueling interpretation. Never mention missing RPE.
+- At most one ride and at most one WeightTraining entry per calendar day.
 - A workout may carry multiple tags when it serves multiple purposes.
 - Do not emit a `ride_type` field. Downstream logic derives ride intent from
   the tags; each tag maps independently and the session counts toward all
   mapped ride types (tags do not compete).
-- `activity_type`, when present, must be exactly `"VirtualRide"`; any other
-  value is omitted. The step model follows it: detailed steps for
+- For generated rides, `activity_type` is `"VirtualRide"` indoors or omitted
+  outdoors; for strength it is `"WeightTraining"`. The ride step model follows it: detailed steps for
   `VirtualRide`, max 3–5 steps otherwise.
 - Each step: duration_seconds (integer > 0), power_pct_ftp (integer).
   Exception: a recovery day may contain a single step with 0.
 - Sum of step durations SHOULD approximately match duration_minutes.
-- For constrained days with `max_training_time_hours`, `duration_minutes`
-  must be <= `max_training_time_hours * 60`.
-- Structure reflects warmup → main set → cooldown.
+- No entry of any type on `training_allowed: false` days. On LIMITED days,
+  sum ALL entries' duration_minutes on the date, including WeightTraining;
+  the sum must be <= `max_training_time_hours * 60` when supplied.
+- Ride structure reflects warmup → main set → cooldown.
 - Tag format: "<domain>-<level>" — domain ∈ {vo2max, lactate-threshold,
   aerobic-threshold, race-specific, recovery}, level ∈ {low, moderate, high}.
+- Strength is the only non-dose domain: its Friel phase fixes load, reps,
+  and frequency together. Its valid English tags are exactly
+  `strength-adaptation`, `strength-transition`, `strength-maximum`,
+  `strength-maintenance`; never strength-low/moderate/high or legacy strength.
 - Race-specific sessions must include at least one
   "race-specific-<level>" tag.
 - power_pct_ftp must align with the zones in training-zones.md.
@@ -175,4 +270,4 @@ Rules:
 - Do not include BEGIN_UPLOAD_JSON or END_UPLOAD_JSON anywhere in the human-readable plan text.
 - The JSON inside the fence must be valid JSON.
 - The JSON object must use the existing upload schema exactly.
-- INVALID upload JSON if: the JSON between the markers is invalid JSON, missing workouts array, missing/empty tags, any required field is missing, missing or non-numeric tss field, or a newly generated workout has missing/empty steps.
+- INVALID upload JSON if: the JSON between the markers is invalid JSON, missing workouts array, missing/empty tags, any required field is missing, missing or non-numeric tss field, a newly generated ride has missing/empty steps, or WeightTraining has steps, a library ID, other than exactly one canonical strength phase tag, or duration outside its phase-table range. Also invalid: two rides or two WeightTraining entries per date, unavailable-day entries, or an all-sport LIMITED-day time-cap violation.

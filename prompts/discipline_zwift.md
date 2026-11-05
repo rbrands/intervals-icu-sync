@@ -46,8 +46,9 @@ for volume maintenance.
   emphasise pre-race carbohydrate intake and a bottle for the start block
 - heat: indoor races accumulate heat fast; every race-simulation description
   includes cooling (fan, open window, cold bottle) and pre-cooling advice
-- no hidden off-bike load: all relevant load is visible in ride data;
-  read fatigue signals at face value
+- plan strength sessions per decision-process.md, Strength; strength load is
+  visible in week_summary.strength. Read ride/run data and wellness together;
+  do not assume all relevant training is a ride or invent unseen off-bike load
 
 ## Discipline Workouts
 - Zwift race start (Z6 → Z4, workout-library.md) → tag race-specific-<level>

@@ -1,15 +1,15 @@
 # Workout Library
 
 A catalog of concrete interval structures, grouped by training domain and
-dose level (high / moderate / low). The coach selects from this library
+dose level (high / moderate / low), except strength, which uses Friel phases. The coach selects from this library
 when generating a plan.
 
 - Selection logic (which domain, which dose, when) is in decision-process.md.
-- All intensities reference the zones in training-zones.md — this file
+- All ride intensities reference the zones in training-zones.md — this file
   names zones (Z1–Z7), never FTP percentages.
 - Tags follow the canonical taxonomy in interpretation-rules.md.
   Every workout carries one or more "`<domain>-<level>`" tags.
-- The structures below are MAIN SETS; warmup and cooldown are added per
+- The ride structures below are MAIN SETS; warmup and cooldown are added per
   the modeling rules in decision-process.md.
 
 Dose levels:
@@ -176,9 +176,91 @@ includes cooling and a pre-race carbohydrate note.
 
 
 
+## Strength (off-bike)
+
+Strength uses phase levels, not low/moderate/high doses. Based on Friel's
+muscular-force progression; this project caps AA/MT/MS at two sessions per week.
+
+| Phase level | Friel phase | Sessions total | Sessions/week | Load (% 1RM) | Sets x reps | Rest | Typical duration | Tag |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| adaptation | Anatomical Adaptation (AA) | 4-6 | 2 | 40-60 | 3-5 x 15-20 | 1-1.5 min | 45-60 min | strength-adaptation |
+| transition | Max Transition (MT) | 2-3 | 2 | 70-80 | 3-5 x 8-12 | 2-3 min | 45-60 min | strength-transition |
+| maximum | Max Strength (MS) | 8-12 | 2 | 85-95 | 3-4 x 3-6 | 3-4 min | 50-75 min | strength-maximum |
+| maintenance | Strength Maintenance (SM) | ongoing | 1 | set 1: 60; set 2: 85 | 2 sets: 12 reps / 6 reps | 1-2 min | 30-45 min | strength-maintenance |
+
+### Exercise selection
+
+These exercises are suggestions shown as an example in the description, not
+the prescription: the prescription is the phase load (sets x reps @ % 1RM and
+rest). The athlete may use equivalent exercises from their own program.
+
+Suggest 3-4 exercises per session:
+- One or two primary lifts: squat, single-leg squat, deadlift, step-up
+  (optionally explosive power step-ups with lighter load), lunge, or leg press.
+- Leg curl is always included for muscle balance.
+- Core planks every session: front plank, side plank, and/or front plank with rows.
+- Power clean may replace a primary lift only for experienced lifters and
+  only on explicit athlete request; never prescribe it by default.
+
+### 1RM estimation
+
+Use a load allowing only 4-10 repetitions with good technique; estimated
+1RM = lifted load / factor. This is description guidance, not a mandatory
+maximal test.
+
+| Repetitions | Factor |
+| --- | --- |
+| 4 | 0.90 |
+| 5 | 0.875 |
+| 6 | 0.85 |
+| 7 | 0.825 |
+| 8 | 0.80 |
+| 9 | 0.775 |
+| 10 | 0.75 |
+
+### Description and upload contract
+
+Write the complete description, including every label and sentence, in the
+request's `response_language`. Translate the phase name and all prose; keep
+the canonical tag in English. Use this template in exactly this line order and
+translate its labels and placeholder values:
+
+```text
+Phase: <phase name> — session <n> of <target> in the phase
+<sets> × <reps> @ <% 1RM>, rest <rest>   (values from the phase table)
+Exercise example: <1–2 primary lifts>, leg curl, core plank – or equivalent exercises from your own program
+Progression: <note, e.g. "add 2.5 kg once all sets are completed">
+```
+
+The load line (sets × reps @ % 1RM and rest) is the prescription. The
+exercises are only a suggestion: always label them as an example (German:
+"Übungsbeispiel") and always add the "or equivalent exercises from your own
+program" clause in `response_language`. German example:
+
+```text
+Phase: Anpassung — Einheit 3 von 4–6 der Phase
+3 × 15–20 @ 40–60 % 1RM, Pause 1–1,5 min
+Übungsbeispiel: Kniebeuge, Step-up, Beinbeuger, Unterarmstütz – oder gleichwertige Übungen aus deinem eigenen Programm
+Progression: 2,5 kg ergänzen, wenn alle Sätze geschafft wurden
+```
+
+n is `week_summary.strength.phase_session_count` plus this workout's position
+in the target week, counting strength sessions in planned order. `<target>` is
+the phase's total target (4–6, 2–3, 8–12, or ongoing), not a weekly target. When
+n reaches the phase minimum (4 for adaptation, 2 for transition, 8 for maximum),
+append one sentence in `response_language` that the phase minimum is reached and
+the next phase is set automatically at the start of the following week.
+
+No `steps` (including nested steps), no `library_workout_id`;
+`activity_type: WeightTraining`, exactly one canonical `strength-<phase>` tag,
+and `duration_minutes` from the phase table. `tss` remains numeric and
+informational only: use a supplied planned value, or 0 if none is available;
+never invent power steps or increase strength TSS to fill a Ride target.
+Strength has no fueling prescription. RPE is optional.
+
 ## Consistency Rules (CRITICAL)
 
-- Every interval maps to a defined zone (training-zones.md). Do not use
+- Every ride interval maps to a defined zone (training-zones.md). Do not use
   arbitrary %FTP values outside the zone definitions.
 - Interval description, intensity, and tag must be consistent within a workout.
 - At least one tag per workout, from the canonical taxonomy.

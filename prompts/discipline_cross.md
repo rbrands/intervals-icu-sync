@@ -45,9 +45,10 @@ Discipline: Cyclocross
   pre-race carbohydrate intake and post-race recovery nutrition instead
 - technique (dismount/remount, cornering, run-ups) is embedded as a skills
   block inside the Z2 ride description, never as workout steps
-- running load from races and run-ups is not visible in ride data: when
-  fatigue exceeds what ride load explains, assume off-bike load, choose the
-  conservative option and state the assumption; do not ask the athlete
+- plan strength sessions per decision-process.md, Strength; strength load is
+  visible in week_summary.strength. Read recorded runs and wellness as
+  additional context; choose the conservative recovery option without
+  inventing unseen off-bike load
 - two hard days in a row only when they are the two race days of a weekend
 - embed K2 sprints (20 s, workout-library.md) into the Z2 ride during the
   8 weeks before the season and in race weeks without a midweek start/burst

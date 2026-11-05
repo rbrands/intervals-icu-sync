@@ -29,6 +29,17 @@ Summarize and assess:
   changing zones from this alone; skip the point entirely when the field is
   absent.
 
+**Strength**
+- Use `week_summary.strength`: current_phase, phase_session_count versus
+  phase_target_sessions; sessions_this_week versus the frequency rule in
+  decision-process.md, Strength; placement relative to ride key sessions.
+  Skip this bullet when current_phase is null and
+  `week_summary.strength_sessions == 0`. Strength load is informational only;
+  do not interpret intensity distribution or decoupling, or mention missing RPE.
+  When current_phase is null and strength_sessions > 0, name adaptation as a
+  working assumption, not a finding. Do not mention tagging; tagging gaps are
+  reported by the data quality check, not by the analysis.
+
 **Fueling**
 - Average carb intake per hour
 - Critical sessions with insufficient fueling

@@ -53,9 +53,9 @@ class DataQualityTests(unittest.TestCase):
         self.assertEqual(data, original)
         self.assertEqual(report["overall"], "Good")
         self.assertEqual(report["non_ok_count"], 0)
-        self.assertEqual(len(report["checks"]), 7)
+        self.assertEqual(len(report["checks"]), 8)
         self.assertTrue(all(check["status"] == "OK" for check in report["checks"]))
-        self.assertEqual(len(report["report_text"].splitlines()), 8)
+        self.assertEqual(len(report["report_text"].splitlines()), 9)
         self.assertEqual(json.loads(check_athlete_data_json(json.dumps(data))), report)
 
     def test_exact_comparison_thresholds_in_both_directions(self):
@@ -184,6 +184,217 @@ class DataQualityTests(unittest.TestCase):
         data["activities"][1]["carbs_ingested_g"] = None
         self.assertEqual(area(check_athlete_data(data), "activity_feedback")["status"], "Warning")
 
+    def test_strength_activities_do_not_require_rpe_or_carbohydrate_intake(self):
+        data = complete_data()
+        data["activities"] = [
+            {"date": "2026-10-07", "type": "WeightTraining"},
+            {"date": "2026-10-08", "type": "WeightTraining", "rpe": None, "carbs_ingested_g": None},
+        ]
+        report = check_athlete_data(data)
+        check = area(report, "activity_feedback")
+        self.assertEqual(check["status"], "OK")
+        self.assertEqual(check["evidence"]["activity_count"], 2)
+        self.assertEqual(check["evidence"]["applicable_activities"], 0)
+        self.assertEqual(check["evidence"]["strength_activities_excluded"], 2)
+        self.assertEqual(check["evidence"]["rpe_recorded"], 0)
+        self.assertEqual(check["evidence"]["carbs_recorded"], 0)
+        self.assertIn("0/0 applicable activities", check["explanation"])
+        self.assertEqual(report["non_ok_count"], 1)
+        self.assertEqual(area(report, "recent_activity_density")["status"], "Warning")
+
+    def test_mixed_strength_and_ride_only_checks_ride_feedback(self):
+        data = complete_data()
+        data["activities"] = [
+            {"date": "2026-10-07", "type": "WeightTraining"},
+            {"date": "2026-10-08", "type": "Ride", "rpe": 5, "carbs_ingested_g": 50},
+        ]
+        check = area(check_athlete_data(data), "activity_feedback")
+        self.assertEqual(check["status"], "OK")
+        self.assertEqual(check["evidence"]["applicable_activities"], 1)
+        self.assertEqual(check["evidence"]["strength_activities_excluded"], 1)
+        self.assertEqual(check["evidence"]["rpe_recorded"], 1)
+        self.assertEqual(check["evidence"]["carbs_recorded"], 1)
+        data["activities"][1]["rpe"] = None
+        self.assertEqual(area(check_athlete_data(data), "activity_feedback")["status"], "Missing")
+
+    def test_strength_untagged_is_ok_without_reminder_or_strength_summary(self):
+        for strength in (None, {"current_phase": None, "tagging_reminder_needed": False},
+                         {"tagging_reminder_needed": False}, {}):
+            with self.subTest(strength=strength):
+                data = complete_data()
+                data["activities"].append({
+                    "date": "2026-10-07", "type": "WeightTraining", "id": "i1", "name": "Gym",
+                })
+                if strength is not None:
+                    data["week_summary"]["strength"] = strength
+                report = check_athlete_data(data)
+                check = area(report, "strength_untagged")
+                self.assertEqual(check["status"], "OK")
+                self.assertFalse(check["evidence"]["tagging_reminder_needed"])
+                self.assertEqual(check["evidence"]["untagged_activities"], [])
+                self.assertEqual(report["overall"], "Good")
+                self.assertNotIn("Tag the listed", report["suggested_fix"])
+
+    def test_strength_untagged_warning_lists_untagged_sessions_in_both_iso_weeks(self):
+        data = complete_data()
+        data["week_summary"]["strength"] = {
+            "current_phase": "maximum", "tagging_reminder_needed": True,
+        }
+        data["activities"] = [
+            {"date": "2026-10-07", "type": "WeightTraining", "id": "i2", "name": "Gym B",
+             "tags": ["strength"], "rpe": 0, "carbs_ingested_g": 0},
+            {"date": "2026-09-28", "type": "WeightTraining", "id": "i1", "name": "Gym A",
+             "tags": [], "rpe": 0, "carbs_ingested_g": 0},
+            {"date": "2026-09-27", "type": "WeightTraining", "id": "i0", "name": "Too old"},
+            {"date": "2026-10-12", "type": "WeightTraining", "id": "i9", "name": "Future"},
+            {"date": "2026-10-09", "type": "WeightTraining", "id": "i3", "name": "Tagged",
+             "tags": ["Strength-Maximum"]},
+            {"date": "2026-10-10", "type": "Ride", "id": "r1", "name": "Ride", "tags": [],
+             "rpe": 0, "carbs_ingested_g": 0},
+        ]
+        report = check_athlete_data(data)
+        check = area(report, "strength_untagged")
+        self.assertEqual(check["status"], "Warning")
+        self.assertEqual(check["evidence"]["untagged_activities"], [
+            {"date": "2026-09-28", "name": "Gym A", "id": "i1"},
+            {"date": "2026-10-07", "name": "Gym B", "id": "i2"},
+        ])
+        self.assertEqual(check["evidence"]["suggested_tag"], "strength-maximum")
+        self.assertEqual(check["evidence"]["window_start"], "2026-09-28")
+        self.assertEqual(check["evidence"]["window_end"], "2026-10-11")
+        self.assertIn("2026-10-07 Gym B (id i2)", check["explanation"])
+        self.assertIn("strength-maximum", check["explanation"])
+        self.assertIn("Strength tagging: Warning", report["report_text"])
+        self.assertEqual(
+            [c["area"] for c in report["checks"] if c["status"] != "OK"], ["strength_untagged"],
+        )
+        self.assertEqual(report["overall"], "Partial")
+        self.assertEqual(
+            report["suggested_fix"],
+            "Tag the session with a strength-<phase> tag so it counts toward the phase.",
+        )
+
+    def test_strength_untagged_suggests_adaptation_without_phase_or_listed_activities(self):
+        data = complete_data()
+        data["week_summary"]["strength"] = {"current_phase": None, "tagging_reminder_needed": True}
+        check = area(check_athlete_data(data), "strength_untagged")
+        self.assertEqual(check["status"], "Warning")
+        self.assertEqual(check["evidence"]["suggested_tag"], "strength-adaptation")
+        self.assertEqual(check["evidence"]["untagged_activities"], [])
+        self.assertIn("outside the exported activity list", check["explanation"])
+
+    def test_inferred_strength_warning_uses_session_phase_not_current_phase(self):
+        data = complete_data()
+        data["week_summary"]["strength"] = {
+            "current_phase": "maximum", "tagging_reminder_needed": True,
+        }
+        data["activities"].append({
+            "id": "inferred", "name": "Gym", "date": "2026-10-07",
+            "type": "WeightTraining", "tags": [],
+            "strength_phase": "adaptation", "strength_phase_source": "inferred",
+            "strength_tagging_reminder_needed": True,
+        })
+        report = check_athlete_data(data)
+        check = area(report, "strength_untagged")
+        self.assertEqual(check["status"], "Warning")
+        self.assertIn("counted as adaptation - tag the session if it was a different phase",
+                      check["explanation"])
+        self.assertNotIn("cannot be tracked", check["explanation"])
+        self.assertEqual(check["evidence"]["untagged_activities"], [{
+            "id": "inferred", "name": "Gym", "date": "2026-10-07",
+            "phase_source": "inferred", "phase": "adaptation",
+        }])
+        self.assertEqual(report["non_ok_count"], 1)
+        self.assertEqual(
+            report["suggested_fix"],
+            "Untagged strength sessions are counted as the current phase. "
+            "Tag a session only if it was a different phase.",
+        )
+        self.assertTrue(report["report_text"].endswith(report["suggested_fix"]))
+        data["week_summary"]["strength"]["tagging_reminder_needed"] = False
+        report = check_athlete_data(data)
+        self.assertEqual(area(report, "strength_untagged")["status"], "OK")
+        self.assertEqual(area(report, "strength_untagged")["evidence"]["untagged_activities"], [])
+        self.assertEqual(report["non_ok_count"], 0)
+
+    def test_strength_warning_distinguishes_inferred_none_and_planned_sessions(self):
+        data = complete_data()
+        data["week_summary"]["strength"] = {
+            "current_phase": "adaptation", "tagging_reminder_needed": True,
+        }
+        for source, needed in (("none", True), ("inferred", True), ("planned", False),
+                               ("planned_week", False), ("inferred", False)):
+            data["activities"].append({
+                "id": f"{source}-{needed}", "name": "Gym", "date": "2026-10-07",
+                "type": "WeightTraining", "tags": [],
+                "strength_phase": None if source == "none" else "adaptation",
+                "strength_phase_source": source, "strength_tagging_reminder_needed": needed,
+            })
+        check = area(check_athlete_data(data), "strength_untagged")
+        self.assertEqual(
+            [entry["id"] for entry in check["evidence"]["untagged_activities"]],
+            ["none-True", "inferred-True"],
+        )
+        self.assertIn("no canonical strength phase tag", check["explanation"])
+        self.assertIn("Suggested tag: strength-adaptation", check["explanation"])
+        self.assertIn("counted as adaptation", check["explanation"])
+
+    def test_strength_summary_guidance_matches_session_sources(self):
+        counted = (
+            "Untagged strength sessions are counted as the current phase. "
+            "Tag a session only if it was a different phase."
+        )
+        unresolved = "Tag the session with a strength-<phase> tag so it counts toward the phase."
+        for sources, phase, expected in (
+            (["inferred"], "adaptation", counted),
+            (["none"], None, unresolved),
+            (["none"], "adaptation", unresolved),
+            (["inferred", "none"], "adaptation", counted + " " + unresolved),
+            ([None], None, unresolved),
+            ([], None, unresolved),
+            ([], "adaptation", counted),
+        ):
+            with self.subTest(sources=sources, phase=phase):
+                data = complete_data()
+                data["week_summary"]["strength"] = {
+                    "current_phase": phase, "tagging_reminder_needed": True,
+                }
+                for source in sources:
+                    activity = {
+                        "type": "WeightTraining", "date": "2026-10-07", "tags": [],
+                    }
+                    if source is not None:
+                        activity["strength_phase_source"] = source
+                        activity["strength_phase"] = "adaptation" if source == "inferred" else None
+                    data["activities"].append(activity)
+                report = check_athlete_data(data)
+                self.assertEqual(report["suggested_fix"], expected)
+                self.assertTrue(report["report_text"].endswith(expected))
+                self.assertEqual(area(report, "strength_untagged")["status"], "Warning")
+                if "none" in sources:
+                    self.assertIn(unresolved, area(report, "strength_untagged")["explanation"])
+
+    def test_inferred_session_without_phase_is_invalid(self):
+        data = complete_data()
+        data["activities"].append({
+            "type": "WeightTraining", "date": "2026-10-07",
+            "strength_phase_source": "inferred",
+        })
+        with self.assertRaisesRegex(ValueError, "must have a strength_phase"):
+            check_athlete_data(data)
+
+    def test_strength_untagged_warning_ranks_after_missing_areas_in_suggested_fix(self):
+        data = complete_data()
+        data["week_summary"]["strength"] = {"tagging_reminder_needed": True}
+        data["training_load_history"] = []
+        self.assertIn("weekly load targets", check_athlete_data(data)["suggested_fix"])
+
+    def test_invalid_strength_summary_shape_raises(self):
+        data = complete_data()
+        data["week_summary"]["strength"] = {"tagging_reminder_needed": "yes"}
+        with self.assertRaisesRegex(ValueError, "Invalid athlete_data"):
+            check_athlete_data(data)
+
     def test_history_any_non_null_target_including_zero(self):
         for history, status in (
             (None, "Missing"), ([], "Missing"), ([{}], "Missing"),
@@ -210,6 +421,8 @@ class DataQualityTests(unittest.TestCase):
                 if key in ("current_date", "week_starting", "lookback_days")}
         report = check_athlete_data(data)
         self.assertEqual(report["non_ok_count"], 7)
+        self.assertEqual(len(report["checks"]), 8)
+        self.assertEqual(area(report, "strength_untagged")["status"], "OK")
         self.assertEqual(report["overall"], "Limited")
 
     def test_invalid_metadata_and_shapes_raise_explicit_errors(self):
@@ -262,11 +475,20 @@ class DataQualityMcpTests(unittest.TestCase):
         cls.hosted = mcp_server
 
     def test_both_mcp_tools_return_identical_reports_without_fetching(self):
-        payload = json.dumps(complete_data())
+        data = complete_data()
+        data["week_summary"]["strength"] = {
+            "current_phase": "adaptation", "tagging_reminder_needed": True,
+        }
+        data["activities"].append({
+            "date": "2026-10-07", "id": "gym", "name": "Gym", "type": "WeightTraining",
+            "strength_phase": "adaptation", "strength_phase_source": "inferred",
+            "strength_tagging_reminder_needed": True,
+        })
+        payload = json.dumps(data)
         for server in (self.local, self.hosted):
             with patch.object(server, "prepare_week_data", side_effect=AssertionError("No fetch")):
                 report = server.check_athlete_data(payload)
-                self.assertEqual(report, check_athlete_data(complete_data()))
+                self.assertEqual(report, check_athlete_data(data))
                 tool = server.mcp._tool_manager.get_tool("check_athlete_data")
                 self.assertIsNotNone(tool)
                 self.assertIn("athlete_data", tool.parameters["properties"])
@@ -302,6 +524,14 @@ class DataQualityLocalIntegrationTests(unittest.TestCase):
 
     def test_cli_text_and_json_match_shared_report_from_any_directory(self):
         data = complete_data()
+        data["week_summary"]["strength"] = {
+            "current_phase": "adaptation", "tagging_reminder_needed": True,
+        }
+        data["activities"].append({
+            "date": "2026-10-07", "id": "gym", "name": "Gym", "type": "WeightTraining",
+            "strength_phase": "adaptation", "strength_phase_source": "inferred",
+            "strength_tagging_reminder_needed": True,
+        })
         expected = check_athlete_data(data)
         text = self.run_cli(json.dumps(data))
         self.assertEqual(text.returncode, 0, text.stderr)
@@ -375,7 +605,7 @@ class DataQualityLocalIntegrationTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             exec(compile(code, "data-quality-check", "exec"), namespace)
         self.assertEqual(namespace["quality_report"], check_athlete_data(data))
-        self.assertEqual(len(displays[0]), 7)
+        self.assertEqual(len(displays[0]), 8)
         namespace["loaded"] = []
         with contextlib.redirect_stdout(io.StringIO()) as out:
             exec(compile(code, "data-quality-check", "exec"), namespace)

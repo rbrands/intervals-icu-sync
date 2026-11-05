@@ -28,6 +28,12 @@ sys.path.insert(0, str(SCRIPTS_DIR))  # allow direct import of scripts
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import TransportSecuritySettings
 import upload_plan as _upload_plan  # direct import – no subprocess overhead
+from prepare_week_for_coach import (
+    _merge_fueling_into_activities, _update_hard_session_recency,
+    annotate_strength_phases, build_strength_week_summary, fetch_strength_history,
+)
+from check_plan_tss import evaluate_plan, _normalize_plan, planned_hours
+from validate_plan import validate_plan_semantics
 from intervals_icu.client import (
     get_activity_streams_sampled as get_activity_streams_sampled_client,
     get_library_folders,
@@ -158,44 +164,6 @@ def _filter_fueling_analysis_by_lookback(
     updated = dict(fueling_data)
     updated["activities"] = filtered
     return updated
-
-
-def _merge_fueling_into_activities(
-    activities: list[dict] | None,
-    fueling_data: dict | None,
-) -> tuple[list[dict], dict | None]:
-    activity_list = activities if isinstance(activities, list) else []
-
-    fueling_by_date: dict[str, list[dict]] = {}
-    cleaned_fueling = fueling_data
-    if isinstance(fueling_data, dict):
-        fueling_activities = fueling_data.get("activities")
-        if isinstance(fueling_activities, list):
-            for entry in fueling_activities:
-                if not isinstance(entry, dict):
-                    continue
-                entry_date = entry.get("date")
-                if not isinstance(entry_date, str):
-                    continue
-                fueling_by_date.setdefault(entry_date, []).append(entry)
-        cleaned_fueling = {k: v for k, v in fueling_data.items() if k != "activities"}
-
-    merged_activities: list[dict] = []
-    for activity in activity_list:
-        date_key = activity.get("date")
-        queue = fueling_by_date.get(date_key, []) if isinstance(date_key, str) else []
-        fueling_match = queue.pop(0) if queue else None
-        if isinstance(fueling_match, dict):
-            fueling_match = {
-                k: v
-                for k, v in fueling_match.items()
-                if k not in {"date", "name", "duration_hours"}
-            }
-        merged = dict(activity)
-        merged["fueling"] = fueling_match
-        merged_activities.append(merged)
-
-    return merged_activities, cleaned_fueling
 
 
 def _merge_training_load_history(
@@ -380,8 +348,8 @@ def check_athlete_data(athlete_data: str) -> QualityReport:
 
     Pass the complete JSON returned by prepare_week_data, or an attached coach
     input payload. No API calls, persistence or training recommendations.
-    Returns a native structured JSON object with seven checks (OK/Warning/Missing),
-    evidence, contextual p20min notes,
+    Returns a native structured JSON object with eight checks (OK/Warning/Missing),
+    evidence, contextual p20min notes, a strength tagging warning,
     overall completeness (Good/Partial/Limited), one suggested data-quality fix,
     and a compact report_text. Dates and lookback_days come only from the input.
     Malformed input raises a tool error; absent metrics produce Missing checks.
@@ -471,7 +439,7 @@ def prepare_week_data(lookback_days: int = 7) -> str:
         week_data["ctl"] = ctl
     if week_data.get("atl") is None and atl is not None:
         week_data["atl"] = atl
-    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
+    strength_history = fetch_strength_history(today, api_key=API_KEY, athlete_id=ATHLETE_ID)
 
     def _copy_target_fields(entry: dict, target: dict) -> None:
         load_target = target.get("load_target")
@@ -516,6 +484,14 @@ def prepare_week_data(lookback_days: int = 7) -> str:
         if ride_plan:
             week_data["training_plan"] = ride_plan
 
+    # Keep the established key order: strength, training_readiness, training_plan.
+    ride_plan_summary = week_data.pop("training_plan", None)
+    week_data["strength"] = build_strength_week_summary(
+        strength_history, today, week_data, training_plan=ride_plan_summary,
+    )
+    if ride_plan_summary:
+        week_data["training_plan"] = ride_plan_summary
+
     activities = activities_data if isinstance(activities_data, list) else (activities_data or {}).get("activities")
     activities = _filter_activities_by_lookback(
         activities if isinstance(activities, list) else [],
@@ -528,6 +504,9 @@ def prepare_week_data(lookback_days: int = 7) -> str:
         lookback_days=lookback_days,
     )
     activities, fueling_data = _merge_fueling_into_activities(activities, fueling_data)
+    activities = annotate_strength_phases(activities, strength_history)
+    _update_hard_session_recency(week_data, activities, today)
+    week_data["training_readiness"] = compute_training_readiness(metrics, week_data)
     activities = annotate_hard_sessions(activities, current_ctl=week_data.get("ctl"))
 
     coach_input = {
@@ -775,15 +754,69 @@ def save_week_plan(plan_json: str) -> str:
 
 
 @mcp.tool()
-def validate_week_plan(plan_json: str = "", max_errors: int = 10) -> str:
+def check_plan_tss(
+    plan_json: str,
+    load_target: float,
+    tolerance_pct: float = 10,
+    completed_tss: float = 0,
+    athlete_data: str = "",
+    weekly_time_target_hours: float | None = None,
+) -> str:
+    """Check planned Ride TSS plus completed Ride TSS against a Ride target.
+
+    Non-ride entries are listed with counted=false and excluded from the target.
+    Generated rides with steps are reported as stated vs computed TSS; the
+    weekly total uses the computed value and a mismatch does not invalidate.
+    When athlete_data is supplied, completed_tss is derived from
+    week_summary.ride_load, falling back to total_training_load only when
+    ride_load is absent (older payloads).
+
+    Args:
+        plan_json: Workout array or an object with a workouts array, as JSON.
+        load_target: Full weekly Ride TSS target.
+        tolerance_pct: Allowed deviation in percent.
+        completed_tss: Completed Ride TSS; use zero for a future week.
+        athlete_data: Optional coach-input JSON for deriving completed Ride TSS.
+        weekly_time_target_hours: Optional upper budget for planned Ride duration;
+            non-ride hours are reported separately and excluded.
+    """
+    try:
+        plan = _normalize_plan(json.loads(plan_json))
+        if athlete_data.strip():
+            data = json.loads(athlete_data)
+            if not isinstance(data, dict):
+                raise ValueError("athlete_data must be a JSON object")
+            summary = data.get("week_summary") or {}
+            if not isinstance(summary, dict):
+                raise ValueError("athlete_data.week_summary must be a JSON object")
+            completed_tss = summary.get("ride_load", summary.get("total_training_load", 0)) or 0
+        return json.dumps(
+            evaluate_plan(plan, load_target, tolerance_pct, completed_tss, weekly_time_target_hours),
+            ensure_ascii=False,
+        )
+    except (ValueError, TypeError) as exc:
+        return json.dumps({"error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def validate_week_plan(plan_json: str = "", max_errors: int = 10, athlete_data: str = "") -> str:
     """Validate a training plan JSON against the upload schema.
 
     If plan_json is provided, the tool validates that inline payload.
     If omitted, the tool validates data/plans/week_plan.json.
+    After schema validation, permits at most one ride and one WeightTraining
+    entry per date. With athlete_data, all entries are checked against
+    week_summary.training_plan[].day_constraints; unavailable-day checks are
+    skipped when no constraints are supplied.
+    LIMITED-day time caps sum all sports on the date. Weekly time targets in
+    supplied training_plan entries cap planned Ride hours only.
+    WeightTraining requires exactly one canonical strength phase tag, duration
+    30-75 minutes, no steps, and no library_workout_id.
 
     Args:
         plan_json: Optional plan JSON string to validate.
         max_errors: Maximum number of schema errors to include (>= 1).
+        athlete_data: Optional coach-input JSON containing day constraints.
     """
     if max_errors < 1:
         return json.dumps({"error": "max_errors must be >= 1"}, ensure_ascii=False)
@@ -831,12 +864,41 @@ def validate_week_plan(plan_json: str = "", max_errors: int = 10) -> str:
         output = output.strip()
 
         if result.returncode == 0:
+            try:
+                data = json.loads(athlete_data) if athlete_data.strip() else None
+                if data is not None and not isinstance(data, dict):
+                    raise ValueError("athlete_data must be a JSON object")
+                plan = json.loads(plan_path.read_text(encoding="utf-8"))
+                from check_plan_tss import normalize_workout_load
+                workouts = [normalize_workout_load(workout) for workout in _normalize_plan(plan)]
+                normalized_plan = workouts if isinstance(plan, list) else {**plan, "workouts": workouts}
+                semantic_errors = validate_plan_semantics(normalized_plan, data)
+                hours = planned_hours(workouts)
+            except (ValueError, TypeError) as exc:
+                return json.dumps({"error": str(exc)}, ensure_ascii=False)
+            if semantic_errors:
+                output = f"Invalid: found {len(semantic_errors)} validation error(s) in plan\n"
+                output += "\n".join(
+                    f"  {index}. {issue}"
+                    for index, issue in enumerate(semantic_errors[:max_errors], start=1)
+                )
+                return json.dumps(
+                    {
+                        "status": "invalid",
+                        "plan_source": plan_source,
+                        "schema": "contracts/week-plan/week-plan.schema.json",
+                        "details": output,
+                        "week": hours,
+                    },
+                    ensure_ascii=False,
+                )
             return json.dumps(
                 {
                     "status": "valid",
                     "plan_source": plan_source,
                     "schema": "contracts/week-plan/week-plan.schema.json",
                     "details": output,
+                    "week": hours,
                 },
                 ensure_ascii=False,
             )
@@ -865,7 +927,9 @@ def upload_week_plan(dry_run: bool = False, clear: bool = False) -> str:
     the intervals.icu calendar. Entries with library_workout_id copy the stored
     workout structure and type. Entries may set optional activity_type, defaulting
     to Ride when omitted; Run and WeightTraining entries can be uploaded without
-    steps. Existing events with the same name and date are updated (PUT), new
+    steps. Generated rides with steps have tss, the "TSS: <n>" description
+    mention, and duration_minutes recomputed from the steps before upload;
+    WeightTraining gets tss 0. Existing events with the same name and date are updated (PUT), new
     ones are created (POST) — no duplicates.
 
     Typically called after save_week_plan has written the coach's plan.

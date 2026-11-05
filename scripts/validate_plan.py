@@ -9,9 +9,11 @@ Usage:
 import argparse
 import json
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
+from check_plan_tss import RIDE_ACTIVITY_TYPES, planned_hours
 
 DEFAULT_PLAN = Path(__file__).resolve().parents[1] / "data" / "plans" / "week_plan.json"
 DEFAULT_SCHEMA = Path(__file__).resolve().parents[1] / "contracts" / "week-plan" / "week-plan.schema.json"
@@ -46,6 +48,16 @@ def _message_for_error(error: object) -> str:
         return "is missing a required property"
     if validator == "enum":
         return "must use an allowed value"
+    if validator in ("contains", "minContains", "maxContains"):
+        return "must contain exactly one canonical strength phase tag (strength-adaptation, strength-transition, strength-maximum, or strength-maintenance)"
+    if validator == "maxItems":
+        limit = getattr(error, "validator_value", None)
+        return "must be absent or empty" if limit == 0 else f"must contain at most {limit} items"
+    if validator in ("minimum", "maximum"):
+        limit = getattr(error, "validator_value", None)
+        return f"must be {'at least' if validator == 'minimum' else 'at most'} {limit}"
+    if validator is None and getattr(error, "schema", None) is False:
+        return "library_workout_id is not allowed for WeightTraining"
     if validator:
         return f"violates the '{validator}' schema rule"
     return "does not conform to the schema"
@@ -61,6 +73,75 @@ def _expand_schema_errors(errors: list[object]) -> list[object]:
         else:
             expanded.append(error)
     return expanded
+
+
+def validate_plan_semantics(plan: list | dict, athlete_data: dict | None = None) -> list[str]:
+    """Check date-level rules after schema validation; constraints are optional."""
+    workouts = plan if isinstance(plan, list) else plan["workouts"]
+    summary = (athlete_data or {}).get("week_summary") or {}
+    if not isinstance(summary, dict):
+        raise ValueError("athlete_data.week_summary must be an object")
+    weeks = summary.get("training_plan") or []
+    if not isinstance(weeks, list):
+        raise ValueError("athlete_data.week_summary.training_plan must be an array")
+    constraints = []
+    for week in weeks:
+        if not isinstance(week, dict):
+            raise ValueError("athlete_data.week_summary.training_plan entries must be objects")
+        days = week.get("day_constraints") or []
+        if not isinstance(days, list) or any(not isinstance(day, dict) for day in days):
+            raise ValueError("day_constraints must be an array of objects")
+        constraints.extend(days)
+    unavailable = {
+        constraint["date"][:10] for constraint in constraints
+        if constraint.get("training_allowed") is False and isinstance(constraint.get("date"), str)
+    }
+    seen: set[tuple[str, str]] = set()
+    issues = []
+    prefix = "$" if isinstance(plan, list) else "$.workouts"
+    minutes_by_date: dict[str, float] = {}
+    for workout in workouts:
+        day = workout["date"][:10]
+        minutes_by_date[day] = minutes_by_date.get(day, 0) + workout["duration_minutes"]
+    for index, workout in enumerate(workouts):
+        day = workout["date"][:10]
+        activity_type = workout.get("activity_type") or "Ride"
+        location = f"{prefix}[{index}]"
+        category = "Ride" if activity_type in RIDE_ACTIVITY_TYPES else activity_type
+        if category in ("Ride", "WeightTraining"):
+            key = (day, category)
+            if key in seen:
+                issues.append(f"{location}.date: at most one {category} entry is allowed per calendar date ({day})")
+            seen.add(key)
+        if day in unavailable:
+            issues.append(f"{location}.date: training is not allowed on {day}")
+    for constraint in constraints:
+        if constraint.get("type") != "LIMITED" or constraint.get("max_training_time_hours") is None:
+            continue
+        day = constraint.get("date")
+        if not isinstance(day, str):
+            raise ValueError("LIMITED day constraints require a date")
+        day = day[:10]
+        limit = float(constraint["max_training_time_hours"])
+        total_hours = minutes_by_date.get(day, 0) / 60
+        if total_hours > limit:
+            issues.append(f"{prefix}: total planned duration on {day} is {total_hours:g} hours, exceeding the LIMITED-day budget of {limit:g} hours (all sports)")
+    for week in weeks:
+        target = week.get("weekly_time_target_hours")
+        if target is None:
+            continue
+        if not isinstance(week.get("week"), str):
+            raise ValueError("Training-plan weekly time targets require an ISO week date")
+        week_start = date.fromisoformat(week["week"])
+        week_end = week_start + timedelta(days=7)
+        week_workouts = [
+            workout for workout in workouts
+            if week_start <= date.fromisoformat(workout["date"][:10]) < week_end
+        ]
+        ride_hours = planned_hours(week_workouts)["planned_ride_hours"]
+        if ride_hours > float(target):
+            issues.append(f"{prefix}: planned Ride duration for week {week_start} is {ride_hours:g} hours, exceeding weekly_time_target_hours {float(target):g}")
+    return issues
 
 
 def _load_json(path: Path, label: str) -> object:

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class _SchemaModel(BaseModel):
@@ -64,6 +64,9 @@ class FtpClassification(_SchemaModel):
 
 class Vo2MaxClassification(_SchemaModel):
     ml_per_kg_min: float | int | None = None
+    p5min_pct_ftp: float | None = None
+    estimate_representative: Literal[True, False, "likely_understated"] | None = None
+    power_profile_period_days: int | None = None
     age_group: str | None = None
     sex: str | None = None
     category: str | None = None
@@ -156,6 +159,36 @@ class AerobicThresholdEstimate(_SchemaModel):
     delta_pct: float | int | None = None
 
 
+StrengthPhase = Literal["adaptation", "transition", "maximum", "maintenance"]
+StrengthPhaseReason = Literal[
+    "continue", "advance_min_reached", "no_history", "gap_reset", "build_guard", "beginner_build",
+]
+
+
+class StrengthSummary(_SchemaModel):
+    current_phase: Literal["adaptation", "transition", "maximum", "maintenance"] | None = None
+    phase_started: str | None = None
+    phase_session_count: int
+    phase_target_sessions: Literal["4-6", "2-3", "8-12", "ongoing"] | None = None
+    phase_min_sessions: int | None = None
+    phase_max_sessions: int | None = None
+    phase_overdue: bool
+    sessions_this_week: int
+    days_since_last_strength: int | None = None
+    last_session_tags: list[str]
+    weekly_strength_load: float | int
+    sessions_per_week_last_4: list[int] = Field(min_length=4, max_length=4)
+    untagged_sessions_last_16_weeks: int
+    inferred_sessions_last_16_weeks: int
+    tagging_reminder_needed: bool
+    phase_current_week: StrengthPhase | None = None
+    phase_next_week: StrengthPhase | None = None
+    recommended_sessions_current_week: Literal[1, 2] | None = None
+    recommended_sessions_next_week: Literal[1, 2] | None = None
+    phase_reason_current_week: StrengthPhaseReason | None = None
+    phase_reason_next_week: StrengthPhaseReason | None = None
+
+
 class WeekSummary(_SchemaModel):
     week_starting: str | None = None
     current_date: str | None = None
@@ -165,6 +198,15 @@ class WeekSummary(_SchemaModel):
     number_of_activities: int | None = None
     total_time_hours: float | int | None = None
     longest_activity_hours: float | int | None = None
+    ride_load: float | int | None = None
+    run_load: float | int | None = None
+    strength_load: float | int | None = None
+    ride_sessions: int | None = None
+    run_sessions: int | None = None
+    strength_sessions: int | None = None
+    ride_time_hours: float | int | None = None
+    run_time_hours: float | int | None = None
+    strength_time_hours: float | int | None = None
     vo2_sessions: int | None = None
     threshold_sessions: int | None = None
     endurance_sessions: int | None = None
@@ -180,6 +222,7 @@ class WeekSummary(_SchemaModel):
     form_percent_display: float | int | None = None
     form_zone: str | None = None
     training_readiness: TrainingReadiness | None = None
+    strength: StrengthSummary | None = None
     fueling_form_analysis: FuelingFormAnalysis | None = None
     training_plan: list[TrainingPlanEntry] | None = None
 
@@ -237,6 +280,9 @@ class Activity(_SchemaModel):
     type: str | None = None
     date: str | None = None
     name: str | None = None
+    strength_phase: Literal["adaptation", "transition", "maximum", "maintenance"] | None = None
+    strength_phase_source: Literal["activity", "planned", "planned_week", "inferred", "none"] | None = None
+    strength_tagging_reminder_needed: bool | None = None
     duration_hours: float | int | None = None
     activity_ftp: float | int | None = None
     activity_eftp: float | int | None = None
