@@ -125,7 +125,8 @@ from intervals_icu.client import (
 )
 from intervals_icu.training_readiness import annotate_hard_sessions, compute_training_readiness
 from prepare_week_for_coach import (
-    annotate_strength_phases, build_strength_week_summary, fetch_strength_history,
+    _merge_fueling_into_activities, annotate_strength_phases,
+    build_strength_week_summary, fetch_strength_history,
 )
 
 from context import api_key_var, athlete_id_var
@@ -839,44 +840,6 @@ def _filter_fueling_analysis_by_lookback(
     updated = dict(fueling_data)
     updated["activities"] = filtered
     return updated
-
-
-def _merge_fueling_into_activities(
-    activities: list[dict] | None,
-    fueling_data: dict | None,
-) -> tuple[list[dict], dict | None]:
-    activity_list = activities if isinstance(activities, list) else []
-
-    fueling_by_date: dict[str, list[dict]] = {}
-    cleaned_fueling = fueling_data
-    if isinstance(fueling_data, dict):
-        fueling_activities = fueling_data.get("activities")
-        if isinstance(fueling_activities, list):
-            for entry in fueling_activities:
-                if not isinstance(entry, dict):
-                    continue
-                entry_date = entry.get("date")
-                if not isinstance(entry_date, str):
-                    continue
-                fueling_by_date.setdefault(entry_date, []).append(entry)
-        cleaned_fueling = {k: v for k, v in fueling_data.items() if k != "activities"}
-
-    merged_activities: list[dict] = []
-    for activity in activity_list:
-        date_key = activity.get("date")
-        queue = fueling_by_date.get(date_key, []) if isinstance(date_key, str) else []
-        fueling_match = queue.pop(0) if queue else None
-        if isinstance(fueling_match, dict):
-            fueling_match = {
-                k: v
-                for k, v in fueling_match.items()
-                if k not in {"date", "name", "duration_hours"}
-            }
-        merged = dict(activity)
-        merged["fueling"] = fueling_match
-        merged_activities.append(merged)
-
-    return merged_activities, cleaned_fueling
 
 
 def _merge_training_load_history(

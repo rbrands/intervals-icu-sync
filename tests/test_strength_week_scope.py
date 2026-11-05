@@ -1236,6 +1236,30 @@ class StrengthMcpPayloadTests(unittest.TestCase):
 
         cls.hosted = mcp_server
 
+    def test_local_and_hosted_mcp_mergers_skip_strength_without_consuming_fueling(self):
+        activities = [
+            {"type": "WeightTraining", "date": "2026-11-01", "name": "Strength"},
+            {"type": "Ride", "date": "2026-11-01", "name": "Ride"},
+        ]
+        fueling = {
+            "activities": [
+                {
+                    "date": "2026-11-01",
+                    "name": "Ride",
+                    "fueling_status": "fueling required",
+                }
+            ],
+            "weekly_summary": {"avg_carbs_per_hour": 60},
+        }
+
+        for server in (self.local, self.hosted):
+            with self.subTest(server=server.__name__):
+                merged, cleaned = server._merge_fueling_into_activities(activities, fueling)
+
+                self.assertNotIn("fueling", merged[0])
+                self.assertEqual(merged[1]["fueling"], {"fueling_status": "fueling required"})
+                self.assertNotIn("activities", cleaned)
+
     def test_local_and_hosted_mcp_export_compact_summary_and_activity_phase(self):
         today = date.today()
         monday = today - timedelta(days=today.weekday())
