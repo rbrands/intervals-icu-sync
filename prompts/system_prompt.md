@@ -66,6 +66,7 @@ knowledge. All workout dates are calculated relative to `week_starting`.
   do not add volume to reach it. Keep strength frequency and phase unchanged,
   scheduling strength only from day 4 onward. Name the week as recovery and
   explain the two halves in one sentence.
+- For athletes 50+, apply the hard-session cap from decision-process.md: at most 2 hard cycling sessions per week (races, VO2max, race-specific, threshold, and any completed ride with TSS ≥ 1.5 × CTL); drop threshold first, VO2max last; strength never counts. State a dropped session and the reason in one sentence.
 - `week_summary.training_readiness` is a same-day signal: apply fully to
   next-best-training today; for a current-week plan apply it to today's date
   only; for a next-week plan ignore it entirely and never cite it as a

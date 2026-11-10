@@ -12,6 +12,8 @@ Discipline: Cyclocross
 3. Threshold (supports the 45 min race average)
 
 ## Weekly Emphasis
+- athletes 50+: the hard-session cap in decision-process.md (2 hard cycling sessions per week) overrides the mandatory lists below
+
 ### Race weekend present in race_events
 - the race(s) are the key session: they replace the week's VO2max and
   race-specific stimulus; never add either on top
@@ -19,7 +21,8 @@ Discipline: Cyclocross
   alternating weeks), 1 short opener the day before the first race
 - secondary: 1 Z2 ride 1.5–2.5 h with a skills block; 1–2 recovery days
 - two races on one weekend: Monday is always recovery; the midweek quality
-  session is shortened by one dose level
+  session is shortened by one dose level; for athletes 50+ it is dropped
+  (hard-session cap)
 - surrounding volume follows the current phase (Base volume stays Base)
 
 ### No race in race_events

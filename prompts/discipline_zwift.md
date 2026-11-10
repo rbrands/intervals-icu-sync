@@ -15,6 +15,7 @@ Long Z2 rides carry little weight; one 1.5–2 h ride per week is enough
 for volume maintenance.
 
 ## Weekly Emphasis
+- athletes 50+: the hard-session cap in decision-process.md (2 hard cycling sessions per week) overrides the mandatory list below
 - mandatory: 1 VO2max session, 1 race-specific session (start simulation
   or race), 1 threshold session
 - maximum 2 races per week; each race REPLACES the VO2max or the

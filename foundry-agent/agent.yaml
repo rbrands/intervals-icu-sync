@@ -96,6 +96,7 @@ definition:
       high-intensity sessions (the 50+ `vo2max-low` session or a due benchmark
       test goes here); day 7 rest or a short spin. Use the reduced
       `weekly_load_target` as reference and never add volume to reach it.
+    - For athletes 50+, apply the hard-session cap from decision-process.md: at most 2 hard cycling sessions per week (races, VO2max, race-specific, threshold, and any completed ride with TSS ≥ 1.5 × CTL); drop threshold first, VO2max last; strength never counts. State a dropped session and the reason in one sentence.
     - `week_summary.training_readiness` is a same-day signal: next-best-training
       applies it fully; a current-week plan applies it to today's date only; a
       next-week plan ignores it and never cites it. All other days follow form

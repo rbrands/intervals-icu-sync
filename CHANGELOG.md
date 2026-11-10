@@ -7,9 +7,17 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-10
+
+Project and week-data schema version (`VERSION`, `schema_version`) is 1.6.1.
+
+### Added
+
+- Hard-session cap for athletes 50+ in decision-process.md: at most 2 hard cycling sessions per week (races, VO2max, race-specific, threshold); threshold is dropped first, VO2max last; strength never counts toward the cap; completed rides with TSS ≥ 1.5 × CTL count as hard; openers and K1/K2 sprints do not; cap anchored in the agent instructions.
+
 ## [1.6.0] - 2026-11-04
 
-Project and week-data schema version (`VERSION`, `schema_version`) is 1.6.0. Intermediate development versions 1.7.0-1.12.0 were never released and are consolidated into this release.
+Project and week-data schema version (`VERSION`, `schema_version`) is 1.6.0. 
 
 ### Added
 

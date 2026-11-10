@@ -104,6 +104,32 @@ When `week_type` is `RECOVERY`, use this two-part structure, based on
   `training_load_history`; never reduce VO2max dose because of today's
   `training_readiness`.
 
+### Hard-session cap (CRITICAL — age rule)
+- Athletes 50+: at most 2 hard cycling sessions per ISO week. This cap
+  overrides the "mandatory" lists in the discipline block.
+- Count every race (planned in `race_events` or recognised after the fact
+  per the discipline block), every session tagged `vo2max-*`,
+  `race-specific-*` or `lactate-threshold-*`, and every completed ride
+  classified as hard per interpretation-rules.md (hard-session recency rules).
+- Do not count recovery rides, benchmark tests in a RECOVERY week, the
+  opener the day before a race (`race-specific-low` per the discipline
+  block), or strength sessions of any phase (strength `maximum` remains
+  hard for day spacing only). Embedded K1/K2 sprints never make a ride
+  hard. A Z2/aerobic ride counts only when it is classified as hard by
+  load (TSS ≥ 1.5 × CTL, interpretation-rules.md): a long ride at low
+  CTL is a hard session.
+- Count already completed or already planned sessions in the target week
+  first; never remove a race to satisfy the cap.
+- When the remaining budget is too small for the discipline's hard
+  sessions, drop threshold first, then race-specific, then VO2max. Keep the
+  weekly VO2max stimulus unless a race already provides the equivalent
+  stimulus (VO2max age rule) or two races fill the cap.
+- Replace a dropped session with a Z2 ride or a rest day according to the
+  weekly time/TSS budget; never backfill with another hard session.
+- State the dropped session and the reason in one sentence in the plan text.
+- Athletes under 50: no fixed cap; the discipline block and the
+  consecutive-day rule apply unchanged.
+
 ### Threshold
 When FTP is the limiter, in Build phase, or when fatigue allows sustained
 efforts. Typical: 2×12, 3×8, over/unders.

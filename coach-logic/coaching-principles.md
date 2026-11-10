@@ -118,11 +118,12 @@ Recovery indicators: HRV, resting heart rate, subjective fatigue.
 ## Age-Specific Considerations (50+)
 
 - reduced recovery capacity → protect recovery
+- cap hard sessions at 2 per week; recovery capacity, not stimulus need, is the limiter
 - intensity maintenance becomes more important
 - VO2max must be trained year-round to slow its decline
 - shorter build cycles are preferable
 
-(The concrete "1 VO2max session every week" rule is in decision-process.md.)
+(The concrete rules — 1 VO2max session every week, cap of 2 hard sessions — are in decision-process.md.)
 
 ---
 
