@@ -3,6 +3,10 @@
 from intervals_icu.strength import STRENGTH_MAXIMUM_TAG
 
 
+HARD_SESSION_CTL_FACTOR = 2.5
+HARD_SESSION_RPE = 7
+
+
 def _as_float(value: object) -> float:
     try:
         return float(value) if value is not None else 0.0
@@ -27,17 +31,19 @@ def is_hard_session(
         activity.get("icu_training_load", activity.get("training_load"))
     )
     ctl = _as_float(current_ctl)
-    if ctl > 0 and training_load >= ctl * 1.5:
+    rpe = _as_float(activity.get("perceived_exertion", activity.get("rpe")))
+    # CTL is average daily TSS; with 4-5 rides/week, average rides exceed 1.5x,
+    # while 2.5x is roughly a third of weekly load and marks a long/heavy ride.
+    if ctl > 0 and training_load >= ctl * HARD_SESSION_CTL_FACTOR:
         return True
 
     distribution = distribution or activity.get("training_distribution")
     if distribution in {"HIIT", "Polarized"}:
         return True
-    if distribution != "Threshold":
-        return False
+    if distribution == "Threshold":
+        return training_load >= 50 or rpe >= HARD_SESSION_RPE
 
-    rpe = _as_float(activity.get("perceived_exertion", activity.get("rpe")))
-    return training_load >= 50 or rpe >= 7
+    return rpe >= HARD_SESSION_RPE
 
 
 def annotate_hard_sessions(

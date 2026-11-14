@@ -401,40 +401,28 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
             0,
         )
 
-    def test_session_with_tss_50_percent_above_ctl_is_hard(self):
-        activities = [
-            {
-                "start_date_local": "2026-09-06T10:00:00Z",
-                "training_distribution": "Base",
-                "icu_training_load": 90,
-            },
-        ]
-
-        self.assertEqual(
-            analyze_week.compute_days_since_last_hard_session(
-                activities,
-                date.fromisoformat("2026-09-06"),
-                current_ctl=60,
-            ),
-            0,
+    def test_hard_session_load_and_rpe_boundaries(self):
+        cases = (
+            (80, None, False),
+            (124, None, False),
+            (125, None, True),
+            (80, 7, True),
+            (130, 3, True),
         )
+        for training_load, rpe, expected in cases:
+            with self.subTest(training_load=training_load, rpe=rpe):
+                activity = {
+                    "type": "Ride",
+                    "training_distribution": "Base",
+                    "icu_training_load": training_load,
+                }
+                if rpe is not None:
+                    activity["perceived_exertion"] = rpe
 
-    def test_session_below_tss_50_percent_above_ctl_is_not_hard(self):
-        activities = [
-            {
-                "start_date_local": "2026-09-06T10:00:00Z",
-                "training_distribution": "Base",
-                "icu_training_load": 89,
-            },
-        ]
-
-        self.assertIsNone(
-            analyze_week.compute_days_since_last_hard_session(
-                activities,
-                date.fromisoformat("2026-09-06"),
-                current_ctl=60,
-            )
-        )
+                self.assertEqual(
+                    analyze_week.is_hard_session(activity, current_ctl=50),
+                    expected,
+                )
 
     def test_hard_session_classifier_supports_exported_activity_fields(self):
         activity = {
@@ -450,7 +438,7 @@ class WeekSummaryReadinessFieldTests(unittest.TestCase):
             {
                 "training_distribution": "Base",
                 "training_distribution_reason": "Mostly Z1/Z2",
-                "training_load": 90,
+                "training_load": 150,
             },
             {
                 "training_distribution": "Base",

@@ -110,14 +110,15 @@ When `week_type` is `RECOVERY`, use this two-part structure, based on
 - Count every race (planned in `race_events` or recognised after the fact
   per the discipline block), every session tagged `vo2max-*`,
   `race-specific-*` or `lactate-threshold-*`, and every completed ride
-  classified as hard per interpretation-rules.md (hard-session recency rules).
+  with `is_hard_session: true`.
 - Do not count recovery rides, benchmark tests in a RECOVERY week, the
   opener the day before a race (`race-specific-low` per the discipline
   block), or strength sessions of any phase (strength `maximum` remains
   hard for day spacing only). Embedded K1/K2 sprints never make a ride
-  hard. A Z2/aerobic ride counts only when it is classified as hard by
-  load (TSS ≥ 1.5 × CTL, interpretation-rules.md): a long ride at low
-  CTL is a hard session.
+  hard. A completed Z2/aerobic ride counts only when `is_hard_session` is true
+  (computed in code; this covers long rides). Planned sessions are classified
+  by their tags only; never estimate the hardness of a planned ride from its
+  TSS.
 - Count already completed or already planned sessions in the target week
   first; never remove a race to satisfy the cap.
 - When the remaining budget is too small for the discipline's hard

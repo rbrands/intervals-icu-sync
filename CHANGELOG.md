@@ -7,6 +7,15 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-11-14
+
+Project and week-data schema version (`VERSION`, `schema_version`) is 1.6.2.
+
+### Changed
+
+- Raised the generic hard-session load threshold from 1.5 x CTL to 2.5 x CTL (when CTL > 0); RPE >= 7 now makes any non-WeightTraining activity hard regardless of distribution.
+- Coach logic now consumes `is_hard_session` instead of restating the rule.
+
 ## [1.6.1] - 2026-11-10
 
 Project and week-data schema version (`VERSION`, `schema_version`) is 1.6.1.

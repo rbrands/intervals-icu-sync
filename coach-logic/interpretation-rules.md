@@ -32,11 +32,9 @@ training session. It combines five independent domains: form, hard-session
 recency, HRV, resting heart rate, and sleep. CTL, ATL, and TSB/form are one
 combined form signal and must not be counted separately.
 
-A session counts as hard when its TSS is at least 50% above current CTL,
-regardless of its training distribution. In addition, `HIIT` and `Polarized`
-sessions always count as hard. A `Threshold` session counts as hard with at
-least 50 TSS or RPE 7+, preventing short, easy rides with incidental Z3/Z4 time
-from resetting hard-session recency.
+Hard sessions are classified in code and exposed as `activities[].is_hard_session`
+and `week_summary.days_since_last_hard_session`. Use these fields; do not
+re-derive the classification from TSS, CTL, distribution or RPE.
 
 Score contributions:
 

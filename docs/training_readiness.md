@@ -69,18 +69,17 @@ Recovery demand depends strongly on how recently the athlete completed meaningfu
 
 ### What Counts as a Hard Session?
 
-A session counts as hard when its intensity distribution is:
+A ride counts as hard under any of these rules:
 
-- Any distribution with TSS at least 50% above current CTL
+- Any non-WeightTraining activity with TSS at least 2.5 x current CTL (when CTL > 0)
+- Any non-WeightTraining activity with RPE >= 7
 - `HIIT`, regardless of TSS
 - `Polarized`, regardless of TSS
-- `Threshold` with at least 50 TSS **or** RPE 7+
+- `Threshold` with at least 50 TSS or RPE >= 7
 
 The CTL-relative threshold is:
 
-$$
-	ext{Hard by load} \iff \text{TSS} \ge 1.5 \times \text{current CTL}
-$$
+Hard by load: `TSS >= 2.5 x current CTL` (when CTL > 0).
 
 This incorporates the hard/key-session band from the relative-load table. The
 moderate and easy bands do not reset hard-session recency by themselves.

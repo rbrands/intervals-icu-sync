@@ -335,7 +335,7 @@ class StrengthWeekSummaryTests(unittest.TestCase):
             tags=["strength-adaptation"],
         )
         maximum_with_low_load = dict(maximum, icu_training_load=1)
-        ride = _raw_activity("Ride", 100, 3600)
+        ride = _raw_activity("Ride", 150, 3600)
 
         self.assertTrue(analyze_week.is_hard_session(maximum_with_low_load, current_ctl=100))
         self.assertFalse(analyze_week.is_hard_session(adaptation, current_ctl=10))

@@ -104,9 +104,7 @@ best efforts of that single ride. It is a lower-bound estimate: rides
 without near-maximal efforts always produce values well below the real FTP,
 which is expected and carries no signal. Only a value at or above
 `metrics.ftp` is noteworthy (see interpretation rules, *Per-Activity eFTP*).
-`activities[].is_hard_session` marks whether the activity meets the same
-CTL-relative load, training-distribution, or RPE rules used by
-`week_summary.days_since_last_hard_session`.
+`activities[].is_hard_session`: computed in code from load relative to CTL, intensity distribution, RPE and strength phase; authoritative.
 `activities[].ctl` / `activities[].atl` / `activities[].form_absolute` are the
 fitness, fatigue and form (CTL−ATL) values *after* that activity, as reported
 by intervals.icu. Read them in date order to see the CTL/ATL/TSB trajectory;
@@ -152,12 +150,9 @@ value is missing or no previous exported activity exists.
 - `days_since_last_polarized`: integer number of calendar days since the last
   ride whose `training_distribution` is `HIIT` or `Polarized`.
 - `days_since_last_hard_session`: integer number of calendar days since the
-  last session with TSS at least 50% above current CTL, the last `HIIT` or
-  `Polarized` ride, the last `Threshold` ride with at least 50 TSS or RPE 7+,
-  or a `WeightTraining` session tagged `strength-maximum`. The generic TSS
-  threshold does not make a strength activity hard. All three recency fields
-  are computed from the whole exported lookback window relative to
-  `current_date`, not only from the current ISO week.
+  last activity with `is_hard_session: true`. All three recency fields are
+  computed from the whole exported lookback window relative to `current_date`,
+  not only from the current ISO week.
 - `strength`: compact summary derived from internal completed strength history
   and the per-sport totals in this object. The raw history is not exported.
   - `current_phase`: phase (`adaptation`, `transition`, `maximum`, or
